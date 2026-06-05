@@ -9,6 +9,8 @@ export interface BlogPost {
   readTime: number;
   featured: boolean;
   tags: string[];
+  image: string;       // cover image URL
+  imageAlt: string;    // alt text for accessibility
 }
 
 export const POSTS: BlogPost[] = [
@@ -22,6 +24,8 @@ export const POSTS: BlogPost[] = [
     readTime: 5,
     featured: true,
     tags: ["guide", "first-timer", "tips"],
+    image: "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?w=800&q=80",
+    imageAlt: "Crowd at an outdoor festival enjoying drinks",
     body: `
 ## Your First Tequila Fest: The Complete Guide
 
@@ -67,6 +71,8 @@ See you on the floor! 🥃
     readTime: 4,
     featured: true,
     tags: ["tequila", "recommendations", "brands"],
+    image: "https://images.unsplash.com/photo-1569529465841-dfecdab7503b?w=800&q=80",
+    imageAlt: "Premium tequila bottles on display",
     body: `
 ## The 2026 Must-Try List
 
@@ -115,6 +121,8 @@ Come find these and 40+ more at the 2026 tour. 🥃
     readTime: 3,
     featured: false,
     tags: ["cincinnati", "venue", "travel"],
+    image: "https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=800&q=80",
+    imageAlt: "Cincinnati city skyline at dusk",
     body: `
 ## Fountain Square: Cincinnati's Living Room
 
@@ -165,6 +173,8 @@ See you June 13! 🥃
     readTime: 3,
     featured: false,
     tags: ["affiliate", "earn", "program"],
+    image: "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=800&q=80",
+    imageAlt: "Person using a laptop to manage an online business",
     body: `
 ## Turn Your Audience Into Income
 
@@ -221,6 +231,8 @@ Ready to earn? Apply at tequilafestusa.com/affiliates. 🥃
     readTime: 4,
     featured: false,
     tags: ["vip", "experience", "worth-it"],
+    image: "https://images.unsplash.com/photo-1470338745628-171cf53de3a8?w=800&q=80",
+    imageAlt: "VIP lounge at an upscale event",
     body: `
 ## VIP vs. All Inclusive: Is the Upgrade Worth It?
 

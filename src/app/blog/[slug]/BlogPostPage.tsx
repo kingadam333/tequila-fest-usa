@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowLeft, Clock, Tag, Calendar } from "lucide-react";
 import type { BlogPost } from "@/lib/blog";
 import { POSTS } from "@/lib/blog";
@@ -93,6 +94,19 @@ export default function BlogPostPage({ post }: { post: BlogPost }) {
             <Link href="/blog" className="inline-flex items-center gap-2 text-white/35 hover:text-white/65 text-sm mb-10 transition-colors duration-200">
               <ArrowLeft size={14} /> Back to Blog
             </Link>
+          </motion.div>
+
+          {/* Hero image */}
+          <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.6 }}
+            className="relative h-64 md:h-80 rounded-2xl overflow-hidden mb-10">
+            <Image
+              src={post.image}
+              alt={post.imageAlt}
+              fill
+              priority
+              className="object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#0d0500]/80 via-transparent to-transparent" />
           </motion.div>
 
           {/* Header */}

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
+import Image from "next/image";
 import { Clock, Tag } from "lucide-react";
 import { POSTS } from "@/lib/blog";
 import Navbar from "@/components/Navbar";
@@ -75,14 +76,22 @@ export default function BlogListPage() {
                       <Link href={`/blog/${post.slug}`}
                         className="group block rounded-2xl border border-white/10 overflow-hidden hover:border-white/20 transition-all duration-300 hover:scale-[1.02]"
                         style={{ background: `linear-gradient(135deg, ${color}10, rgba(255,255,255,0.02))` }}>
-                        {/* Color bar */}
-                        <div className="h-1" style={{ background: color }} />
+                        {/* Cover image */}
+                        <div className="relative h-48 overflow-hidden">
+                          <Image
+                            src={post.image}
+                            alt={post.imageAlt}
+                            fill
+                            className="object-cover group-hover:scale-105 transition-transform duration-500"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                          <span className="absolute top-3 left-3 text-xs font-bold px-2.5 py-1 rounded-full"
+                            style={{ background: `${color}dd`, color: "#0d0500" }}>
+                            {post.category}
+                          </span>
+                        </div>
                         <div className="p-6">
                           <div className="flex items-center gap-2 mb-3">
-                            <span className="text-xs font-bold px-2.5 py-1 rounded-full"
-                              style={{ background: `${color}20`, color }}>
-                              {post.category}
-                            </span>
                             <span className="flex items-center gap-1 text-white/30 text-xs">
                               <Clock size={11} /> {post.readTime} min read
                             </span>
@@ -128,21 +137,30 @@ export default function BlogListPage() {
                   transition={{ delay: i * 0.06 }}>
                   <Link href={`/blog/${post.slug}`}
                     className="group flex flex-col h-full bg-white/[0.03] border border-white/10 rounded-2xl overflow-hidden hover:border-white/20 transition-all duration-300 hover:scale-[1.02]">
-                    <div className="h-0.5" style={{ background: color }} />
+                    {/* Image */}
+                    <div className="relative h-40 overflow-hidden flex-shrink-0">
+                      <Image
+                        src={post.image}
+                        alt={post.imageAlt}
+                        fill
+                        className="object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+                      <span className="absolute top-2.5 left-2.5 text-xs font-bold px-2 py-0.5 rounded-full"
+                        style={{ background: `${color}dd`, color: "#0d0500" }}>
+                        {post.category}
+                      </span>
+                    </div>
                     <div className="p-5 flex flex-col flex-1">
-                      <div className="flex items-center gap-2 mb-3">
-                        <span className="text-xs font-bold px-2 py-0.5 rounded-full"
-                          style={{ background: `${color}18`, color }}>
-                          {post.category}
-                        </span>
+                      <div className="flex items-center gap-2 mb-2">
                         <span className="flex items-center gap-1 text-white/25 text-xs">
-                          <Clock size={10} /> {post.readTime} min
+                          <Clock size={10} /> {post.readTime} min read
                         </span>
                       </div>
                       <h2 className="font-display text-white text-xl leading-tight mb-2 group-hover:text-yellow-400 transition-colors duration-200">
                         {post.title}
                       </h2>
-                      <p className="text-white/40 text-sm leading-relaxed line-clamp-3 flex-1">{post.excerpt}</p>
+                      <p className="text-white/40 text-sm leading-relaxed line-clamp-2 flex-1">{post.excerpt}</p>
                       <div className="flex items-center justify-between mt-4 pt-4 border-t border-white/[0.06]">
                         <div className="flex flex-wrap gap-1">
                           {post.tags.slice(0, 2).map(tag => (
