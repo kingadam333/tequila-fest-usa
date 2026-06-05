@@ -269,7 +269,14 @@ const TYPE_STYLES: Record<string, { bg: string; text: string; border: string; la
 
 function TicketsTab({ highlightOrderId }: { highlightOrderId?: string }) {
   const allTickets = MOCK_ORDERS.flatMap(order =>
-    order.tickets.map(t => ({ ...t, event: order.event, date: order.date, orderId: order.id }))
+    order.tickets.map((t, idx) => ({
+      ...t,
+      event: order.event,
+      date: order.date,
+      orderId: order.id,
+      ticketNumber: idx + 1,
+      totalInOrder: order.tickets.length,
+    }))
   );
 
   // checkedIn state: ticketId → timestamp string
@@ -311,6 +318,12 @@ function TicketsTab({ highlightOrderId }: { highlightOrderId?: string }) {
               }`}>
                 <div className="flex items-center justify-between">
                   <div>
+                    <p className="text-white/40 text-xs font-bold tracking-[0.2em] uppercase mb-0.5">
+                      Ticket #{ticket.ticketNumber}
+                      {ticket.totalInOrder > 1 && (
+                        <span className="text-white/25 font-normal"> of {ticket.totalInOrder}</span>
+                      )}
+                    </p>
                     <p className="font-display text-yellow-400 text-lg leading-tight">{ticket.event}</p>
                     <p className="text-white/50 text-xs mt-0.5">{ticket.date}</p>
                   </div>
