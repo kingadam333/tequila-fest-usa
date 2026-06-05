@@ -28,6 +28,7 @@ const MOCK_ORDERS = [
     qty: 2,
     total: 110,
     status: "confirmed",
+    receiptUrl: "https://pay.stripe.com/receipts/payment/mock-receipt-001",
     tickets: [
       { id: "TKT-CIN-001A", name: "Adam Bossin", type: "All Inclusive" },
       { id: "TKT-CIN-001B", name: "Guest", type: "All Inclusive" },
@@ -42,6 +43,7 @@ const MOCK_ORDERS = [
     qty: 1,
     total: 125,
     status: "confirmed",
+    receiptUrl: "https://pay.stripe.com/receipts/payment/mock-receipt-002",
     tickets: [
       { id: "TKT-CLE-002A", name: "Adam Bossin", type: "VIP" },
     ],
@@ -120,69 +122,69 @@ function ProfileTab() {
         </motion.div>
       )}
 
-      <div className="space-y-4">
+      <div className="space-y-5">
         <div className="flex gap-4">
           <div className="flex-1">
-            <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">First Name</label>
+            <label className="text-white text-xs font-bold uppercase tracking-wider mb-1.5 block">First Name</label>
             <div className="relative">
-              <User size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30" />
+              <User size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/50" />
               <input
                 type="text"
                 value={form.firstName}
                 onChange={e => setForm(f => ({ ...f, firstName: e.target.value }))}
                 disabled={!editing}
-                className="w-full bg-white/5 border border-white/10 disabled:opacity-60 focus:border-yellow-500/50 rounded-xl pl-9 pr-3 py-3 text-white text-sm outline-none transition-colors duration-200"
+                className="w-full bg-white/[0.08] border border-white/20 disabled:border-white/10 focus:border-yellow-500/60 rounded-xl pl-9 pr-3 py-3 text-white font-medium text-sm outline-none transition-colors duration-200"
               />
             </div>
           </div>
           <div className="flex-1">
-            <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Last Name</label>
+            <label className="text-white text-xs font-bold uppercase tracking-wider mb-1.5 block">Last Name</label>
             <input
               type="text"
               value={form.lastName}
               onChange={e => setForm(f => ({ ...f, lastName: e.target.value }))}
               disabled={!editing}
-              className="w-full bg-white/5 border border-white/10 disabled:opacity-60 focus:border-yellow-500/50 rounded-xl px-4 py-3 text-white text-sm outline-none transition-colors duration-200"
+              className="w-full bg-white/[0.08] border border-white/20 disabled:border-white/10 focus:border-yellow-500/60 rounded-xl px-4 py-3 text-white font-medium text-sm outline-none transition-colors duration-200"
             />
           </div>
         </div>
 
         <div>
-          <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Email</label>
+          <label className="text-white text-xs font-bold uppercase tracking-wider mb-1.5 block">Email</label>
           <div className="relative">
-            <Mail size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30" />
+            <Mail size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/50" />
             <input
               type="email"
               value={form.email}
               onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
               disabled={!editing}
-              className="w-full bg-white/5 border border-white/10 disabled:opacity-60 focus:border-yellow-500/50 rounded-xl pl-9 pr-4 py-3 text-white text-sm outline-none transition-colors duration-200"
+              className="w-full bg-white/[0.08] border border-white/20 disabled:border-white/10 focus:border-yellow-500/60 rounded-xl pl-9 pr-4 py-3 text-white font-medium text-sm outline-none transition-colors duration-200"
             />
           </div>
         </div>
 
         <div>
-          <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Phone</label>
+          <label className="text-white text-xs font-bold uppercase tracking-wider mb-1.5 block">Phone</label>
           <div className="relative">
-            <Phone size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30" />
+            <Phone size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/50" />
             <input
               type="tel"
               value={form.phone}
               onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
               disabled={!editing}
-              className="w-full bg-white/5 border border-white/10 disabled:opacity-60 focus:border-yellow-500/50 rounded-xl pl-9 pr-4 py-3 text-white text-sm outline-none transition-colors duration-200"
+              className="w-full bg-white/[0.08] border border-white/20 disabled:border-white/10 focus:border-yellow-500/60 rounded-xl pl-9 pr-4 py-3 text-white font-medium text-sm outline-none transition-colors duration-200"
             />
           </div>
         </div>
 
-        <div className="pt-2">
-          <p className="text-white/20 text-xs">Member since {MOCK_USER.joinedDate}</p>
+        <div className="pt-1">
+          <p className="text-white/60 text-sm font-medium">Member since <span className="text-white">{MOCK_USER.joinedDate}</span></p>
         </div>
       </div>
 
       <div className="mt-10 pt-8 border-t border-white/10">
-        <h3 className="text-white/50 text-sm font-semibold mb-4">Password</h3>
-        <button className="text-sm text-yellow-400/70 hover:text-yellow-400 border border-yellow-500/20 hover:border-yellow-500/40 px-5 py-2.5 rounded-xl transition-all duration-200 cursor-pointer">
+        <h3 className="text-white font-bold text-sm mb-4">Password</h3>
+        <button className="text-sm text-yellow-400 hover:text-yellow-300 border border-yellow-500/30 hover:border-yellow-500/60 px-5 py-2.5 rounded-xl transition-all duration-200 cursor-pointer font-semibold">
           Change Password
         </button>
       </div>
@@ -230,13 +232,26 @@ function OrdersTab({ onViewTickets }: { onViewTickets: (orderId: string) => void
                     {order.qty}× {order.type} · <span className="text-white/60 font-semibold">${order.total}</span>
                   </p>
                 </div>
-                <button
-                  onClick={() => onViewTickets(order.id)}
-                  className="flex-shrink-0 flex items-center gap-2 bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/30 text-yellow-400 font-semibold text-sm px-4 py-2.5 rounded-xl transition-all duration-200 cursor-pointer"
-                >
-                  <QrCode size={15} />
-                  View Tickets
-                </button>
+                <div className="flex flex-col gap-2 flex-shrink-0">
+                  <button
+                    onClick={() => onViewTickets(order.id)}
+                    className="flex items-center gap-2 bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/30 text-yellow-400 font-semibold text-sm px-4 py-2.5 rounded-xl transition-all duration-200 cursor-pointer"
+                  >
+                    <QrCode size={15} />
+                    View Tickets
+                  </button>
+                  <a
+                    href={order.receiptUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/15 hover:border-white/25 text-white/60 hover:text-white font-semibold text-sm px-4 py-2.5 rounded-xl transition-all duration-200 cursor-pointer"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    View Receipt
+                  </a>
+                </div>
               </div>
             </motion.div>
           ))}
@@ -246,67 +261,130 @@ function OrdersTab({ onViewTickets }: { onViewTickets: (orderId: string) => void
   );
 }
 
+const TYPE_STYLES: Record<string, { bg: string; text: string; border: string; label: string }> = {
+  "All Inclusive": { bg: "bg-yellow-500/20",   text: "text-yellow-400",   border: "border-yellow-500/40",   label: "ALL INCLUSIVE" },
+  "VIP":           { bg: "bg-[#C0C0C0]/15",    text: "text-[#E8E8E8]",   border: "border-[#C0C0C0]/30",    label: "VIP" },
+  "GA Entry":      { bg: "bg-white/10",         text: "text-white/70",    border: "border-white/20",         label: "GA ENTRY" },
+};
+
 function TicketsTab({ highlightOrderId }: { highlightOrderId?: string }) {
   const allTickets = MOCK_ORDERS.flatMap(order =>
     order.tickets.map(t => ({ ...t, event: order.event, date: order.date, orderId: order.id }))
   );
+
+  // checkedIn state: ticketId → timestamp string
+  const [checkedIn, setCheckedIn] = useState<Record<string, string>>({});
+
+  const handleSimulateCheckin = (ticketId: string) => {
+    const now = new Date();
+    const ts = now.toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true });
+    setCheckedIn(prev => ({ ...prev, [ticketId]: ts }));
+  };
 
   return (
     <div>
       <h2 className="font-display text-white text-3xl mb-2">MY TICKETS</h2>
       <p className="text-white/40 text-sm mb-8">Show this QR code at the door — one scan per entry.</p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-        {allTickets.map(ticket => (
-          <motion.div
-            key={ticket.id}
-            initial={{ opacity: 0, scale: 0.97 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className={`rounded-2xl border overflow-hidden transition-all duration-300 ${highlightOrderId === ticket.orderId ? "border-yellow-500/50 shadow-[0_0_30px_rgba(245,166,35,0.15)]" : "border-white/10"}`}
-          >
-            {/* Ticket header */}
-            <div className="bg-gradient-to-r from-yellow-900/40 to-orange-950/40 px-5 py-4 border-b border-white/10">
-              <p className="font-display text-yellow-400 text-lg leading-tight">{ticket.event}</p>
-              <p className="text-white/50 text-xs mt-0.5">{ticket.date}</p>
-            </div>
+        {allTickets.map(ticket => {
+          const isCheckedIn = !!checkedIn[ticket.id];
+          const typeStyle = TYPE_STYLES[ticket.type] || TYPE_STYLES["GA Entry"];
 
-            {/* Ticket body */}
-            <div className="bg-black/30 px-5 py-5 flex items-center gap-5">
-              <QRPlaceholder value={ticket.id} />
-              <div className="flex-1 min-w-0">
-                <p className="text-white/30 text-xs uppercase tracking-wider mb-1">Ticket Holder</p>
-                <p className="text-white font-semibold truncate">{ticket.name}</p>
-                <div className="mt-3 space-y-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-white/30 text-xs">Type</span>
-                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${ticket.type === "VIP" ? "bg-[#C0C0C0]/15 text-[#C0C0C0] border border-[#C0C0C0]/25" : "bg-yellow-500/15 text-yellow-400 border border-yellow-500/25"}`}>
-                      {ticket.type}
-                    </span>
+          return (
+            <motion.div
+              key={ticket.id}
+              initial={{ opacity: 0, scale: 0.97 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className={`rounded-2xl border overflow-hidden transition-all duration-500 ${
+                isCheckedIn
+                  ? "border-red-500/60 shadow-[0_0_30px_rgba(200,16,46,0.2)]"
+                  : highlightOrderId === ticket.orderId
+                    ? "border-yellow-500/50 shadow-[0_0_30px_rgba(245,166,35,0.15)]"
+                    : "border-white/10"
+              }`}
+            >
+              {/* Ticket header — red when checked in */}
+              <div className={`px-5 py-4 border-b transition-colors duration-500 ${
+                isCheckedIn
+                  ? "bg-gradient-to-r from-red-900/70 to-red-950/80 border-red-500/30"
+                  : "bg-gradient-to-r from-yellow-900/40 to-orange-950/40 border-white/10"
+              }`}>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-display text-yellow-400 text-lg leading-tight">{ticket.event}</p>
+                    <p className="text-white/50 text-xs mt-0.5">{ticket.date}</p>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-white/30 text-xs">Ticket ID</span>
-                    <span className="text-white/50 text-xs font-mono">{ticket.id}</span>
+                  {isCheckedIn && (
+                    <span className="flex items-center gap-1.5 bg-red-500/20 border border-red-500/40 text-red-300 text-xs font-bold px-2.5 py-1 rounded-full">
+                      ✓ CHECKED IN
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Ticket type — big and prominent */}
+              <div className={`px-5 pt-4 pb-2 transition-colors duration-500 ${isCheckedIn ? "bg-red-950/40" : "bg-black/20"}`}>
+                <div className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 border ${typeStyle.bg} ${typeStyle.border}`}>
+                  <span className={`font-display text-2xl tracking-wide ${typeStyle.text}`}>{typeStyle.label}</span>
+                </div>
+              </div>
+
+              {/* Ticket body */}
+              <div className={`px-5 py-4 flex items-start gap-5 transition-colors duration-500 ${isCheckedIn ? "bg-red-950/30" : "bg-black/30"}`}>
+                {/* QR — greyed out if checked in */}
+                <div className={`flex-shrink-0 transition-opacity duration-500 ${isCheckedIn ? "opacity-30 grayscale" : ""}`}>
+                  <QRPlaceholder value={ticket.id} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-white/50 text-xs uppercase tracking-wider mb-0.5">Ticket Holder</p>
+                  <p className="text-white font-bold text-base truncate">{ticket.name}</p>
+
+                  <div className="mt-3 space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-white/40 text-xs">Ticket ID</span>
+                      <span className="text-white/60 text-xs font-mono">{ticket.id}</span>
+                    </div>
+                    {isCheckedIn && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-red-400/70 text-xs font-semibold">Checked In</span>
+                        <span className="text-red-300 text-xs font-bold">{checkedIn[ticket.id]}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mt-4 flex gap-2">
+                    <button className="flex-1 text-xs text-white/40 hover:text-white/60 border border-white/10 hover:border-white/20 py-2 rounded-lg transition-all duration-200 cursor-pointer">
+                      Download PDF
+                    </button>
+                    {/* Dev/demo only — remove in prod */}
+                    {!isCheckedIn && (
+                      <button
+                        onClick={() => handleSimulateCheckin(ticket.id)}
+                        className="text-xs text-white/20 hover:text-red-400/60 border border-white/5 hover:border-red-500/20 px-3 py-2 rounded-lg transition-all duration-200 cursor-pointer"
+                        title="Simulate check-in (demo)"
+                      >
+                        Scan
+                      </button>
+                    )}
                   </div>
                 </div>
-                <button className="mt-4 w-full text-xs text-white/30 hover:text-white/50 border border-white/10 hover:border-white/20 py-1.5 rounded-lg transition-all duration-200 cursor-pointer">
-                  Download PDF
-                </button>
               </div>
-            </div>
 
-            {/* Dashed separator */}
-            <div className="px-5 flex items-center gap-2">
-              <div className="w-4 h-4 rounded-full bg-[#0d0500] -ml-7 flex-shrink-0" />
-              <div className="flex-1 border-t border-dashed border-white/10" />
-              <div className="w-4 h-4 rounded-full bg-[#0d0500] -mr-7 flex-shrink-0" />
-            </div>
+              {/* Dashed separator */}
+              <div className={`px-5 flex items-center gap-2 transition-colors duration-500 ${isCheckedIn ? "bg-red-950/30" : ""}`}>
+                <div className="w-4 h-4 rounded-full bg-[#0d0500] -ml-7 flex-shrink-0" />
+                <div className={`flex-1 border-t border-dashed ${isCheckedIn ? "border-red-500/20" : "border-white/10"}`} />
+                <div className="w-4 h-4 rounded-full bg-[#0d0500] -mr-7 flex-shrink-0" />
+              </div>
 
-            {/* Footer */}
-            <div className="bg-black/20 px-5 py-3 flex items-center justify-between">
-              <span className="text-white/20 text-xs">Must be 21+</span>
-              <span className="text-white/20 text-xs">TequilaFestUSA.com</span>
-            </div>
-          </motion.div>
-        ))}
+              {/* Footer */}
+              <div className={`px-5 py-3 flex items-center justify-between transition-colors duration-500 ${isCheckedIn ? "bg-red-950/40" : "bg-black/20"}`}>
+                <span className={`text-xs ${isCheckedIn ? "text-red-400/50" : "text-white/20"}`}>Must be 21+</span>
+                <span className={`text-xs ${isCheckedIn ? "text-red-400/50" : "text-white/20"}`}>TequilaFestUSA.com</span>
+              </div>
+            </motion.div>
+          );
+        })}
       </div>
     </div>
   );
