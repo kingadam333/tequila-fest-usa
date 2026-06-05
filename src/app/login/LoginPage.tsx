@@ -59,7 +59,7 @@ export default function LoginPage() {
                   className="w-20 mx-auto drop-shadow-lg mb-4"
                 />
               </Link>
-              <h1 className="font-display text-white text-4xl leading-none">SIGN IN</h1>
+              <h1 className="font-display text-white text-4xl leading-none">LOG IN</h1>
               <p className="text-white/40 text-sm mt-2">Access your tickets & account</p>
             </div>
 
@@ -127,9 +127,9 @@ export default function LoginPage() {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
                     </svg>
-                    Signing in...
+                    Logging in...
                   </span>
-                ) : "SIGN IN"}
+                ) : "LOG IN"}
               </button>
             </form>
 

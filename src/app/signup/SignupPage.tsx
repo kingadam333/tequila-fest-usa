@@ -84,7 +84,7 @@ export default function SignupPage() {
                 <p className="text-white/50 text-sm mb-6">Welcome to Tequila Fest USA. Check your email to verify your account.</p>
                 <Link href="/login"
                   className="inline-block bg-yellow-500 hover:bg-yellow-400 text-black font-bold px-8 py-3 rounded-xl transition-all duration-200">
-                  Sign In
+                  Log In
                 </Link>
               </motion.div>
             ) : (
@@ -219,7 +219,7 @@ export default function SignupPage() {
                 <p className="text-center text-white/40 text-sm">
                   Already have an account?{" "}
                   <Link href="/login" className="text-yellow-400 hover:text-yellow-300 font-semibold transition-colors duration-200">
-                    Sign in
+                    Log in
                   </Link>
                 </p>
               </>

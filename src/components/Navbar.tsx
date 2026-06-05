@@ -87,7 +87,7 @@ export default function Navbar() {
                   href="/login"
                   className="text-yellow-400 hover:text-yellow-300 font-bold text-sm px-4 py-2.5 rounded-full border border-yellow-500/40 hover:border-yellow-400 transition-all duration-200 hover:scale-105"
                 >
-                  Sign In
+                  Log In
                 </Link>
                 <Link
                   href="/signup"
@@ -155,7 +155,7 @@ export default function Navbar() {
                     </Link>
                     <Link href="/login" onClick={() => setMenuOpen(false)}
                       className="block w-full text-center border border-yellow-500/40 text-yellow-400 font-bold text-lg px-6 py-4 rounded-full transition-all duration-200">
-                      Sign In
+                      Log In
                     </Link>
                   </>
                 )}
