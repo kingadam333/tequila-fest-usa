@@ -11,8 +11,10 @@ const EVENTS = [
     time: "3–9 PM",
     venue: "Fountain Square",
     venueDetail: "Downtown Cincinnati",
-    price: 75,
-    slug: "tequila-fest-cincinnati-2026",
+    price: 55,
+    gaTicket: null,
+    freeParking: false,
+    slug: "cincinnati",
     color: "#F5A623",
     gradient: "from-yellow-900/40 to-orange-950/40",
     border: "border-yellow-500/30",
@@ -28,8 +30,10 @@ const EVENTS = [
     time: "3–9 PM",
     venue: "Cuyahoga County Fairgrounds",
     venueDetail: "Berea, OH",
-    price: 75,
-    slug: "tequila-fest-cleveland-2026",
+    price: 55,
+    gaTicket: { price: 5, limited: false },
+    freeParking: true,
+    slug: "cleveland",
     color: "#C8102E",
     gradient: "from-red-900/40 to-rose-950/40",
     border: "border-red-500/30",
@@ -45,8 +49,10 @@ const EVENTS = [
     time: "3–9 PM",
     venue: "Gravity / Greater Columbus",
     venueDetail: "Convention Center",
-    price: 75,
-    slug: "tequila-fest-columbus-2026",
+    price: 55,
+    gaTicket: { price: 5, limited: true },
+    freeParking: false,
+    slug: "columbus",
     color: "#00A878",
     gradient: "from-emerald-900/40 to-teal-950/40",
     border: "border-emerald-500/30",
@@ -62,8 +68,10 @@ const EVENTS = [
     time: "3–9 PM",
     venue: "Phoenix Convention Center",
     venueDetail: "Downtown Phoenix",
-    price: 85,
-    slug: "tequila-fest-phoenix-2026",
+    price: 55,
+    gaTicket: null,
+    freeParking: true,
+    slug: "phoenix",
     color: "#7B2FBE",
     gradient: "from-purple-900/40 to-violet-950/40",
     border: "border-purple-500/30",
@@ -117,10 +125,11 @@ export default function EventCards() {
               whileInView="visible"
               viewport={{ once: true }}
               variants={cardVariants}
+              className="h-full"
             >
               <a
-                href={`https://tequilafestusa.com/events/${event.slug}`}
-                className={`group block bg-gradient-to-br ${event.gradient} border ${event.border} rounded-2xl p-6 hover:scale-[1.02] transition-all duration-300 hover:shadow-2xl cursor-pointer`}
+                href={`/events/${event.slug}`}
+                className={`group flex flex-col h-full bg-gradient-to-br ${event.gradient} border ${event.border} rounded-2xl p-6 hover:scale-[1.02] transition-all duration-300 hover:shadow-2xl cursor-pointer`}
                 style={{ boxShadow: `0 4px 40px ${event.color}10` }}
               >
                 {/* Top row */}
@@ -139,11 +148,20 @@ export default function EventCards() {
                     <p className="text-white/40 text-sm font-bold tracking-widest uppercase">{event.state}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-white/30 text-xs uppercase tracking-widest mb-1">General Admission</p>
+                    <p className="text-white/30 text-xs uppercase tracking-widest mb-1">All Inclusive</p>
                     <p className="font-display text-white" style={{ fontSize: "2.5rem" }}>
                       ${event.price}
                     </p>
-                    <p className="text-white/30 text-xs">per person</p>
+                    <p className="text-yellow-500/70 text-xs font-semibold">Early Bird</p>
+                    <p className="text-white/20 text-xs">then $60 / $65</p>
+                    {event.gaTicket && (
+                      <p className="text-white/40 text-xs mt-1.5 border-t border-white/10 pt-1.5">
+                        + $5 GA ticket available
+                        {event.gaTicket.limited && (
+                          <span className="ml-1 text-yellow-500/70">(100 only)</span>
+                        )}
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -164,7 +182,7 @@ export default function EventCards() {
                 </div>
 
                 {/* What's included */}
-                <div className="flex flex-wrap gap-2 mb-6">
+                <div className="flex flex-wrap gap-2 mb-4">
                   {["12 Tasting Tickets", "Live Music", "Authentic Food", "Souvenir Item"].map((item) => (
                     <span
                       key={item}
@@ -173,11 +191,30 @@ export default function EventCards() {
                       {item}
                     </span>
                   ))}
+                  <span className={`text-xs font-semibold rounded-full px-3 py-1 ${event.freeParking ? "bg-green-900/30 border border-green-500/30 text-green-400" : "border border-transparent text-transparent select-none"}`}>
+                    🅿️ Free Parking
+                  </span>
                 </div>
 
-                {/* CTA */}
+                {/* $5 GA callout — always rendered, invisible when not applicable */}
+                <div className={`flex items-center gap-2 rounded-xl px-4 py-2.5 mb-4 ${event.gaTicket ? "bg-white/5 border border-white/10" : "border border-transparent"}`}
+                  style={{ visibility: event.gaTicket ? "visible" : "hidden" }}
+                >
+                  <span className="text-lg">🎟️</span>
+                  <div>
+                    <p className="text-white/80 text-xs font-semibold">
+                      $5 GA Ticket Available
+                      {event.gaTicket?.limited && (
+                        <span className="ml-2 text-yellow-400 font-bold">· Only 100 Available</span>
+                      )}
+                    </p>
+                    <p className="text-white/35 text-xs">Entry only — tasting tickets not included</p>
+                  </div>
+                </div>
+
+                {/* CTA — mt-auto pushes to bottom so all cards are uniform */}
                 <div
-                  className="flex items-center justify-between w-full font-bold text-black px-6 py-3 rounded-full transition-all duration-200 group-hover:brightness-110"
+                  className="mt-auto flex items-center justify-between w-full font-bold text-black px-6 py-3 rounded-full transition-all duration-200 group-hover:brightness-110"
                   style={{ background: event.color }}
                 >
                   <div className="flex items-center gap-2">

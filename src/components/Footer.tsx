@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 export default function Footer() {
   const year = new Date().getFullYear();
 
@@ -9,9 +11,14 @@ export default function Footer() {
         <div className="flex flex-col md:flex-row items-start justify-between gap-8 mb-10">
           {/* Brand */}
           <div>
-            <p className="font-display text-yellow-400 text-3xl leading-none">TEQUILA FEST</p>
-            <p className="font-display text-white/60 text-2xl leading-none">USA</p>
-            <p className="text-white/30 text-sm mt-2">The National Tequila Festival Tour</p>
+            <Image
+              src="/tequilafest_usa.png"
+              alt="Tequila Fest USA"
+              width={160}
+              height={160}
+              className="w-24 mb-2 drop-shadow-lg"
+            />
+            <p className="text-white/30 text-sm">The National Tequila Festival Tour</p>
           </div>
 
           {/* Tour stops */}

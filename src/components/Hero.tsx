@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import Image from "next/image";
 import Confetti from "./Confetti";
 
 export default function Hero() {
@@ -26,7 +27,24 @@ export default function Hero() {
       {mounted && <Confetti />}
 
       {/* Content */}
-      <div className="relative z-20 text-center px-4 max-w-6xl mx-auto w-full">
+      <div className="relative z-20 text-center px-4 max-w-6xl mx-auto w-full pt-8 pb-24">
+        {/* Logo */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.85 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.7 }}
+          className="mb-4"
+        >
+          <Image
+            src="/tequilafest_usa.png"
+            alt="Tequila Fest USA"
+            width={320}
+            height={320}
+            priority
+            className="mx-auto w-40 sm:w-56 md:w-72 drop-shadow-2xl"
+          />
+        </motion.div>
+
         {/* Tour badge */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
