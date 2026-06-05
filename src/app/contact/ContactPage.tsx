@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { Mail, Phone, Send, ChevronDown } from "lucide-react";
+import { Mail, Send, ChevronDown } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import OfficialBanner from "@/components/OfficialBanner";
 import Footer from "@/components/Footer";
@@ -27,18 +27,18 @@ const CONTACT_CARDS = [
     color: "#F5A623",
   },
   {
-    icon: <Phone size={20} />,
-    label: "Phone / Text",
-    value: "(602) 555-0100",
-    href: "tel:+16025550100",
-    color: "#00A878",
-  },
-  {
     icon: <span className="text-base font-black">IG</span>,
     label: "Instagram",
     value: "@tequilafestusa",
     href: "https://instagram.com/tequilafestusa",
     color: "#C8102E",
+  },
+  {
+    icon: <span className="text-base font-black">f</span>,
+    label: "Facebook",
+    value: "Tequila Fest USA",
+    href: "https://facebook.com/tequilafestusa",
+    color: "#7B2FBE",
   },
 ];
 
