@@ -322,37 +322,52 @@ function TicketsTab({ highlightOrderId }: { highlightOrderId?: string }) {
                 </div>
               </div>
 
-              {/* Ticket type — big and prominent */}
-              <div className={`px-5 pt-4 pb-2 transition-colors duration-500 ${isCheckedIn ? "bg-red-950/40" : "bg-black/20"}`}>
-                <div className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 border ${typeStyle.bg} ${typeStyle.border}`}>
-                  <span className={`font-display text-2xl tracking-wide ${typeStyle.text}`}>{typeStyle.label}</span>
-                </div>
-              </div>
-
               {/* Ticket body */}
               <div className={`px-5 py-4 flex items-start gap-5 transition-colors duration-500 ${isCheckedIn ? "bg-red-950/30" : "bg-black/30"}`}>
                 {/* QR — greyed out if checked in */}
                 <div className={`flex-shrink-0 transition-opacity duration-500 ${isCheckedIn ? "opacity-30 grayscale" : ""}`}>
                   <QRPlaceholder value={ticket.id} />
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-white/50 text-xs uppercase tracking-wider mb-0.5">Ticket Holder</p>
-                  <p className="text-white font-bold text-base truncate">{ticket.name}</p>
 
-                  <div className="mt-3 space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-white/40 text-xs">Ticket ID</span>
-                      <span className="text-white/60 text-xs font-mono">{ticket.id}</span>
-                    </div>
-                    {isCheckedIn && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-red-400/70 text-xs font-semibold">Checked In</span>
-                        <span className="text-red-300 text-xs font-bold">{checkedIn[ticket.id]}</span>
-                      </div>
-                    )}
+                <div className="flex-1 min-w-0 flex flex-col gap-3">
+                  {/* Ticket holder */}
+                  <div>
+                    <p className="text-white/50 text-xs uppercase tracking-wider mb-0.5">Ticket Holder</p>
+                    <p className="text-white font-bold text-base truncate">{ticket.name}</p>
                   </div>
 
-                  <div className="mt-4 flex gap-2">
+                  {/* Ticket type — big, right below holder */}
+                  {ticket.type === "VIP" ? (
+                    <div className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 w-fit"
+                      style={{
+                        background: "linear-gradient(135deg, rgba(192,192,192,0.15), rgba(80,80,80,0.1))",
+                        border: "1px solid rgba(192,192,192,0.35)",
+                        boxShadow: "0 0 12px rgba(192,192,192,0.1), inset 0 1px 0 rgba(255,255,255,0.1)",
+                      }}>
+                      <span className="font-display text-2xl tracking-wide text-shimmer-platinum">VIP</span>
+                    </div>
+                  ) : (
+                    <div className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 border w-fit ${typeStyle.bg} ${typeStyle.border}`}>
+                      <span className={`font-display text-2xl tracking-wide ${typeStyle.text}`}>{typeStyle.label}</span>
+                    </div>
+                  )}
+
+                  {/* Ticket ID */}
+                  <div>
+                    <p className="text-white/40 text-xs uppercase tracking-wider mb-0.5">Ticket ID</p>
+                    <p className="text-white/60 text-xs font-mono">{ticket.id}</p>
+                  </div>
+
+                  {/* Check-in timestamp */}
+                  {isCheckedIn && (
+                    <div>
+                      <p className="text-red-400/70 text-xs font-semibold uppercase tracking-wider mb-0.5">Checked In</p>
+                      <p className="text-red-300 text-xs font-bold">{checkedIn[ticket.id]}</p>
+                    </div>
+                  )}
+
+                  {/* Download PDF */}
+                  <div className="flex gap-2 mt-1">
                     <button className="flex-1 text-xs text-white/40 hover:text-white/60 border border-white/10 hover:border-white/20 py-2 rounded-lg transition-all duration-200 cursor-pointer">
                       Download PDF
                     </button>
