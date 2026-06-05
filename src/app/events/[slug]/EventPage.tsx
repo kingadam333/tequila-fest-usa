@@ -4,9 +4,10 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
-import { MapPin, Calendar, Clock, Ticket, ArrowLeft, Star } from "lucide-react";
+import { MapPin, Calendar, Clock, Ticket, ArrowLeft, Star, Loader2 } from "lucide-react";
 import { PRICING } from "@/lib/events";
 import type { EventData } from "@/lib/events";
+import type { TicketType } from "@/lib/stripe";
 import Navbar from "@/components/Navbar";
 import OfficialBanner from "@/components/OfficialBanner";
 import Footer from "@/components/Footer";
@@ -67,6 +68,50 @@ const VIP_PERKS = [
   "Dedicated VIP bartenders",
   "VIP-only gift bag",
 ];
+
+function CheckoutButton({
+  eventSlug, ticketType, quantity = 1, children, className, style,
+}: {
+  eventSlug: string;
+  ticketType: TicketType;
+  quantity?: number;
+  children: React.ReactNode;
+  className?: string;
+  style?: React.CSSProperties;
+}) {
+  const [loading, setLoading] = useState(false);
+
+  const handleClick = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ eventSlug, ticketType, quantity }),
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        alert(data.error || "Something went wrong. Please try again.");
+        setLoading(false);
+      }
+    } catch {
+      alert("Network error. Please try again.");
+      setLoading(false);
+    }
+  };
+
+  return (
+    <button onClick={handleClick} disabled={loading} className={`${className} disabled:opacity-70 disabled:cursor-not-allowed`} style={style}>
+      {loading ? (
+        <span className="flex items-center justify-center gap-2">
+          <Loader2 size={16} className="animate-spin" /> Redirecting...
+        </span>
+      ) : children}
+    </button>
+  );
+}
 
 export default function EventPage({ event }: { event: EventData }) {
   return (
@@ -145,6 +190,7 @@ export default function EventPage({ event }: { event: EventData }) {
                 <Ticket size={20} />
                 GET TICKETS — From ${PRICING.earlyBird.price}
               </a>
+              {/* Hero quick-buy — goes straight to Early Bird checkout */}
               {event.gaTicket && (
                 <a href="#tickets"
                   className="cursor-pointer inline-flex items-center gap-2 border border-white/25 hover:border-white/50 text-white/70 hover:text-white text-base px-7 py-4 rounded-full transition-all duration-200">
@@ -197,11 +243,14 @@ export default function EventPage({ event }: { event: EventData }) {
                     </p>
                     <p className="text-white/40 text-xs mb-6">{tier.note}</p>
                     {tier.available ? (
-                      <a href="https://checkout.tequilafestusa.com"
-                        className="mt-auto block text-center font-bold text-base py-3 rounded-full transition-all duration-200 hover:scale-105 cursor-pointer"
-                        style={highlight ? { background: event.color, color: "#0d0500" } : { background: "rgba(255,255,255,0.1)", color: "white" }}>
+                      <CheckoutButton
+                        eventSlug={event.slug}
+                        ticketType={tier.label === "Early Bird" ? "earlyBird" : tier.label === "Regular Rate" ? "regular" : "late"}
+                        className="mt-auto w-full text-center font-bold text-base py-3 rounded-full transition-all duration-200 hover:scale-105"
+                        style={highlight ? { background: event.color, color: "#0d0500" } : { background: "rgba(255,255,255,0.1)", color: "white" }}
+                      >
                         Buy Now — ${tier.price}
-                      </a>
+                      </CheckoutButton>
                     ) : (
                       <div className="mt-auto block text-center text-white/30 text-sm py-3 rounded-full border border-white/10">
                         Available Final Week
@@ -259,11 +308,14 @@ export default function EventPage({ event }: { event: EventData }) {
                     </ul>
                   </div>
 
-                  <a href="https://checkout.tequilafestusa.com"
-                    className="mt-auto block text-center font-bold text-lg py-4 rounded-full transition-all duration-200 hover:scale-105 cursor-pointer"
-                    style={{ background: "linear-gradient(135deg, #888, #d4d4d4, #fff, #c0c0c0)", color: "#0d0500" }}>
+                  <CheckoutButton
+                    eventSlug={event.slug}
+                    ticketType="vip"
+                    className="mt-auto w-full text-center font-bold text-lg py-4 rounded-full transition-all duration-200 hover:scale-105"
+                    style={{ background: "linear-gradient(135deg, #888, #d4d4d4, #fff, #c0c0c0)", color: "#0d0500" }}
+                  >
                     Buy VIP — ${PRICING.vip.price}
-                  </a>
+                  </CheckoutButton>
                 </div>
               </motion.div>
 
@@ -297,10 +349,13 @@ export default function EventPage({ event }: { event: EventData }) {
                       ))}
                       <li className="text-white/30 text-xs pt-1">* Tasting tickets not included</li>
                     </ul>
-                    <a href="https://checkout.tequilafestusa.com"
-                      className="block text-center font-bold text-base py-3 rounded-full border border-white/20 hover:border-white/40 text-white/70 hover:text-white transition-all duration-200 cursor-pointer">
+                    <CheckoutButton
+                      eventSlug={event.slug}
+                      ticketType="ga"
+                      className="w-full text-center font-bold text-base py-3 rounded-full border border-white/20 hover:border-white/40 text-white/70 hover:text-white transition-all duration-200"
+                    >
                       Buy GA Entry — $5
-                    </a>
+                    </CheckoutButton>
                   </div>
                 </motion.div>
               )}
@@ -364,11 +419,14 @@ export default function EventPage({ event }: { event: EventData }) {
             <h2 className="font-display text-shimmer mb-8" style={{ fontSize: "clamp(2rem, 6vw, 4.5rem)" }}>
               GET YOUR TICKETS NOW
             </h2>
-            <a href="#tickets"
-              className="animate-pulse-glow inline-flex items-center gap-3 bg-yellow-500 hover:bg-yellow-400 text-black font-bold text-xl px-12 py-5 rounded-full transition-all duration-200 hover:scale-105 cursor-pointer">
+            <CheckoutButton
+              eventSlug={event.slug}
+              ticketType="earlyBird"
+              className="animate-pulse-glow inline-flex items-center justify-center gap-3 bg-yellow-500 hover:bg-yellow-400 text-black font-bold text-xl px-12 py-5 rounded-full transition-all duration-200 hover:scale-105"
+            >
               <Ticket size={20} />
               Early Bird — ${PRICING.earlyBird.price}
-            </a>
+            </CheckoutButton>
             <p className="mt-4 text-white/20 text-sm">Must be 21+ · TequilaFestUSA.com</p>
           </motion.div>
         </section>
