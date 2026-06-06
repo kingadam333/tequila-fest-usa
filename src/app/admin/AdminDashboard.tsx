@@ -32,7 +32,8 @@ interface StatsData {
   totalTickets: number;
   totalOrders: number;
   ordersToday: number;
-  byCity: Record<string, { revenue: number; tickets: number }>;
+  source?: string;
+  byCity: Record<string, { revenue: number; tickets: number; byType?: Record<string, number> }>;
 }
 
 // ─── Data hook ────────────────────────────────────────────────────────────────
@@ -154,11 +155,24 @@ function OverviewSection({ stats, orders, loading }: { stats: StatsData | null; 
             <div key={ev.id} className="bg-white/[0.03] border border-white/10 rounded-xl p-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="font-display text-lg" style={{ color: ev.color }}>{ev.city}</span>
-                <span className="text-white/50 text-sm">{sold} / {ev.capacity} sold</span>
+                <div className="text-right">
+                  <span className="text-white/50 text-sm">{sold} / {ev.capacity} sold</span>
+                  {cityStats?.revenue ? <span className="text-white/30 text-xs ml-2">${cityStats.revenue.toLocaleString()}</span> : null}
+                </div>
               </div>
-              <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+              <div className="h-2 bg-white/10 rounded-full overflow-hidden mb-2">
                 <div className="h-full rounded-full transition-all duration-500" style={{ width: `${Math.min((sold / ev.capacity) * 100, 100)}%`, background: ev.color }} />
               </div>
+              {/* Ticket type breakdown */}
+              {cityStats?.byType && Object.keys(cityStats.byType).length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {Object.entries(cityStats.byType).map(([type, count]) => (
+                    <span key={type} className="text-xs px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-white/50">
+                      {type}: <span className="text-white/80 font-semibold">{count}</span>
+                    </span>
+                  ))}
+                </div>
+              )}
               <p className="text-white/30 text-xs mt-1">{Math.round((sold / ev.capacity) * 100)}% capacity · {ev.date}</p>
             </div>
           );})}
