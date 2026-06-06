@@ -228,48 +228,147 @@ export default function EventPage({ event }: { event: EventData }) {
 
         {/* Tickets section */}
         <section id="tickets" className="py-20 px-4 bg-[#0a0300]">
-          <div className="max-w-3xl mx-auto text-center">
-            <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="mb-10">
-              <p className="text-yellow-500 text-sm font-bold tracking-[0.3em] uppercase mb-2">Secure Your Spot</p>
-              <h2 className="font-display text-white mb-4" style={{ fontSize: "clamp(2rem, 6vw, 4.5rem)" }}>
-                GET YOUR <span className="text-shimmer">TICKETS</span>
-              </h2>
-              <p className="text-white/40 text-sm mb-8">Choose any combination — mix ticket types, bring friends, get exactly what you need.</p>
-
-              {/* Ticket type preview cards */}
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-8 text-left">
-                {[
-                  { label: "Early Bird", price: PRICING.earlyBird.price, note: "First 300 tickets", highlight: true },
-                  { label: "Regular Rate", price: PRICING.regular.price, note: "General on-sale" },
-                  { label: "Late Registration", price: PRICING.late.price, note: "Final week" },
-                  { label: "VIP Experience", price: PRICING.vip.price, note: "All inclusive + perks", platinum: true },
-                  ...(event.gaTicket ? [{ label: "GA Entry", price: 5, note: "Entry only" }] : []),
-                ].map((tt) => {
-                  const live = liveTypes.find(lt => lt.name === tt.label);
-                  const soldOut = live ? live.sold_count >= live.capacity : false;
-                  return (
-                    <div key={tt.label} onClick={() => !soldOut && openCart()}
-                      className={`rounded-xl border p-3 cursor-pointer transition-all hover:scale-[1.02] ${soldOut ? "opacity-40 cursor-not-allowed" : "hover:border-white/30"} ${(tt as any).highlight ? "border-yellow-500/30 bg-yellow-500/5" : (tt as any).platinum ? "border-[#C0C0C0]/20 bg-[#C0C0C0]/5" : "border-white/10 bg-white/[0.02]"}`}>
-                      <p className="text-white/60 text-xs mb-1">{tt.label}</p>
-                      <p className="font-display text-xl" style={{ color: (tt as any).highlight ? "#F5A623" : (tt as any).platinum ? "#C0C0C0" : "white" }}>${tt.price}</p>
-                      <p className="text-white/30 text-xs">{soldOut ? "Sold Out" : tt.note}</p>
-                    </div>
-                  );
-                })}
-              </div>
-
-              <button onClick={() => openCart()}
-                className="animate-pulse-glow inline-flex items-center gap-3 bg-yellow-500 hover:bg-yellow-400 text-black font-bold text-xl px-12 py-5 rounded-full transition-all duration-200 hover:scale-105">
-                <Ticket size={20} />
-                Select Tickets
-              </button>
-              <p className="text-white/20 text-xs mt-4">Mix ticket types · Add multiple quantities · Pay once</p>
-            </motion.div>
-          </div>
-
-          {/* keep the old max-w-5xl structure for event details below */}
           <div className="max-w-5xl mx-auto">
+            <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-12">
+              <p className="text-yellow-500 text-sm font-bold tracking-[0.3em] uppercase mb-2">Secure Your Spot</p>
+              <h2 className="font-display text-white" style={{ fontSize: "clamp(2rem, 6vw, 4.5rem)" }}>
+                CHOOSE YOUR <span className="text-shimmer">TICKET</span>
+              </h2>
+              <p className="text-white/40 mt-3 text-sm">Mix ticket types · Bring friends · Pay once</p>
+            </motion.div>
 
+            {/* All Inclusive tiers */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
+              {[
+                { typeKey: "Early Bird",       key: "earlyBird" as const, price: PRICING.earlyBird.price, note: "First 300 tickets", highlight: true,  badge: "🔥 Best Price" },
+                { typeKey: "Regular Rate",      key: "regular" as const,   price: PRICING.regular.price,   note: "General on-sale",   highlight: false, badge: null },
+                { typeKey: "Late Registration", key: "late" as const,      price: PRICING.late.price,      note: "Final week only",   highlight: false, badge: "Final Week", unavailableNote: "Available Final Week" },
+              ].map(({ typeKey, key, price, note, highlight, badge, unavailableNote }, i) => {
+                const live = liveTypes.find(t => t.name === typeKey);
+                const soldOut = live ? live.sold_count >= live.capacity : false;
+                const almostFull = live ? live.sold_count >= live.capacity * 0.9 && !soldOut : false;
+                const badgeLabel = soldOut ? "🚫 Sold Out" : almostFull ? "🔥 Almost Gone" : badge;
+                return (
+                  <motion.div key={typeKey} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }} transition={{ delay: i * 0.1 }} className="relative">
+                    {badgeLabel && (
+                      <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
+                        <span className={`text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider whitespace-nowrap ${soldOut ? "bg-red-500 text-white" : almostFull ? "bg-orange-500 text-black" : highlight ? "bg-yellow-500 text-black" : "bg-white/10 text-white/60 border border-white/20"}`}>
+                          {badgeLabel}
+                        </span>
+                      </div>
+                    )}
+                    <div className={`rounded-2xl p-6 border h-full flex flex-col text-center transition-all duration-200 ${highlight && !soldOut ? "ring-1" : ""} ${soldOut ? "opacity-60" : ""}`}
+                      style={{
+                        background: soldOut ? "rgba(200,16,46,0.08)" : highlight ? `linear-gradient(135deg, ${event.color}20, ${event.color}08)` : "rgba(255,255,255,0.03)",
+                        borderColor: soldOut ? "rgba(200,16,46,0.4)" : highlight ? `${event.color}60` : "rgba(255,255,255,0.1)",
+                        ...(highlight && !soldOut ? { boxShadow: `0 0 30px ${event.color}20` } : {}),
+                      }}>
+                      <p className="font-display text-white text-2xl mt-2">{typeKey.toUpperCase()}</p>
+                      <p className="font-display mt-2 mb-1" style={{ fontSize: "3.5rem", color: soldOut ? "#ef4444" : highlight ? event.color : "white" }}>
+                        ${price}
+                      </p>
+                      <p className="text-white/40 text-xs mb-6">
+                        {soldOut ? "This tier is sold out" : live ? `${live.sold_count} of ${live.capacity} sold` : note}
+                      </p>
+                      {soldOut ? (
+                        <div className="mt-auto block text-center text-red-400 font-bold text-base py-3 rounded-full border border-red-500/30 bg-red-500/10">SOLD OUT</div>
+                      ) : unavailableNote ? (
+                        <div className="mt-auto block text-center text-white/30 text-sm py-3 rounded-full border border-white/10">{unavailableNote}</div>
+                      ) : (
+                        <button onClick={() => openCart(key)}
+                          className="mt-auto w-full font-bold text-base py-3 rounded-full transition-all duration-200 hover:scale-105 cursor-pointer"
+                          style={highlight ? { background: event.color, color: "#0d0500" } : { background: "rgba(255,255,255,0.1)", color: "white" }}>
+                          Get Tickets — ${price}
+                        </button>
+                      )}
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+
+            <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }}
+              className="text-center mb-12 text-white/30 text-xs tracking-wide">
+              All Inclusive tiers include: 12 tasting tickets · Live music · Authentic food · Souvenir item · Full festival access
+              {event.freeParking && <span className="text-green-400/70"> · Free parking</span>}
+            </motion.div>
+
+            {/* VIP + GA row */}
+            <div className={`grid gap-6 ${event.gaTicket ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1 max-w-xl mx-auto"}`}>
+
+              {/* VIP */}
+              <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.1 }} className="relative">
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
+                  <span className="bg-gradient-to-r from-[#888] to-white text-black text-xs font-bold px-4 py-1 rounded-full uppercase tracking-wider whitespace-nowrap">✦ Premium Experience</span>
+                </div>
+                <div className="rounded-2xl p-6 border h-full flex flex-col"
+                  style={{ background: "linear-gradient(135deg, rgba(192,192,192,0.1), rgba(60,60,60,0.6))", borderColor: "rgba(192,192,192,0.3)", boxShadow: "0 0 40px rgba(192,192,192,0.08)" }}>
+                  <div className="flex items-start justify-between mb-2 mt-2">
+                    <div>
+                      <h3 className="font-display text-shimmer-platinum leading-none" style={{ fontSize: "2.5rem" }}>VIP EXPERIENCE</h3>
+                      <p className="text-white/50 text-sm mt-1">Everything in All Inclusive, plus:</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-display text-shimmer-platinum" style={{ fontSize: "3rem" }}>${PRICING.vip.price}</p>
+                      <p className="text-white/30 text-xs">per person</p>
+                    </div>
+                  </div>
+                  <div className="bg-white/5 border border-white/10 rounded-xl px-4 py-3 mb-4">
+                    <p className="text-white/40 text-xs font-bold uppercase tracking-wider mb-2">Includes All Inclusive +</p>
+                    <ul className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+                      {VIP_PERKS.map(perk => (
+                        <li key={perk} className="flex items-center gap-2 text-white/70 text-xs">
+                          <Star size={10} fill="#C0C0C0" className="text-[#C0C0C0] flex-shrink-0" />{perk}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <button onClick={() => openCart("vip")}
+                    className="mt-auto w-full font-bold text-lg py-4 rounded-full transition-all duration-200 hover:scale-105 cursor-pointer"
+                    style={{ background: "linear-gradient(135deg, #888, #d4d4d4, #fff, #c0c0c0)", color: "#0d0500" }}>
+                    Get VIP — ${PRICING.vip.price}
+                  </button>
+                </div>
+              </motion.div>
+
+              {/* GA */}
+              {event.gaTicket && (
+                <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.2 }}>
+                  <div className="rounded-2xl p-6 border h-full flex flex-col" style={{ background: "rgba(255,255,255,0.03)", borderColor: "rgba(255,255,255,0.1)" }}>
+                    <div className="flex items-start justify-between mb-4">
+                      <div>
+                        <h3 className="font-display text-white text-3xl">GA ENTRY</h3>
+                        <p className="text-white/50 text-sm mt-1">Door access only</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-display text-white text-5xl">$5</p>
+                        <p className="text-white/30 text-xs">per person</p>
+                      </div>
+                    </div>
+                    {event.gaTicket.limited && (
+                      <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg px-3 py-2 mb-4">
+                        <p className="text-yellow-400 text-xs font-bold">⚡ Only {event.gaTicket.qty} tickets available</p>
+                      </div>
+                    )}
+                    <ul className="space-y-2 mb-6 flex-1">
+                      {["Festival entry", "Access to vendor market", "Cash bar available"].map(item => (
+                        <li key={item} className="flex items-center gap-2 text-white/50 text-sm">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" className="w-4 h-4 flex-shrink-0">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/>
+                          </svg>{item}
+                        </li>
+                      ))}
+                      <li className="text-white/30 text-xs pt-1">* Tasting tickets not included</li>
+                    </ul>
+                    <button onClick={() => openCart("ga")}
+                      className="w-full font-bold text-base py-3 rounded-full border border-white/20 hover:border-white/40 text-white/70 hover:text-white transition-all duration-200 cursor-pointer">
+                      Get GA Entry — $5
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </div>
           </div>
         </section>
 
