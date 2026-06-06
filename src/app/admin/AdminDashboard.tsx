@@ -513,9 +513,13 @@ function EventEditor({ event, adminToken, onSaved }: { event: EventRow; adminTok
               </div>
               <div className="mt-2">
                 <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
-                  <div className="h-full rounded-full" style={{ width: `${Math.min((tt.sold_count / tt.capacity) * 100, 100)}%`, background: ev.color }} />
+                  <div className="h-full rounded-full transition-all" style={{ width: `${Math.min((tt.sold_count / tt.capacity) * 100, 100)}%`, background: tt.sold_count >= tt.capacity ? "#ef4444" : ev.color }} />
                 </div>
-                <p className="text-white/20 text-xs mt-0.5">{tt.sold_count} / {tt.capacity} sold</p>
+                <div className="flex items-center justify-between mt-0.5">
+                  <p className="text-white/20 text-xs">{tt.sold_count} / {tt.capacity} sold</p>
+                  {tt.sold_count >= tt.capacity && <span className="text-red-400 text-xs font-bold">SOLD OUT</span>}
+                  {tt.sold_count >= tt.capacity * 0.9 && tt.sold_count < tt.capacity && <span className="text-orange-400 text-xs font-semibold">Almost Full</span>}
+                </div>
               </div>
             </div>
           ))}
@@ -578,8 +582,9 @@ function EventsSection({ adminToken, stats }: { adminToken: string; stats: Stats
         <>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             {events.map(ev => {
-              const cityStats = stats?.byCity?.[ev.city];
-              const sold = cityStats?.tickets ?? ev.ticket_types.reduce((s, t) => s + t.sold_count, 0);
+              const totalCapacity = ev.ticket_types.reduce((s, t) => s + t.capacity, 0) || ev.capacity;
+              const sold = ev.ticket_types.reduce((s, t) => s + t.sold_count, 0);
+              const pct = totalCapacity > 0 ? Math.min((sold / totalCapacity) * 100, 100) : 0;
               return (
                 <div key={ev.id} className="bg-white/[0.03] border border-white/10 rounded-2xl p-6 hover:border-white/20 transition-all">
                   <div className="flex items-start justify-between mb-3">
@@ -591,20 +596,26 @@ function EventsSection({ adminToken, stats }: { adminToken: string; stats: Stats
                     </div>
                     <div className="text-right">
                       <p className="font-display text-white text-3xl">{sold}</p>
-                      <p className="text-white/30 text-xs">of {ev.capacity} sold</p>
+                      <p className="text-white/30 text-xs">of {totalCapacity} sold</p>
+                      {pct >= 100 && <p className="text-red-400 text-xs font-bold mt-0.5">SOLD OUT</p>}
+                      {pct >= 90 && pct < 100 && <p className="text-orange-400 text-xs font-semibold mt-0.5">Almost Full</p>}
                     </div>
                   </div>
                   <div className="h-2 bg-white/10 rounded-full overflow-hidden mb-3">
-                    <div className="h-full rounded-full transition-all" style={{ width: `${Math.min((sold / ev.capacity) * 100, 100)}%`, background: ev.color }} />
+                    <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: pct >= 90 ? "#ef4444" : ev.color }} />
                   </div>
-                  {/* Ticket type summary */}
+                  {/* Ticket type summary with sold out indicators */}
                   <div className="flex flex-wrap gap-1.5 mb-4">
-                    {[...ev.ticket_types].sort((a, b) => a.sort_order - b.sort_order).map(tt => (
-                      <span key={tt.id} className="text-xs px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-white/50">
-                        {tt.name}: <span className="text-white/80 font-semibold">{tt.sold_count}</span>
+                    {[...ev.ticket_types].sort((a, b) => a.sort_order - b.sort_order).map(tt => {
+                      const isFull = tt.sold_count >= tt.capacity;
+                      return (
+                      <span key={tt.id} className={`text-xs px-2 py-0.5 rounded-full border ${isFull ? "bg-red-500/15 border-red-500/30 text-red-400" : "bg-white/5 border-white/10 text-white/50"}`}>
+                        {tt.name}: <span className={`font-semibold ${isFull ? "text-red-300" : "text-white/80"}`}>{tt.sold_count}</span>
                         <span className="text-white/20">/{tt.capacity}</span>
+                        {isFull && <span className="ml-1 font-bold">SOLD OUT</span>}
                       </span>
-                    ))}
+                      );
+                    })}
                   </div>
                   <div className="flex gap-2">
                     <button onClick={() => setEditingId(ev.id)}

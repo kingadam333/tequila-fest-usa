@@ -113,7 +113,27 @@ function CheckoutButton({
   );
 }
 
+interface LiveTicketType {
+  name: string;
+  price: number;
+  capacity: number;
+  sold_count: number;
+  is_active: boolean;
+}
+
+function useLiveTicketTypes(eventSlug: string) {
+  const [types, setTypes] = useState<LiveTicketType[]>([]);
+  useEffect(() => {
+    fetch(`/api/events/${eventSlug}/ticket-types`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => d?.ticketTypes && setTypes(d.ticketTypes))
+      .catch(() => {});
+  }, [eventSlug]);
+  return types;
+}
+
 export default function EventPage({ event }: { event: EventData }) {
+  const liveTypes = useLiveTicketTypes(event.slug);
   return (
     <>
       <div className="sticky top-0 z-50">
@@ -218,34 +238,46 @@ export default function EventPage({ event }: { event: EventData }) {
             {/* Pricing tiers — All Inclusive */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
               {[
-                { tier: PRICING.earlyBird, highlight: true, badge: "🔥 Best Price" },
-                { tier: PRICING.regular,   highlight: false, badge: null },
-                { tier: PRICING.late,      highlight: false, badge: "Final Week" },
-              ].map(({ tier, highlight, badge }, i) => (
+                { tier: PRICING.earlyBird, typeKey: "Early Bird",        highlight: true,  badge: "🔥 Best Price", ticketTypeKey: "earlyBird" as const },
+                { tier: PRICING.regular,   typeKey: "Regular Rate",       highlight: false, badge: null,           ticketTypeKey: "regular" as const },
+                { tier: PRICING.late,      typeKey: "Late Registration",  highlight: false, badge: "Final Week",   ticketTypeKey: "late" as const },
+              ].map(({ tier, typeKey, highlight, badge, ticketTypeKey }, i) => {
+                const live = liveTypes.find(t => t.name === typeKey);
+                const soldOut = live ? live.sold_count >= live.capacity : false;
+                const almostFull = live ? live.sold_count >= live.capacity * 0.9 && !soldOut : false;
+                const unavailable = soldOut || !tier.available;
+                const badgeLabel = soldOut ? "🚫 Sold Out" : almostFull ? "🔥 Almost Gone" : badge;
+                return (
                 <motion.div key={tier.label} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }} transition={{ delay: i * 0.1 }} className="relative">
-                  {badge && (
+                  {badgeLabel && (
                     <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
-                      <span className={`text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider whitespace-nowrap ${highlight ? "bg-yellow-500 text-black" : "bg-white/10 text-white/60 border border-white/20"}`}>
-                        {badge}
+                      <span className={`text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider whitespace-nowrap ${soldOut ? "bg-red-500 text-white" : almostFull ? "bg-orange-500 text-black" : highlight ? "bg-yellow-500 text-black" : "bg-white/10 text-white/60 border border-white/20"}`}>
+                        {badgeLabel}
                       </span>
                     </div>
                   )}
-                  <div className={`rounded-2xl p-6 border h-full flex flex-col text-center transition-all duration-200 ${highlight ? "ring-1" : ""} ${!tier.available ? "opacity-50" : ""}`}
+                  <div className={`rounded-2xl p-6 border h-full flex flex-col text-center transition-all duration-200 ${highlight && !soldOut ? "ring-1" : ""} ${unavailable ? "opacity-60" : ""}`}
                     style={{
-                      background: highlight ? `linear-gradient(135deg, ${event.color}20, ${event.color}08)` : "rgba(255,255,255,0.03)",
-                      borderColor: highlight ? `${event.color}60` : "rgba(255,255,255,0.1)",
-                      ...(highlight ? { boxShadow: `0 0 30px ${event.color}20` } : {}),
+                      background: soldOut ? "rgba(200,16,46,0.08)" : highlight ? `linear-gradient(135deg, ${event.color}20, ${event.color}08)` : "rgba(255,255,255,0.03)",
+                      borderColor: soldOut ? "rgba(200,16,46,0.4)" : highlight ? `${event.color}60` : "rgba(255,255,255,0.1)",
+                      ...(highlight && !soldOut ? { boxShadow: `0 0 30px ${event.color}20` } : {}),
                     }}>
                     <p className="font-display text-white text-2xl mt-2">{tier.label.toUpperCase()}</p>
-                    <p className="font-display mt-2 mb-1" style={{ fontSize: "3.5rem", color: highlight ? event.color : "white" }}>
+                    <p className="font-display mt-2 mb-1" style={{ fontSize: "3.5rem", color: soldOut ? "#ef4444" : highlight ? event.color : "white" }}>
                       ${tier.price}
                     </p>
-                    <p className="text-white/40 text-xs mb-6">{tier.note}</p>
-                    {tier.available ? (
+                    <p className="text-white/40 text-xs mb-6">
+                      {soldOut ? "This tier is sold out" : live ? `${live.sold_count} of ${live.capacity} sold` : tier.note}
+                    </p>
+                    {soldOut ? (
+                      <div className="mt-auto block text-center text-red-400 font-bold text-base py-3 rounded-full border border-red-500/30 bg-red-500/10">
+                        SOLD OUT
+                      </div>
+                    ) : tier.available ? (
                       <CheckoutButton
                         eventSlug={event.slug}
-                        ticketType={tier.label === "Early Bird" ? "earlyBird" : tier.label === "Regular Rate" ? "regular" : "late"}
+                        ticketType={ticketTypeKey}
                         className="mt-auto w-full text-center font-bold text-base py-3 rounded-full transition-all duration-200 hover:scale-105"
                         style={highlight ? { background: event.color, color: "#0d0500" } : { background: "rgba(255,255,255,0.1)", color: "white" }}
                       >
@@ -258,7 +290,8 @@ export default function EventPage({ event }: { event: EventData }) {
                     )}
                   </div>
                 </motion.div>
-              ))}
+                );
+              })}
             </div>
 
             {/* What's included note */}
