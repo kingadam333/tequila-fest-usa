@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
 import { Eye, EyeOff, Mail, Lock, User, Phone } from "lucide-react";
+import Turnstile from "@/components/Turnstile";
 import Navbar from "@/components/Navbar";
 import OfficialBanner from "@/components/OfficialBanner";
 import Footer from "@/components/Footer";
@@ -16,6 +17,7 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState("");
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm((f) => ({ ...f, [k]: e.target.value }));
@@ -193,9 +195,11 @@ export default function SignupPage() {
                     <Link href="/privacy" className="text-white/40 hover:text-yellow-400 transition-colors">Privacy Policy</Link>.
                   </p>
 
+                  <Turnstile onVerify={setCaptchaToken} onExpire={() => setCaptchaToken("")} />
+
                   <button
                     type="submit"
-                    disabled={loading}
+                    disabled={loading || !captchaToken}
                     className="w-full bg-yellow-500 hover:bg-yellow-400 disabled:opacity-60 disabled:cursor-not-allowed text-black font-bold text-base py-4 rounded-xl transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer mt-1"
                   >
                     {loading ? (

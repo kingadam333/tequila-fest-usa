@@ -1,13 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resend, FROM_EMAIL, passwordResetHtml } from "@/lib/resend";
+import { verifyTurnstile } from "@/lib/turnstile";
 import crypto from "crypto";
 
 // In-memory token store — replace with DB when backend is live
 const resetTokens = new Map<string, { email: string; expires: number }>();
 
 export async function POST(req: NextRequest) {
-  const { email } = await req.json();
+  const { email, captchaToken } = await req.json();
   if (!email) return NextResponse.json({ error: "Email required" }, { status: 400 });
+
+  const ip = req.headers.get("cf-connecting-ip") || req.headers.get("x-forwarded-for") || undefined;
+  const captchaOk = await verifyTurnstile(captchaToken || "", ip);
+  if (!captchaOk) return NextResponse.json({ error: "CAPTCHA failed" }, { status: 400 });
 
   // Generate secure token
   const token = crypto.randomBytes(32).toString("hex");
