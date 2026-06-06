@@ -22,10 +22,23 @@ export default function LoginPage() {
     e.preventDefault();
     setError("");
     setLoading(true);
-    // TODO: wire to API
-    await new Promise((r) => setTimeout(r, 800));
-    setLoading(false);
-    setError("Invalid email or password. Please try again.");
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password, captchaToken }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        window.location.href = "/account";
+      } else {
+        setError(data.error || "Invalid email or password.");
+      }
+    } catch {
+      setError("Network error. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

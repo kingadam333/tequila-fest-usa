@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
@@ -9,46 +9,27 @@ import Navbar from "@/components/Navbar";
 import OfficialBanner from "@/components/OfficialBanner";
 import Footer from "@/components/Footer";
 
-// ── Mock data (replace with real API calls) ──────────────────────────────────
-const MOCK_USER = {
-  firstName: "Adam",
-  lastName: "Bossin",
-  email: "adam@tequilafestusa.com",
-  phone: "(602) 555-0182",
-  joinedDate: "June 2026",
-};
+interface AuthUser {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  loyaltyPoints: number;
+}
 
-const MOCK_ORDERS = [
-  {
-    id: "TF-2026-00124",
-    event: "Tequila Fest Cincinnati",
-    date: "June 13, 2026",
-    venue: "Fountain Square, Cincinnati OH",
-    type: "All Inclusive",
-    qty: 2,
-    total: 110,
-    status: "confirmed",
-    receiptUrl: "https://pay.stripe.com/receipts/payment/mock-receipt-001",
-    tickets: [
-      { id: "TKT-CIN-001A", name: "Adam Bossin", type: "All Inclusive" },
-      { id: "TKT-CIN-001B", name: "Guest", type: "All Inclusive" },
-    ],
-  },
-  {
-    id: "TF-2026-00089",
-    event: "Tequila Fest Cleveland",
-    date: "July 25, 2026",
-    venue: "Cuyahoga County Fairgrounds, Berea OH",
-    type: "VIP",
-    qty: 1,
-    total: 125,
-    status: "confirmed",
-    receiptUrl: "https://pay.stripe.com/receipts/payment/mock-receipt-002",
-    tickets: [
-      { id: "TKT-CLE-002A", name: "Adam Bossin", type: "VIP" },
-    ],
-  },
-];
+interface RealOrder {
+  id: string;
+  order_number: string;
+  event_city: string;
+  ticket_type: string;
+  quantity: number;
+  total: number;
+  status: string;
+  created_at: string;
+  stripe_payment_intent_id: string | null;
+  ticket_instances: { id: string; qr_code: string; ticket_number: number; status: string; holder_name: string; ticket_type: string }[];
+}
 
 type Tab = "profile" | "orders" | "tickets";
 
@@ -89,9 +70,15 @@ function QRPlaceholder({ value }: { value: string }) {
   );
 }
 
-function ProfileTab() {
+function ProfileTab({ user }: { user: AuthUser }) {
   const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState(MOCK_USER);
+  const [form, setForm] = useState({
+    firstName: user.firstName,
+    lastName: user.lastName,
+    email: user.email,
+    phone: user.phone,
+    joinedDate: "",
+  });
   const [saved, setSaved] = useState(false);
 
   const handleSave = () => {
@@ -178,7 +165,7 @@ function ProfileTab() {
         </div>
 
         <div className="pt-1">
-          <p className="text-white/60 text-sm font-medium">Member since <span className="text-white">{MOCK_USER.joinedDate}</span></p>
+          <p className="text-white/60 text-sm font-medium">Member since <span className="text-white">{form.joinedDate || "2026"}</span></p>
         </div>
       </div>
 
@@ -192,11 +179,11 @@ function ProfileTab() {
   );
 }
 
-function OrdersTab({ onViewTickets }: { onViewTickets: (orderId: string) => void }) {
+function OrdersTab({ onViewTickets, orders }: { onViewTickets: (orderId: string) => void; orders: RealOrder[] }) {
   return (
     <div>
       <h2 className="font-display text-white text-3xl mb-6">ORDER HISTORY</h2>
-      {MOCK_ORDERS.length === 0 ? (
+      {orders.length === 0 ? (
         <div className="text-center py-20 text-white/30">
           <ShoppingBag size={40} className="mx-auto mb-4 opacity-30" />
           <p>No orders yet.</p>
@@ -204,7 +191,7 @@ function OrdersTab({ onViewTickets }: { onViewTickets: (orderId: string) => void
         </div>
       ) : (
         <div className="space-y-4">
-          {MOCK_ORDERS.map(order => (
+          {orders.map(order => (
             <motion.div
               key={order.id}
               initial={{ opacity: 0, y: 16 }}
@@ -217,19 +204,16 @@ function OrdersTab({ onViewTickets }: { onViewTickets: (orderId: string) => void
                     <span className="bg-green-900/40 border border-green-500/30 text-green-400 text-xs font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
                       {order.status}
                     </span>
-                    <span className="text-white/25 text-xs">{order.id}</span>
+                    <span className="text-white/25 text-xs">{order.order_number}</span>
                   </div>
-                  <h3 className="font-display text-yellow-400 text-xl">{order.event}</h3>
+                  <h3 className="font-display text-yellow-400 text-xl">Tequila Fest {order.event_city}</h3>
                   <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2">
                     <span className="flex items-center gap-1.5 text-white/50 text-sm">
-                      <Calendar size={13} /> {order.date}
-                    </span>
-                    <span className="flex items-center gap-1.5 text-white/50 text-sm">
-                      <MapPin size={13} /> {order.venue}
+                      <Calendar size={13} /> {new Date(order.created_at).toLocaleDateString()}
                     </span>
                   </div>
                   <p className="text-white/40 text-sm mt-1">
-                    {order.qty}× {order.type} · <span className="text-white/60 font-semibold">${order.total}</span>
+                    {order.quantity}× {order.ticket_type} · <span className="text-white/60 font-semibold">${Number(order.total).toFixed(2)}</span>
                   </p>
                 </div>
                 <div className="flex flex-col gap-2 flex-shrink-0">
@@ -240,8 +224,9 @@ function OrdersTab({ onViewTickets }: { onViewTickets: (orderId: string) => void
                     <QrCode size={15} />
                     View Tickets
                   </button>
+                  {order.stripe_payment_intent_id && (
                   <a
-                    href={order.receiptUrl}
+                    href={`https://dashboard.stripe.com/payments/${order.stripe_payment_intent_id}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/15 hover:border-white/25 text-white/60 hover:text-white font-semibold text-sm px-4 py-2.5 rounded-xl transition-all duration-200 cursor-pointer"
@@ -251,6 +236,7 @@ function OrdersTab({ onViewTickets }: { onViewTickets: (orderId: string) => void
                     </svg>
                     View Receipt
                   </a>
+                  )}
                 </div>
               </div>
             </motion.div>
@@ -267,15 +253,18 @@ const TYPE_STYLES: Record<string, { bg: string; text: string; border: string; la
   "GA Entry":      { bg: "bg-white/10",         text: "text-white/70",    border: "border-white/20",         label: "GA ENTRY" },
 };
 
-function TicketsTab({ highlightOrderId }: { highlightOrderId?: string }) {
-  const allTickets = MOCK_ORDERS.flatMap(order =>
-    order.tickets.map((t, idx) => ({
-      ...t,
-      event: order.event,
-      date: order.date,
+function TicketsTab({ highlightOrderId, orders }: { highlightOrderId?: string; orders: RealOrder[] }) {
+  const allTickets = orders.flatMap(order =>
+    (order.ticket_instances || []).map((t, idx) => ({
+      id: t.qr_code,
+      name: t.holder_name,
+      type: t.ticket_type || order.ticket_type,
+      event: `Tequila Fest ${order.event_city}`,
+      date: new Date(order.created_at).toLocaleDateString(),
       orderId: order.id,
       ticketNumber: idx + 1,
-      totalInOrder: order.tickets.length,
+      totalInOrder: order.ticket_instances?.length || order.quantity,
+      status: t.status,
     }))
   );
 
@@ -421,10 +410,40 @@ function TicketsTab({ highlightOrderId }: { highlightOrderId?: string }) {
 export default function AccountPage() {
   const [tab, setTab] = useState<Tab>("profile");
   const [highlightOrder, setHighlightOrder] = useState<string | undefined>();
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [orders, setOrders] = useState<RealOrder[]>([]);
+  const [loadingData, setLoadingData] = useState(true);
+
+  useEffect(() => {
+    const load = async () => {
+      // Get session
+      const sessionRes = await fetch("/api/auth/session");
+      const sessionData = await sessionRes.json();
+      if (!sessionData.user) {
+        window.location.href = "/login";
+        return;
+      }
+      setUser(sessionData.user);
+
+      // Get orders + tickets from Supabase
+      const ordersRes = await fetch(`/api/account/orders`);
+      if (ordersRes.ok) {
+        const ordersData = await ordersRes.json();
+        setOrders(ordersData.orders || []);
+      }
+      setLoadingData(false);
+    };
+    load();
+  }, []);
 
   const handleViewTickets = (orderId: string) => {
     setHighlightOrder(orderId);
     setTab("tickets");
+  };
+
+  const handleLogout = async () => {
+    await fetch("/api/auth/logout", { method: "POST" });
+    window.location.href = "/";
   };
 
   const tabs = [
@@ -432,6 +451,12 @@ export default function AccountPage() {
     { id: "orders" as Tab, label: "Orders", icon: <ShoppingBag size={16} /> },
     { id: "tickets" as Tab, label: "My Tickets", icon: <QrCode size={16} /> },
   ];
+
+  if (loadingData || !user) return (
+    <div className="min-h-screen bg-[#0d0500] flex items-center justify-center">
+      <div className="text-white/30 text-sm">Loading your account...</div>
+    </div>
+  );
 
   return (
     <>
@@ -452,17 +477,17 @@ export default function AccountPage() {
             <div className="flex items-center gap-4">
               <div className="w-14 h-14 rounded-full bg-yellow-500/15 border border-yellow-500/30 flex items-center justify-center flex-shrink-0">
                 <span className="font-display text-yellow-400 text-2xl">
-                  {MOCK_USER.firstName[0]}{MOCK_USER.lastName[0]}
+                  {(user.firstName?.[0] || "?")}{(user.lastName?.[0] || "")}
                 </span>
               </div>
               <div>
                 <p className="text-white/40 text-xs uppercase tracking-wider">Welcome back</p>
                 <h1 className="font-display text-white text-2xl leading-tight">
-                  {MOCK_USER.firstName.toUpperCase()} {MOCK_USER.lastName.toUpperCase()}
+                  {user.firstName.toUpperCase()} {user.lastName.toUpperCase()}
                 </h1>
               </div>
             </div>
-            <button className="hidden sm:flex items-center gap-2 text-white/30 hover:text-white/60 text-sm transition-colors duration-200 cursor-pointer">
+            <button onClick={handleLogout} className="hidden sm:flex items-center gap-2 text-white/30 hover:text-white/60 text-sm transition-colors duration-200 cursor-pointer">
               <LogOut size={15} />
               Log Out
             </button>
@@ -491,9 +516,9 @@ export default function AccountPage() {
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.2 }}
             >
-              {tab === "profile" && <ProfileTab />}
-              {tab === "orders" && <OrdersTab onViewTickets={handleViewTickets} />}
-              {tab === "tickets" && <TicketsTab highlightOrderId={highlightOrder} />}
+              {tab === "profile" && <ProfileTab user={user} />}
+              {tab === "orders" && <OrdersTab onViewTickets={handleViewTickets} orders={orders} />}
+              {tab === "tickets" && <TicketsTab highlightOrderId={highlightOrder} orders={orders} />}
             </motion.div>
           </AnimatePresence>
         </div>

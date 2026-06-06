@@ -34,10 +34,20 @@ export default function SignupPage() {
       return;
     }
     setLoading(true);
-    // TODO: wire to API
-    await new Promise((r) => setTimeout(r, 900));
-    setLoading(false);
-    setSuccess(true);
+    try {
+      const res = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ firstName: form.firstName, lastName: form.lastName, email: form.email, phone: form.phone, password: form.password, captchaToken }),
+      });
+      const data = await res.json();
+      if (res.ok) setSuccess(true);
+      else setError(data.error || "Something went wrong.");
+    } catch {
+      setError("Network error. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

@@ -17,8 +17,22 @@ const NAV_LINKS = [
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  // TODO: replace with real auth state
-  const isLoggedIn = false;
+  const [user, setUser] = useState<{ email: string; firstName: string } | null>(null);
+
+  useEffect(() => {
+    fetch("/api/auth/session")
+      .then(r => r.ok ? r.json() : null)
+      .then(d => d?.user && setUser(d.user))
+      .catch(() => {});
+  }, []);
+
+  const isLoggedIn = !!user;
+
+  const handleLogout = async () => {
+    await fetch("/api/auth/logout", { method: "POST" });
+    setUser(null);
+    window.location.href = "/";
+  };
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
@@ -74,13 +88,19 @@ export default function Navbar() {
           {/* Desktop right side */}
           <div className="hidden md:flex items-center gap-2">
             {isLoggedIn ? (
-              <Link
-                href="/account"
-                className="inline-flex items-center gap-2 border border-yellow-500/50 hover:border-yellow-400 text-yellow-400 hover:text-yellow-300 font-bold text-sm px-4 py-2.5 rounded-full transition-all duration-200 hover:scale-105"
-              >
-                <User size={14} />
-                Profile
-              </Link>
+              <div className="flex items-center gap-2">
+                <Link
+                  href="/account"
+                  className="inline-flex items-center gap-2 border border-yellow-500/50 hover:border-yellow-400 text-yellow-400 hover:text-yellow-300 font-bold text-sm px-4 py-2.5 rounded-full transition-all duration-200 hover:scale-105"
+                >
+                  <User size={14} />
+                  {user?.firstName || "Profile"}
+                </Link>
+                <button onClick={handleLogout}
+                  className="text-white/30 hover:text-white/60 text-xs transition-colors cursor-pointer">
+                  Log Out
+                </button>
+              </div>
             ) : (
               <>
                 <Link
@@ -143,10 +163,16 @@ export default function Navbar() {
               {/* Mobile auth buttons */}
               <motion.div initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: NAV_LINKS.length * 0.05 }} className="mt-4 flex flex-col gap-3">
                 {isLoggedIn ? (
-                  <Link href="/account" onClick={() => setMenuOpen(false)}
-                    className="flex items-center justify-center gap-2 border border-yellow-500/50 text-yellow-400 font-bold text-lg px-6 py-4 rounded-full transition-all duration-200">
-                    <User size={18} /> Profile
-                  </Link>
+                  <>
+                    <Link href="/account" onClick={() => setMenuOpen(false)}
+                      className="flex items-center justify-center gap-2 border border-yellow-500/50 text-yellow-400 font-bold text-lg px-6 py-4 rounded-full transition-all duration-200">
+                      <User size={18} /> {user?.firstName || "Profile"}
+                    </Link>
+                    <button onClick={() => { setMenuOpen(false); handleLogout(); }}
+                      className="block w-full text-center border border-white/20 text-white/40 font-semibold text-base px-6 py-3 rounded-full transition-all cursor-pointer">
+                      Log Out
+                    </button>
+                  </>
                 ) : (
                   <>
                     <Link href="/signup" onClick={() => setMenuOpen(false)}
