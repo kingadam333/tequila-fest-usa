@@ -546,10 +546,9 @@ function EventEditor({ event, adminToken, onSaved }: { event: EventRow; adminTok
   );
 }
 
-function EventsSection({ adminToken, stats }: { adminToken: string; stats: StatsData | null }) {
+function EventsSection({ adminToken, stats, editingId, setEditingId }: { adminToken: string; stats: StatsData | null; editingId: string | null; setEditingId: (id: string | null) => void }) {
   const [events, setEvents] = useState<EventRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editingId, setEditingId] = useState<string | null>(null);
 
   const fetchEvents = async () => {
     const res = await fetch("/api/admin/events", { headers: { "x-admin-token": adminToken } });
@@ -1031,6 +1030,7 @@ export default function AdminDashboard() {
   const [adminToken, setAdminToken] = useState("");
   const [activeSection, setActiveSection] = useState("overview");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [editingEventId, setEditingEventId] = useState<string | null>(null);
 
   const { orders, stats, loading, error, refetch } = useAdminData(adminToken);
 
@@ -1044,7 +1044,7 @@ export default function AdminDashboard() {
   const SECTION_MAP: Record<string, React.ReactNode> = {
     overview:  <OverviewSection stats={stats} orders={orders} loading={loading} />,
     orders:    <OrdersSection orders={orders} loading={loading} adminToken={adminToken} onRefetch={refetch} />,
-    events:    <EventsSection adminToken={adminToken} stats={stats} />,
+    events:    <EventsSection adminToken={adminToken} stats={stats} editingId={editingEventId} setEditingId={setEditingEventId} />,
     customers: <CustomersSection orders={orders} />,
     coupons:   <CouponsSection />,
     checkin:   <CheckInSection />,
@@ -1073,7 +1073,7 @@ export default function AdminDashboard() {
         {/* Nav */}
         <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
           {NAV_ITEMS.map(item => (
-            <button key={item.id} onClick={() => { setActiveSection(item.id); setSidebarOpen(false); }}
+            <button key={item.id} onClick={() => { setActiveSection(item.id); setSidebarOpen(false); if (item.id === "events") setEditingEventId(null); }}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer text-left ${activeSection === item.id ? "bg-yellow-500/15 text-yellow-400 border border-yellow-500/20" : "text-white/40 hover:text-white hover:bg-white/5"}`}>
               {item.icon}
               {item.label}
