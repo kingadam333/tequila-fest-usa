@@ -7,8 +7,8 @@ import Image from "next/image";
 import {
   LayoutDashboard, Ticket, CalendarDays, Users, Tag, QrCode,
   MessageSquare, FileText, LogOut, Menu, X, TrendingUp, DollarSign,
-  RefreshCw, Download, Send, CheckCircle, XCircle, Search, Plus,
-  Trash2, Edit2, Eye, AlertCircle, ChevronDown, BarChart2, Settings,
+  RefreshCw, Download, Send, CheckCircle, Search, Plus,
+  Trash2, Edit2, Eye, AlertCircle, BarChart2,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -80,31 +80,12 @@ function useAdminData(adminToken: string) {
   return { orders, stats, loading, error, refetch: fetchAll };
 }
 
-const MOCK_EVENTS = [
-  { id: 1, city: "Cincinnati", date: "June 13, 2026", venue: "Fountain Square", capacity: 500, sold: 247, status: "on_sale", color: "#F5A623" },
-  { id: 2, city: "Cleveland", date: "July 25, 2026", venue: "Cuyahoga County Fairgrounds", capacity: 800, sold: 134, status: "on_sale", color: "#C8102E" },
-  { id: 3, city: "Columbus", date: "August 8, 2026", venue: "Gravity / GCCC", capacity: 600, sold: 89, status: "on_sale", color: "#00A878" },
-  { id: 4, city: "Phoenix", date: "November 14, 2026", venue: "Phoenix Convention Center", capacity: 1000, sold: 43, status: "on_sale", color: "#7B2FBE" },
-];
-
-const MOCK_CUSTOMERS = [
-  { id: 1, name: "Sarah Mitchell", email: "sarah@email.com", orders: 3, totalSpent: 330, joined: "2026-03-15" },
-  { id: 2, name: "Marcus Johnson", email: "marcus@email.com", orders: 1, totalSpent: 125, joined: "2026-06-05" },
-  { id: 3, name: "Emily Torres", email: "emily@email.com", orders: 2, totalSpent: 275, joined: "2026-05-20" },
-  { id: 4, name: "David Park", email: "david@email.com", orders: 1, totalSpent: 10, joined: "2026-06-04" },
-  { id: 5, name: "James Williams", email: "james@email.com", orders: 4, totalSpent: 500, joined: "2026-02-01" },
-];
-
-const MOCK_COUPONS = [
-  { id: 1, code: "EARLYBIRD10", type: "percentage", value: 10, uses: 45, maxUses: 100, expires: "2026-06-10", active: true },
-  { id: 2, code: "CINCINNATI5", type: "fixed", value: 5, uses: 23, maxUses: 50, expires: "2026-06-13", active: true },
-  { id: 3, code: "VIP20OFF", type: "percentage", value: 20, uses: 8, maxUses: 25, expires: "2026-07-01", active: false },
-];
-
-const MOCK_CONTACTS = [
-  { id: 1, name: "Alex Rodriguez", email: "alex@email.com", subject: "Ticket Support", message: "I need to transfer my ticket to a friend.", status: "new", date: "2026-06-05" },
-  { id: 2, name: "Jennifer Wu", email: "jen@email.com", subject: "Sponsorship Opportunity", message: "We'd like to discuss sponsoring the Cincinnati event.", status: "read", date: "2026-06-04" },
-  { id: 3, name: "Tom Bradley", email: "tom@email.com", subject: "General Inquiry", message: "What is included in the VIP ticket?", status: "replied", date: "2026-06-03" },
+// Real event config — capacities, venues, colors (not dynamic data)
+const EVENTS_CONFIG = [
+  { id: 1, city: "Cincinnati", date: "June 13, 2026", venue: "Fountain Square", capacity: 500, status: "on_sale", color: "#F5A623" },
+  { id: 2, city: "Cleveland", date: "July 25, 2026", venue: "Cuyahoga County Fairgrounds", capacity: 800, status: "on_sale", color: "#C8102E" },
+  { id: 3, city: "Columbus", date: "August 8, 2026", venue: "Gravity / GCCC", capacity: 600, status: "on_sale", color: "#00A878" },
+  { id: 4, city: "Phoenix", date: "November 14, 2026", venue: "Phoenix Convention Center", capacity: 1000, status: "on_sale", color: "#7B2FBE" },
 ];
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -166,9 +147,9 @@ function OverviewSection({ stats, orders, loading }: { stats: StatsData | null; 
       <div>
         <h3 className="text-white/50 text-xs font-bold uppercase tracking-wider mb-4">Ticket Sales by City</h3>
         <div className="space-y-3">
-          {MOCK_EVENTS.map(ev => {
+          {EVENTS_CONFIG.map(ev => {
             const cityStats = stats?.byCity?.[ev.city];
-            const sold = cityStats?.tickets ?? ev.sold;
+            const sold = cityStats?.tickets ?? 0;
             return (
             <div key={ev.id} className="bg-white/[0.03] border border-white/10 rounded-xl p-4">
               <div className="flex items-center justify-between mb-2">
@@ -325,7 +306,7 @@ function EventsSection() {
         <h2 className="font-display text-white text-3xl">EVENTS</h2>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        {MOCK_EVENTS.map(ev => (
+        {EVENTS_CONFIG.map(ev => (
           <div key={ev.id} className="bg-white/[0.03] border border-white/10 rounded-2xl p-6 hover:border-white/20 transition-all">
             <div className="flex items-start justify-between mb-4">
               <div>
@@ -337,12 +318,12 @@ function EventsSection() {
                 <p className="text-white/40 text-xs">{ev.venue}</p>
               </div>
               <div className="text-right">
-                <p className="font-display text-white text-3xl">{ev.sold}</p>
+                <p className="font-display text-white text-3xl">{0}</p>
                 <p className="text-white/30 text-xs">of {ev.capacity} sold</p>
               </div>
             </div>
             <div className="h-2 bg-white/10 rounded-full overflow-hidden mb-4">
-              <div className="h-full rounded-full" style={{ width: `${(ev.sold / ev.capacity) * 100}%`, background: ev.color }} />
+              <div className="h-full rounded-full" style={{ width: `${(0 / ev.capacity) * 100}%`, background: ev.color }} />
             </div>
             <div className="flex gap-2">
               <Link href={`/events/${ev.city.toLowerCase()}`} target="_blank"
@@ -373,9 +354,24 @@ function EventsSection() {
   );
 }
 
-function CustomersSection() {
+function CustomersSection({ orders }: { orders: Order[] }) {
   const [search, setSearch] = useState("");
-  const filtered = MOCK_CUSTOMERS.filter(c =>
+
+  // Derive unique customers from real Stripe orders
+  const customerMap = new Map<string, { name: string; email: string; orders: number; totalSpent: number; lastOrder: string }>();
+  for (const o of orders) {
+    if (!o.email || o.email === "—") continue;
+    const existing = customerMap.get(o.email);
+    if (existing) {
+      existing.orders += 1;
+      existing.totalSpent += o.total;
+      if (o.date > existing.lastOrder) existing.lastOrder = o.date;
+    } else {
+      customerMap.set(o.email, { name: o.customer, email: o.email, orders: 1, totalSpent: o.total, lastOrder: o.date });
+    }
+  }
+  const customers = Array.from(customerMap.values());
+  const filtered = customers.filter(c =>
     c.name.toLowerCase().includes(search.toLowerCase()) ||
     c.email.toLowerCase().includes(search.toLowerCase())
   );
@@ -384,7 +380,7 @@ function CustomersSection() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h2 className="font-display text-white text-3xl">CUSTOMERS</h2>
-        <p className="text-white/30 text-sm">{MOCK_CUSTOMERS.length} total</p>
+        <p className="text-white/30 text-sm">{customers.length} total</p>
       </div>
       <div className="relative mb-5">
         <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30" />
@@ -392,30 +388,35 @@ function CustomersSection() {
           placeholder="Search customers..."
           className="w-full bg-white/5 border border-white/15 rounded-xl pl-9 pr-4 py-2.5 text-white placeholder-white/30 text-sm outline-none focus:border-yellow-500/40" />
       </div>
-      <div className="space-y-2">
-        {filtered.map(c => (
-          <div key={c.id} className="flex items-center justify-between bg-white/[0.03] border border-white/10 rounded-xl px-4 py-3 hover:border-white/20 transition-all">
-            <div>
-              <p className="text-white font-semibold text-sm">{c.name}</p>
-              <p className="text-white/40 text-xs">{c.email} · joined {c.joined}</p>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="text-right">
-                <p className="text-white text-sm font-bold">${c.totalSpent}</p>
-                <p className="text-white/30 text-xs">{c.orders} order{c.orders !== 1 ? "s" : ""}</p>
+      {customers.length === 0 ? (
+        <div className="text-center py-16 text-white/25">
+          <Users size={36} className="mx-auto mb-3 opacity-30" />
+          <p>No customers yet — they&apos;ll appear here once tickets are purchased.</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {filtered.map(c => (
+            <div key={c.email} className="flex items-center justify-between bg-white/[0.03] border border-white/10 rounded-xl px-4 py-3 hover:border-white/20 transition-all">
+              <div>
+                <p className="text-white font-semibold text-sm">{c.name}</p>
+                <p className="text-white/40 text-xs">{c.email} · last order {c.lastOrder}</p>
               </div>
-              <div className="flex gap-1">
-                <button className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-white/40 hover:text-white transition-all cursor-pointer" title="View orders">
-                  <Eye size={13} />
-                </button>
-                <button className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-white/40 hover:text-white transition-all cursor-pointer" title="Send password reset">
-                  <Send size={13} />
-                </button>
+              <div className="flex items-center gap-4">
+                <div className="text-right">
+                  <p className="text-white text-sm font-bold">${c.totalSpent.toFixed(2)}</p>
+                  <p className="text-white/30 text-xs">{c.orders} order{c.orders !== 1 ? "s" : ""}</p>
+                </div>
+                <div className="flex gap-1">
+                  <button className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-white/40 hover:text-white transition-all cursor-pointer" title="Send password reset">
+                    <Send size={13} />
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+          {filtered.length === 0 && <p className="text-center text-white/30 py-8">No customers match your search</p>}
+        </div>
+      )}
     </div>
   );
 }
@@ -477,34 +478,17 @@ function CouponsSection() {
         </motion.div>
       )}
 
-      <div className="space-y-3">
-        {MOCK_COUPONS.map(c => (
-          <div key={c.id} className={`flex items-center justify-between bg-white/[0.03] border rounded-2xl px-5 py-4 ${c.active ? "border-white/10" : "border-white/5 opacity-50"}`}>
-            <div className="flex items-center gap-4">
-              <span className="font-mono font-bold text-yellow-400 text-base tracking-widest">{c.code}</span>
-              <span className="text-white/50 text-sm">
-                {c.type === "percentage" ? `${c.value}% off` : `$${c.value} off`}
-              </span>
-              <span className="text-white/30 text-xs">{c.uses}/{c.maxUses} uses</span>
-              <span className="text-white/30 text-xs">expires {c.expires}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${c.active ? "bg-green-500/15 text-green-400 border-green-500/30" : "bg-white/10 text-white/30 border-white/20"}`}>
-                {c.active ? "Active" : "Inactive"}
-              </span>
-              <button className="p-1.5 bg-white/5 hover:bg-red-500/10 border border-white/10 hover:border-red-500/20 rounded-lg text-white/30 hover:text-red-400 transition-all cursor-pointer">
-                <Trash2 size={12} />
-              </button>
-            </div>
-          </div>
-        ))}
+      <div className="text-center py-12 text-white/25 border border-dashed border-white/10 rounded-2xl">
+        <Tag size={32} className="mx-auto mb-3 opacity-30" />
+        <p className="font-semibold text-white/40 mb-1">No coupons yet</p>
+        <p className="text-sm">Create your first coupon code above.</p>
       </div>
     </div>
   );
 }
 
 function CheckInSection() {
-  const [activeEvent, setActiveEvent] = useState(MOCK_EVENTS[0]);
+  const [activeEvent, setActiveEvent] = useState(EVENTS_CONFIG[0]);
   const [scanInput, setScanInput] = useState("");
   const [scanResult, setScanResult] = useState<{ success: boolean; message: string } | null>(null);
 
@@ -527,7 +511,7 @@ function CheckInSection() {
 
       {/* Event selector */}
       <div className="flex flex-wrap gap-2 mb-6">
-        {MOCK_EVENTS.map(ev => (
+        {EVENTS_CONFIG.map(ev => (
           <button key={ev.id} onClick={() => setActiveEvent(ev)}
             className={`px-4 py-2 rounded-xl text-sm font-bold transition-all cursor-pointer ${activeEvent.id === ev.id ? "text-black" : "bg-white/5 border border-white/15 text-white/50 hover:text-white"}`}
             style={activeEvent.id === ev.id ? { background: ev.color } : {}}>
@@ -567,9 +551,9 @@ function CheckInSection() {
           <h3 className="text-white font-bold mb-4">{activeEvent.city} — Live Stats</h3>
           <div className="space-y-3">
             {[
-              { label: "Tickets Sold", value: activeEvent.sold, color: "#F5A623" },
+              { label: "Tickets Sold", value: 0, color: "#F5A623" },
               { label: "Checked In", value: 0, color: "#00A878" },
-              { label: "Remaining", value: activeEvent.sold, color: "#C8102E" },
+              { label: "Remaining", value: 0, color: "#C8102E" },
             ].map(stat => (
               <div key={stat.label} className="flex items-center justify-between">
                 <span className="text-white/50 text-sm">{stat.label}</span>
@@ -602,7 +586,7 @@ function CheckInSection() {
 }
 
 function ContactSection() {
-  const [selected, setSelected] = useState<typeof MOCK_CONTACTS[0] | null>(null);
+  const [selected, setSelected] = useState<{ id: number; name: string; email: string; subject: string; message: string; status: string; date: string } | null>(null);
   const [reply, setReply] = useState("");
 
   return (
@@ -610,17 +594,11 @@ function ContactSection() {
       <h2 className="font-display text-white text-3xl mb-6">SUPPORT INBOX</h2>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <div className="space-y-2">
-          {MOCK_CONTACTS.map(c => (
-            <button key={c.id} onClick={() => setSelected(c)}
-              className={`w-full text-left bg-white/[0.03] border rounded-2xl px-4 py-3.5 transition-all cursor-pointer ${selected?.id === c.id ? "border-yellow-500/40 bg-yellow-500/5" : "border-white/10 hover:border-white/20"}`}>
-              <div className="flex items-center justify-between mb-1">
-                <p className="text-white font-semibold text-sm">{c.name}</p>
-                <StatusBadge status={c.status} />
-              </div>
-              <p className="text-white/50 text-xs">{c.subject}</p>
-              <p className="text-white/30 text-xs mt-0.5 truncate">{c.message}</p>
-            </button>
-          ))}
+          <div className="text-center py-10 text-white/25 border border-dashed border-white/10 rounded-2xl">
+            <MessageSquare size={28} className="mx-auto mb-2 opacity-30" />
+            <p className="text-sm">No messages yet.</p>
+            <p className="text-xs mt-1">Contact form submissions will appear here.</p>
+          </div>
         </div>
         <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-5">
           {selected ? (
@@ -771,7 +749,7 @@ export default function AdminDashboard() {
     overview:  <OverviewSection stats={stats} orders={orders} loading={loading} />,
     orders:    <OrdersSection orders={orders} loading={loading} adminToken={adminToken} onRefetch={refetch} />,
     events:    <EventsSection />,
-    customers: <CustomersSection />,
+    customers: <CustomersSection orders={orders} />,
     coupons:   <CouponsSection />,
     checkin:   <CheckInSection />,
     contacts:  <ContactSection />,
