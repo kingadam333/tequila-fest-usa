@@ -4,7 +4,8 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
-import { User, ShoppingBag, QrCode, LogOut, MapPin, Calendar, Phone, Mail, Edit2, Check } from "lucide-react";
+import { User, ShoppingBag, QrCode, LogOut, MapPin, Calendar, Phone, Mail, Edit2, Check, LayoutDashboard } from "lucide-react";
+import DashboardTab from "./DashboardTab";
 import Navbar from "@/components/Navbar";
 import OfficialBanner from "@/components/OfficialBanner";
 import Footer from "@/components/Footer";
@@ -31,7 +32,7 @@ interface RealOrder {
   ticket_instances: { id: string; qr_code: string; ticket_number: number; status: string; holder_name: string; ticket_type: string }[];
 }
 
-type Tab = "profile" | "orders" | "tickets";
+type Tab = "dashboard" | "profile" | "orders" | "tickets";
 
 // Simple QR placeholder using SVG pattern
 function QRPlaceholder({ value }: { value: string }) {
@@ -408,7 +409,7 @@ function TicketsTab({ highlightOrderId, orders }: { highlightOrderId?: string; o
 }
 
 export default function AccountPage() {
-  const [tab, setTab] = useState<Tab>("profile");
+  const [tab, setTab] = useState<Tab>("dashboard");
   const [highlightOrder, setHighlightOrder] = useState<string | undefined>();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [orders, setOrders] = useState<RealOrder[]>([]);
@@ -446,10 +447,13 @@ export default function AccountPage() {
     window.location.href = "/";
   };
 
+  const ticketCount = orders.reduce((s, o) => s + (o.ticket_instances?.length || o.quantity), 0);
+
   const tabs = [
-    { id: "profile" as Tab, label: "Profile", icon: <User size={16} /> },
+    { id: "dashboard" as Tab, label: "Dashboard", icon: <LayoutDashboard size={16} /> },
     { id: "orders" as Tab, label: "Orders", icon: <ShoppingBag size={16} /> },
     { id: "tickets" as Tab, label: "My Tickets", icon: <QrCode size={16} /> },
+    { id: "profile" as Tab, label: "Profile", icon: <User size={16} /> },
   ];
 
   if (loadingData || !user) return (
@@ -516,6 +520,7 @@ export default function AccountPage() {
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.2 }}
             >
+              {tab === "dashboard" && <DashboardTab firstName={user.firstName} loyaltyPoints={user.loyaltyPoints} ticketCount={ticketCount} onGoToTickets={() => setTab("tickets")} />}
               {tab === "profile" && <ProfileTab user={user} />}
               {tab === "orders" && <OrdersTab onViewTickets={handleViewTickets} orders={orders} />}
               {tab === "tickets" && <TicketsTab highlightOrderId={highlightOrder} orders={orders} />}

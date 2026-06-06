@@ -98,8 +98,8 @@ export default function ConfirmationPage() {
             <ul className="space-y-2">
               {[
                 "Check your email for your order confirmation",
-                "Your QR ticket will arrive in a separate email",
-                "Create an account to access your tickets anytime",
+                "Your account login details are on the way — check your inbox",
+                "Log in to view your QR tickets anytime",
                 "Show your QR code at the door — one scan per entry",
               ].map((item, i) => (
                 <li key={i} className="flex items-start gap-2 text-white/60 text-sm">
