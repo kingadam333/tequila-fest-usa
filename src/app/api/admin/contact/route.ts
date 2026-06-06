@@ -1,0 +1,61 @@
+import { NextRequest, NextResponse } from "next/server";
+import { verifyAdminToken, unauthorizedResponse } from "@/lib/adminAuth";
+import { supabaseAdmin } from "@/lib/supabase";
+import { resend, FROM_EMAIL } from "@/lib/resend";
+
+export async function POST(req: NextRequest) {
+  if (!verifyAdminToken(req)) return unauthorizedResponse();
+
+  const { submissionId, replyTo, replyToName, subject, message } = await req.json();
+
+  if (!replyTo || !message) {
+    return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+  }
+
+  // Send reply email
+  try {
+    await resend.emails.send({
+      from: FROM_EMAIL,
+      to: replyTo,
+      subject: subject || `Re: Your message to Tequila Fest USA`,
+      html: `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#0d0500;font-family:'Segoe UI',Arial,sans-serif;color:#fff8f0">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#0d0500;padding:40px 20px">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%">
+        <tr><td style="text-align:center;padding-bottom:24px">
+          <p style="font-family:Arial;font-size:28px;font-weight:900;letter-spacing:4px;color:#F5A623;margin:0">TEQUILA FEST USA</p>
+        </td></tr>
+        <tr><td style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:28px">
+          <p style="color:rgba(255,248,240,0.5);font-size:13px;margin:0 0 4px">Hi ${replyToName || "there"},</p>
+          <div style="color:#fff8f0;font-size:15px;line-height:1.7;margin:12px 0 0;white-space:pre-wrap">${message.replace(/\n/g, "<br>")}</div>
+        </td></tr>
+        <tr><td style="height:24px"></td></tr>
+        <tr><td style="text-align:center;border-top:1px solid rgba(255,255,255,0.08);padding-top:20px">
+          <p style="color:rgba(255,248,240,0.2);font-size:11px;margin:0">Tequila Fest USA · help@tequilafestusa.com · tequilafestusa.com</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`,
+    });
+  } catch (err) {
+    console.error("Failed to send reply:", err);
+    return NextResponse.json({ error: "Failed to send email" }, { status: 500 });
+  }
+
+  // Update submission status in Supabase
+  if (submissionId) {
+    const db = supabaseAdmin as any;
+    await db.from("contact_submissions").update({
+      status: "replied",
+      admin_reply: message,
+      replied_at: new Date().toISOString(),
+    }).eq("id", submissionId);
+  }
+
+  return NextResponse.json({ success: true });
+}

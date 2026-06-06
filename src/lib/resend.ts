@@ -202,6 +202,120 @@ export function welcomeAccountHtml({
 </html>`;
 }
 
+// ─── QR Ticket Email ─────────────────────────────────────────────────────────
+export interface TicketInstance {
+  qrCode: string;
+  ticketNumber: number;
+  totalInOrder: number;
+  holderName: string;
+  ticketType: string;
+}
+
+export function qrTicketHtml({
+  firstName,
+  eventCity,
+  eventDate,
+  eventTime,
+  eventVenue,
+  orderNumber,
+  tickets,
+  appUrl,
+}: {
+  firstName: string;
+  eventCity: string;
+  eventDate: string;
+  eventTime: string;
+  eventVenue: string;
+  orderNumber: string;
+  tickets: TicketInstance[];
+  appUrl: string;
+}) {
+  const ticketCards = tickets.map(t => {
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=10&data=${encodeURIComponent(t.qrCode)}`;
+    const typeStyle = t.ticketType.toLowerCase().includes("vip")
+      ? "background:#1a1a1a;border:2px solid #C0C0C0;color:#C0C0C0;"
+      : "background:#1a0e00;border:2px solid #F5A623;color:#F5A623;";
+    return `
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:16px;overflow:hidden;margin-bottom:20px">
+      <tr>
+        <td style="background:linear-gradient(135deg,#1a0e00,#0d0500);padding:16px 20px;border-bottom:1px solid rgba(255,255,255,0.08)">
+          <p style="margin:0;color:rgba(255,248,240,0.4);font-size:11px;letter-spacing:2px;text-transform:uppercase">Ticket #${t.ticketNumber} of ${t.totalInOrder}</p>
+          <p style="margin:4px 0 0;font-family:Arial;font-size:20px;font-weight:900;letter-spacing:3px;color:#F5A623">TEQUILA FEST ${eventCity.toUpperCase()}</p>
+          <p style="margin:2px 0 0;color:rgba(255,248,240,0.5);font-size:13px">${eventDate} · ${eventTime}</p>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:20px;display:flex;align-items:center;gap:20px">
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr>
+              <td width="180" valign="top" style="padding-right:20px">
+                <img src="${qrUrl}" width="160" height="160" alt="QR Code ${t.qrCode}" style="display:block;border-radius:8px;border:4px solid white" />
+                <p style="margin:8px 0 0;color:rgba(255,248,240,0.25);font-family:monospace;font-size:9px;text-align:center;word-break:break-all">${t.qrCode}</p>
+              </td>
+              <td valign="top">
+                <p style="margin:0 0 4px;color:rgba(255,248,240,0.4);font-size:11px;text-transform:uppercase;letter-spacing:1px">Ticket Holder</p>
+                <p style="margin:0 0 16px;color:#fff8f0;font-size:16px;font-weight:700">${t.holderName}</p>
+                <span style="${typeStyle}font-family:Arial;font-size:14px;font-weight:900;letter-spacing:2px;text-transform:uppercase;padding:6px 16px;border-radius:50px">${t.ticketType}</span>
+                <p style="margin:16px 0 0;color:rgba(255,248,240,0.35);font-size:12px">${eventVenue}</p>
+                <p style="margin:6px 0 0;color:rgba(255,248,240,0.25);font-size:11px">Show QR at door · Must be 21+</p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td style="background:rgba(0,0,0,0.3);padding:10px 20px;text-align:right">
+          <p style="margin:0;color:rgba(255,248,240,0.15);font-size:10px">Order #${orderNumber} · TequilaFestUSA.com · Non-transferable</p>
+        </td>
+      </tr>
+    </table>`;
+  }).join("");
+
+  return `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#0d0500;font-family:'Segoe UI',Arial,sans-serif;color:#fff8f0">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#0d0500;padding:40px 20px">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%">
+
+        <tr><td style="text-align:center;padding-bottom:24px">
+          <p style="font-family:Arial;font-size:32px;font-weight:900;letter-spacing:4px;color:#F5A623;margin:0">TEQUILA FEST USA</p>
+        </td></tr>
+
+        <tr><td style="text-align:center;padding-bottom:28px">
+          <p style="font-size:36px;margin:0 0 8px">🎟️</p>
+          <p style="font-family:Arial;font-size:22px;font-weight:900;letter-spacing:2px;color:#fff8f0;margin:0">YOUR TICKETS ARE HERE</p>
+          <p style="color:rgba(255,248,240,0.5);margin:6px 0 0">Hi ${firstName}! Here are your tickets for Tequila Fest ${eventCity}. Save this email and show your QR code at the door.</p>
+        </td></tr>
+
+        <tr><td>${ticketCards}</td></tr>
+
+        <tr><td style="background:rgba(245,166,35,0.08);border:1px solid rgba(245,166,35,0.2);border-radius:16px;padding:20px;margin-top:8px">
+          <p style="color:#F5A623;font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 10px">Important Reminders</p>
+          <ul style="margin:0;padding:0 0 0 16px">
+            ${["Doors open at 3:00 PM — arrive early for shorter lines", "Valid government-issued ID required — must be 21+", "One scan per ticket — do not share your QR code", "Tickets are non-transferable and non-refundable"].map(r => `<li style="color:rgba(255,248,240,0.6);font-size:13px;margin-bottom:6px">${r}</li>`).join("")}
+          </ul>
+        </td></tr>
+
+        <tr><td style="height:24px"></td></tr>
+
+        <tr><td style="text-align:center">
+          <a href="${appUrl}/account" style="display:inline-block;background:#F5A623;color:#0d0500;font-weight:900;font-size:14px;letter-spacing:2px;text-transform:uppercase;text-decoration:none;padding:14px 36px;border-radius:50px">VIEW IN MY ACCOUNT</a>
+        </td></tr>
+
+        <tr><td style="height:32px"></td></tr>
+        <tr><td style="text-align:center;border-top:1px solid rgba(255,255,255,0.08);padding-top:20px">
+          <p style="color:rgba(255,248,240,0.2);font-size:11px;margin:0">Questions? Email help@tequilafestusa.com · TequilaFestUSA.com</p>
+        </td></tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+}
+
 // ─── Password Reset Email ─────────────────────────────────────────────────────
 export function passwordResetHtml({ resetUrl }: { resetUrl: string }) {
   return `<!DOCTYPE html>

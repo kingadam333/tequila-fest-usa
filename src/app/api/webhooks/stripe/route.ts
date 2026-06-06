@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
-import { resend, FROM_EMAIL, ticketConfirmationHtml, welcomeAccountHtml, generatePassword } from "@/lib/resend";
+import { resend, FROM_EMAIL, ticketConfirmationHtml, welcomeAccountHtml, generatePassword, qrTicketHtml } from "@/lib/resend";
 import { getEvent } from "@/lib/events";
 import { TICKET_LABELS } from "@/lib/stripe";
 import type Stripe from "stripe";
@@ -181,6 +181,39 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
             }
           } catch (authErr) {
             console.error("Auth account creation error:", authErr);
+          }
+        }
+
+        // Send QR ticket email
+        if (customerEmail && order) {
+          try {
+            const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://tequila-fest-usa.vercel.app";
+            const ticketInstances = tickets.map((t: { qr_code: string; ticket_number: number; holder_name: string }, i: number) => ({
+              qrCode: t.qr_code,
+              ticketNumber: t.ticket_number || i + 1,
+              totalInOrder: qty,
+              holderName: t.holder_name || customerName,
+              ticketType: ticketType ? (TICKET_LABELS[ticketType as keyof typeof TICKET_LABELS] || ticketType) : "All Inclusive",
+            }));
+
+            await resend.emails.send({
+              from: FROM_EMAIL,
+              to: customerEmail,
+              subject: `🎟️ Your Tequila Fest ${eventCity || event?.city} Tickets — ${orderNumber}`,
+              html: qrTicketHtml({
+                firstName,
+                eventCity: eventCity || event?.city || "USA",
+                eventDate: event?.date || "2026",
+                eventTime: event?.time || "3:00 PM – 9:00 PM",
+                eventVenue: event ? `${event.venue}, ${event.venueDetail}` : "",
+                orderNumber,
+                tickets: ticketInstances,
+                appUrl,
+              }),
+            });
+            console.log(`🎟️ QR ticket email sent to ${customerEmail}`);
+          } catch (ticketEmailErr) {
+            console.error("Failed to send QR ticket email:", ticketEmailErr);
           }
         }
 

@@ -892,40 +892,104 @@ function CheckInSection() {
   );
 }
 
-function ContactSection() {
-  const [selected, setSelected] = useState<{ id: number; name: string; email: string; subject: string; message: string; status: string; date: string } | null>(null);
+interface ContactSubmission {
+  id: string; name: string; email: string; subject: string;
+  message: string; status: string; created_at: string; admin_reply?: string;
+}
+
+function ContactSection({ adminToken }: { adminToken: string }) {
+  const [submissions, setSubmissions] = useState<ContactSubmission[]>([]);
+  const [selected, setSelected] = useState<ContactSubmission | null>(null);
   const [reply, setReply] = useState("");
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+
+  useEffect(() => {
+    const load = async () => {
+      const db = (await import("@/lib/supabase")).supabaseAdmin as any;
+      const { data } = await db.from("contact_submissions").select("*").order("created_at", { ascending: false }).limit(50);
+      setSubmissions(data || []);
+    };
+    load();
+  }, []);
+
+  const handleSendReply = async () => {
+    if (!selected || !reply.trim()) return;
+    setSending(true);
+    try {
+      const res = await fetch("/api/admin/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-token": adminToken },
+        body: JSON.stringify({
+          submissionId: selected.id,
+          replyTo: selected.email,
+          replyToName: selected.name,
+          subject: `Re: ${selected.subject}`,
+          message: reply,
+        }),
+      });
+      if (res.ok) {
+        setSent(true);
+        setSubmissions(prev => prev.map(s => s.id === selected.id ? { ...s, status: "replied" } : s));
+        setTimeout(() => { setSent(false); setReply(""); }, 2000);
+      }
+    } catch { /* ignore */ }
+    setSending(false);
+  };
 
   return (
     <div>
-      <h2 className="font-display text-white text-3xl mb-6">SUPPORT INBOX</h2>
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="font-display text-white text-3xl">SUPPORT INBOX</h2>
+        <span className="text-white/30 text-sm">{submissions.length} messages</span>
+      </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        <div className="space-y-2">
-          <div className="text-center py-10 text-white/25 border border-dashed border-white/10 rounded-2xl">
-            <MessageSquare size={28} className="mx-auto mb-2 opacity-30" />
-            <p className="text-sm">No messages yet.</p>
-            <p className="text-xs mt-1">Contact form submissions will appear here.</p>
-          </div>
+        <div className="space-y-2 overflow-y-auto max-h-[600px]">
+          {submissions.length === 0 ? (
+            <div className="text-center py-10 text-white/25 border border-dashed border-white/10 rounded-2xl">
+              <MessageSquare size={28} className="mx-auto mb-2 opacity-30" />
+              <p className="text-sm">No messages yet.</p>
+            </div>
+          ) : submissions.map(s => (
+            <button key={s.id} onClick={() => { setSelected(s); setReply(""); setSent(false); }}
+              className={`w-full text-left bg-white/[0.03] border rounded-2xl px-4 py-3.5 transition-all cursor-pointer ${selected?.id === s.id ? "border-yellow-500/40 bg-yellow-500/5" : "border-white/10 hover:border-white/20"}`}>
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-white font-semibold text-sm">{s.name}</p>
+                <StatusBadge status={s.status} />
+              </div>
+              <p className="text-white/50 text-xs">{s.subject}</p>
+              <p className="text-white/30 text-xs mt-0.5 truncate">{s.message}</p>
+              <p className="text-white/20 text-xs mt-1">{new Date(s.created_at).toLocaleDateString()}</p>
+            </button>
+          ))}
         </div>
+
         <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-5">
           {selected ? (
             <>
               <div className="mb-4 pb-4 border-b border-white/10">
                 <p className="text-white font-bold">{selected.name}</p>
-                <p className="text-white/40 text-xs">{selected.email} · {selected.date}</p>
+                <p className="text-white/40 text-xs">{selected.email} · {new Date(selected.created_at).toLocaleDateString()}</p>
                 <p className="text-yellow-400 text-sm font-semibold mt-2">{selected.subject}</p>
                 <p className="text-white/60 text-sm mt-2 leading-relaxed">{selected.message}</p>
+                {selected.admin_reply && (
+                  <div className="mt-3 p-3 bg-green-900/20 border border-green-500/20 rounded-xl">
+                    <p className="text-green-400 text-xs font-semibold mb-1">Previous reply sent:</p>
+                    <p className="text-white/50 text-xs">{selected.admin_reply}</p>
+                  </div>
+                )}
               </div>
               <h4 className="text-white/40 text-xs uppercase tracking-wider mb-3">Reply</h4>
-              <textarea value={reply} onChange={e => setReply(e.target.value)} rows={4}
-                placeholder="Type your reply..."
+              <textarea value={reply} onChange={e => setReply(e.target.value)} rows={5}
+                placeholder={`Type your reply to ${selected.name}...`}
                 className="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-yellow-500/40 resize-none placeholder-white/30 mb-3" />
-              <button className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-black font-bold text-sm px-5 py-2.5 rounded-xl transition-all cursor-pointer">
-                <Send size={13} /> Send Reply
+              <button onClick={handleSendReply} disabled={sending || !reply.trim()}
+                className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-50 text-black font-bold text-sm px-5 py-2.5 rounded-xl transition-all cursor-pointer">
+                {sending ? "Sending..." : sent ? "✓ Sent!" : <><Send size={13} /> Send Reply to {selected.email}</>}
               </button>
             </>
           ) : (
-            <div className="h-full flex items-center justify-center text-white/20">
+            <div className="h-full flex items-center justify-center text-white/20 py-10">
               <p>Select a message to reply</p>
             </div>
           )}
@@ -1060,7 +1124,7 @@ export default function AdminDashboard() {
     customers: <CustomersSection orders={orders} />,
     coupons:   <CouponsSection />,
     checkin:   <CheckInSection />,
-    contacts:  <ContactSection />,
+    contacts:  <ContactSection adminToken={adminToken} />,
     blog:      <BlogAdminSection />,
   };
 
