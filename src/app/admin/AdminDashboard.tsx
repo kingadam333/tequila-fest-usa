@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import Image from "next/image";
@@ -11,22 +11,74 @@ import {
   Trash2, Edit2, Eye, AlertCircle, ChevronDown, BarChart2, Settings,
 } from "lucide-react";
 
-// ─── Mock data ───────────────────────────────────────────────────────────────
-const STATS = {
-  totalRevenue: 14850,
-  ticketsSold: 247,
-  ordersToday: 12,
-  checkedIn: 0,
-};
+// ─── Types ────────────────────────────────────────────────────────────────────
+interface Order {
+  id: string;
+  orderNumber: string;
+  customer: string;
+  email: string;
+  event: string;
+  ticketType: string;
+  quantity: number;
+  total: number;
+  status: string;
+  date: string;
+  paymentIntentId: string | null;
+  receiptUrl: string | null;
+}
 
-const MOCK_ORDERS = [
-  { id: "TF-2026-00247", customer: "Sarah Mitchell", email: "sarah@email.com", event: "Cincinnati", type: "All Inclusive", qty: 2, total: 110, status: "confirmed", date: "2026-06-05", paymentId: "pi_3abc" },
-  { id: "TF-2026-00246", customer: "Marcus Johnson", email: "marcus@email.com", event: "Cincinnati", type: "VIP", qty: 1, total: 125, status: "confirmed", date: "2026-06-05", paymentId: "pi_3def" },
-  { id: "TF-2026-00245", customer: "Emily Torres", email: "emily@email.com", event: "Cleveland", type: "All Inclusive", qty: 4, total: 220, status: "confirmed", date: "2026-06-04", paymentId: "pi_3ghi" },
-  { id: "TF-2026-00244", customer: "David Park", email: "david@email.com", event: "Cincinnati", type: "GA Entry", qty: 2, total: 10, status: "confirmed", date: "2026-06-04", paymentId: "pi_3jkl" },
-  { id: "TF-2026-00243", customer: "Lisa Chen", email: "lisa@email.com", event: "Columbus", type: "All Inclusive", qty: 1, total: 55, status: "refunded", date: "2026-06-03", paymentId: "pi_3mno" },
-  { id: "TF-2026-00242", customer: "James Williams", email: "james@email.com", event: "Phoenix", type: "VIP", qty: 2, total: 250, status: "confirmed", date: "2026-06-03", paymentId: "pi_3pqr" },
-];
+interface StatsData {
+  totalRevenue: number;
+  totalTickets: number;
+  totalOrders: number;
+  ordersToday: number;
+  byCity: Record<string, { revenue: number; tickets: number }>;
+}
+
+// ─── Data hook ────────────────────────────────────────────────────────────────
+function useAdminData(adminToken: string) {
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [stats, setStats] = useState<StatsData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const headers = { "x-admin-token": adminToken };
+
+  const fetchAll = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const [ordersRes, statsRes] = await Promise.all([
+        fetch("/api/admin/orders", { headers }),
+        fetch("/api/admin/stats", { headers }),
+      ]);
+
+      if (ordersRes.status === 401 || statsRes.status === 401) {
+        setError("unauthorized");
+        setLoading(false);
+        return;
+      }
+
+      const [ordersData, statsData] = await Promise.all([
+        ordersRes.json(),
+        statsRes.json(),
+      ]);
+
+      setOrders(ordersData.orders || []);
+      setStats(statsData);
+    } catch {
+      setError("Failed to load data");
+    } finally {
+      setLoading(false);
+    }
+  }, [adminToken]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (adminToken) fetchAll();
+  }, [adminToken, fetchAll]);
+
+  return { orders, stats, loading, error, refetch: fetchAll };
+}
 
 const MOCK_EVENTS = [
   { id: 1, city: "Cincinnati", date: "June 13, 2026", venue: "Fountain Square", capacity: 500, sold: 247, status: "on_sale", color: "#F5A623" },
@@ -91,35 +143,44 @@ function StatusBadge({ status }: { status: string }) {
 
 // ─── Sections ────────────────────────────────────────────────────────────────
 
-function OverviewSection() {
+function OverviewSection({ stats, orders, loading }: { stats: StatsData | null; orders: Order[]; loading: boolean }) {
   return (
     <div className="space-y-8">
       <div>
         <h2 className="font-display text-white text-3xl mb-6">OVERVIEW</h2>
+        {loading ? (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {[...Array(4)].map((_, i) => <div key={i} className="h-28 bg-white/5 rounded-2xl animate-pulse" />)}
+          </div>
+        ) : (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard icon={<DollarSign size={18} />} label="Total Revenue" value={`$${STATS.totalRevenue.toLocaleString()}`} sub="All time" color="#F5A623" />
-          <StatCard icon={<Ticket size={18} />} label="Tickets Sold" value={STATS.ticketsSold.toString()} sub="Across all cities" color="#00A878" />
-          <StatCard icon={<TrendingUp size={18} />} label="Orders Today" value={STATS.ordersToday.toString()} color="#7B2FBE" />
-          <StatCard icon={<CheckCircle size={18} />} label="Checked In" value={STATS.checkedIn.toString()} sub="Cincinnati event" color="#C8102E" />
+          <StatCard icon={<DollarSign size={18} />} label="Total Revenue" value={`$${(stats?.totalRevenue || 0).toLocaleString()}`} sub="All time" color="#F5A623" />
+          <StatCard icon={<Ticket size={18} />} label="Tickets Sold" value={(stats?.totalTickets || 0).toString()} sub="Across all cities" color="#00A878" />
+          <StatCard icon={<TrendingUp size={18} />} label="Orders Today" value={(stats?.ordersToday || 0).toString()} color="#7B2FBE" />
+          <StatCard icon={<CheckCircle size={18} />} label="Total Orders" value={(stats?.totalOrders || 0).toString()} sub="All time" color="#C8102E" />
         </div>
+        )}
       </div>
 
       {/* Event capacity bars */}
       <div>
         <h3 className="text-white/50 text-xs font-bold uppercase tracking-wider mb-4">Ticket Sales by City</h3>
         <div className="space-y-3">
-          {MOCK_EVENTS.map(ev => (
+          {MOCK_EVENTS.map(ev => {
+            const cityStats = stats?.byCity?.[ev.city];
+            const sold = cityStats?.tickets ?? ev.sold;
+            return (
             <div key={ev.id} className="bg-white/[0.03] border border-white/10 rounded-xl p-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="font-display text-lg" style={{ color: ev.color }}>{ev.city}</span>
-                <span className="text-white/50 text-sm">{ev.sold} / {ev.capacity} sold</span>
+                <span className="text-white/50 text-sm">{sold} / {ev.capacity} sold</span>
               </div>
               <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-                <div className="h-full rounded-full transition-all duration-500" style={{ width: `${(ev.sold / ev.capacity) * 100}%`, background: ev.color }} />
+                <div className="h-full rounded-full transition-all duration-500" style={{ width: `${Math.min((sold / ev.capacity) * 100, 100)}%`, background: ev.color }} />
               </div>
-              <p className="text-white/30 text-xs mt-1">{Math.round((ev.sold / ev.capacity) * 100)}% capacity · {ev.date}</p>
+              <p className="text-white/30 text-xs mt-1">{Math.round((sold / ev.capacity) * 100)}% capacity · {ev.date}</p>
             </div>
-          ))}
+          );})}
         </div>
       </div>
 
@@ -127,11 +188,11 @@ function OverviewSection() {
       <div>
         <h3 className="text-white/50 text-xs font-bold uppercase tracking-wider mb-4">Recent Orders</h3>
         <div className="space-y-2">
-          {MOCK_ORDERS.slice(0, 5).map(order => (
+          {orders.slice(0, 5).map(order => (
             <div key={order.id} className="flex items-center justify-between bg-white/[0.03] border border-white/10 rounded-xl px-4 py-3">
               <div>
                 <p className="text-white text-sm font-semibold">{order.customer}</p>
-                <p className="text-white/40 text-xs">{order.event} · {order.type}</p>
+                <p className="text-white/40 text-xs">{order.event} · {order.ticketType}</p>
               </div>
               <div className="flex items-center gap-3">
                 <StatusBadge status={order.status} />
@@ -139,23 +200,51 @@ function OverviewSection() {
               </div>
             </div>
           ))}
+          {orders.length === 0 && !loading && (
+            <p className="text-white/30 text-sm text-center py-4">No orders yet</p>
+          )}
         </div>
       </div>
     </div>
   );
 }
 
-function OrdersSection() {
+function OrdersSection({ orders, loading, adminToken, onRefetch }: { orders: Order[]; loading: boolean; adminToken: string; onRefetch: () => void }) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
+  const [refunding, setRefunding] = useState<string | null>(null);
 
-  const filtered = MOCK_ORDERS.filter(o => {
+  const filtered = orders.filter(o => {
     const matchSearch = o.customer.toLowerCase().includes(search.toLowerCase()) ||
       o.id.toLowerCase().includes(search.toLowerCase()) ||
       o.email.toLowerCase().includes(search.toLowerCase());
     const matchFilter = filter === "all" || o.status === filter;
     return matchSearch && matchFilter;
   });
+
+  const handleRefund = async (order: Order) => {
+    if (!order.paymentIntentId) return alert("No payment intent found for this order.");
+    if (!confirm(`Refund $${order.total} to ${order.customer}?`)) return;
+    setRefunding(order.id);
+    try {
+      const res = await fetch("/api/admin/refund", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-token": adminToken },
+        body: JSON.stringify({ paymentIntentId: order.paymentIntentId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert("Refund issued successfully.");
+        onRefetch();
+      } else {
+        alert(`Refund failed: ${data.error}`);
+      }
+    } catch {
+      alert("Network error. Please try again.");
+    } finally {
+      setRefunding(null);
+    }
+  };
 
   return (
     <div>
@@ -181,6 +270,9 @@ function OrdersSection() {
         ))}
       </div>
 
+      {loading ? (
+        <div className="space-y-3">{[...Array(5)].map((_, i) => <div key={i} className="h-20 bg-white/5 rounded-2xl animate-pulse" />)}</div>
+      ) : (
       <div className="space-y-3">
         {filtered.map(order => (
           <div key={order.id} className="bg-white/[0.03] border border-white/10 rounded-2xl p-4">
@@ -188,25 +280,31 @@ function OrdersSection() {
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1 flex-wrap">
                   <StatusBadge status={order.status} />
-                  <span className="text-white/25 text-xs font-mono">{order.id}</span>
+                  <span className="text-white/25 text-xs font-mono">{order.orderNumber}</span>
                   <span className="text-white/25 text-xs">{order.date}</span>
                 </div>
                 <p className="text-white font-semibold">{order.customer}</p>
-                <p className="text-white/40 text-xs">{order.email} · {order.event} · {order.qty}× {order.type}</p>
+                <p className="text-white/40 text-xs">{order.email} · {order.event} · {order.quantity}× {order.ticketType}</p>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
                 <span className="font-display text-yellow-400 text-xl">${order.total}</span>
+                {order.receiptUrl && (
+                  <a href={order.receiptUrl} target="_blank" rel="noopener noreferrer"
+                    className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-white/40 hover:text-white transition-all cursor-pointer" title="View in Stripe">
+                    <Eye size={13} />
+                  </a>
+                )}
                 <button className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-white/40 hover:text-white transition-all cursor-pointer" title="Resend ticket email">
                   <Send size={13} />
                 </button>
-                <button className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-white/40 hover:text-white transition-all cursor-pointer" title="View QR codes">
-                  <QrCode size={13} />
-                </button>
-                {order.status === "confirmed" && (
-                  <button className="p-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-lg text-red-400 hover:text-red-300 transition-all cursor-pointer" title="Issue refund">
-                    <RefreshCw size={13} />
+                {order.status === "paid" || order.status === "confirmed" ? (
+                  <button
+                    onClick={() => handleRefund(order)}
+                    disabled={refunding === order.id}
+                    className="p-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-lg text-red-400 hover:text-red-300 transition-all cursor-pointer disabled:opacity-50" title="Issue refund">
+                    <RefreshCw size={13} className={refunding === order.id ? "animate-spin" : ""} />
                   </button>
-                )}
+                ) : null}
               </div>
             </div>
           </div>
@@ -215,6 +313,7 @@ function OrdersSection() {
           <p className="text-center text-white/30 py-10">No orders found</p>
         )}
       </div>
+      )}
     </div>
   );
 }
@@ -602,17 +701,31 @@ const NAV_ITEMS = [
 ];
 
 // ─── Admin login gate ─────────────────────────────────────────────────────────
-function AdminLogin({ onLogin }: { onLogin: () => void }) {
+function AdminLogin({ onLogin }: { onLogin: (token: string) => void }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: replace with real admin auth — check against ADMIN_PASSWORD env var via API
-    if (password === "tequila2026" || password === "admin") {
-      onLogin();
-    } else {
-      setError("Incorrect password");
+    setLoading(true);
+    setError("");
+    try {
+      // Verify against real ADMIN_PASSWORD via API
+      const res = await fetch("/api/admin/auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
+      if (res.ok) {
+        onLogin(password);
+      } else {
+        setError("Incorrect password");
+      }
+    } catch {
+      setError("Network error. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -628,9 +741,9 @@ function AdminLogin({ onLogin }: { onLogin: () => void }) {
             <input type="password" value={password} onChange={e => { setPassword(e.target.value); setError(""); }}
               placeholder="Admin password" autoFocus
               className="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-3 text-white placeholder-white/30 text-sm outline-none focus:border-yellow-500/40" />
-            <button type="submit"
-              className="w-full bg-yellow-500 hover:bg-yellow-400 text-black font-bold py-3 rounded-xl transition-all cursor-pointer">
-              ENTER
+            <button type="submit" disabled={loading}
+              className="w-full bg-yellow-500 hover:bg-yellow-400 disabled:opacity-60 text-black font-bold py-3 rounded-xl transition-all cursor-pointer">
+              {loading ? "Checking..." : "ENTER"}
             </button>
           </form>
         </div>
@@ -641,15 +754,22 @@ function AdminLogin({ onLogin }: { onLogin: () => void }) {
 
 // ─── Main dashboard ───────────────────────────────────────────────────────────
 export default function AdminDashboard() {
-  const [authed, setAuthed] = useState(false);
+  const [adminToken, setAdminToken] = useState("");
   const [activeSection, setActiveSection] = useState("overview");
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  if (!authed) return <AdminLogin onLogin={() => setAuthed(true)} />;
+  const { orders, stats, loading, error, refetch } = useAdminData(adminToken);
+
+  // If token was invalidated by API, log out
+  if (error === "unauthorized" && adminToken) {
+    setAdminToken("");
+  }
+
+  if (!adminToken) return <AdminLogin onLogin={(token) => setAdminToken(token)} />;
 
   const SECTION_MAP: Record<string, React.ReactNode> = {
-    overview:  <OverviewSection />,
-    orders:    <OrdersSection />,
+    overview:  <OverviewSection stats={stats} orders={orders} loading={loading} />,
+    orders:    <OrdersSection orders={orders} loading={loading} adminToken={adminToken} onRefetch={refetch} />,
     events:    <EventsSection />,
     customers: <CustomersSection />,
     coupons:   <CouponsSection />,
@@ -693,7 +813,7 @@ export default function AdminDashboard() {
             className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-white/30 hover:text-white hover:bg-white/5 transition-all cursor-pointer">
             <Eye size={15} /> View Site
           </Link>
-          <button onClick={() => setAuthed(false)}
+          <button onClick={() => setAdminToken("")}
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-white/30 hover:text-red-400 hover:bg-red-500/5 transition-all cursor-pointer">
             <LogOut size={15} /> Log Out
           </button>
