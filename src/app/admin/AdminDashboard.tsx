@@ -33,6 +33,8 @@ interface StatsData {
   totalOrders: number;
   ordersToday: number;
   source?: string;
+  totalServiceFees?: number;
+  totalTicketRevenue?: number;
   byCity: Record<string, { revenue: number; tickets: number; byType?: Record<string, number> }>;
 }
 
@@ -136,10 +138,10 @@ function OverviewSection({ stats, orders, loading }: { stats: StatsData | null; 
           </div>
         ) : (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard icon={<DollarSign size={18} />} label="Total Revenue" value={`$${(stats?.totalRevenue || 0).toLocaleString()}`} sub="All time" color="#F5A623" />
+          <StatCard icon={<DollarSign size={18} />} label="Gross Revenue" value={`$${(stats?.totalRevenue || 0).toLocaleString()}`} sub="Tickets + fees" color="#F5A623" />
           <StatCard icon={<Ticket size={18} />} label="Tickets Sold" value={(stats?.totalTickets || 0).toString()} sub="Across all cities" color="#00A878" />
           <StatCard icon={<TrendingUp size={18} />} label="Orders Today" value={(stats?.ordersToday || 0).toString()} color="#7B2FBE" />
-          <StatCard icon={<CheckCircle size={18} />} label="Total Orders" value={(stats?.totalOrders || 0).toString()} sub="All time" color="#C8102E" />
+          <StatCard icon={<CheckCircle size={18} />} label="Service Fees" value={`$${(stats?.totalServiceFees || 0).toFixed(2)}`} sub="Platform + processing" color="#C8102E" />
         </div>
         )}
       </div>

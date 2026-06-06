@@ -6,6 +6,7 @@ import { X, Plus, Minus, User, Mail, Phone, ArrowRight, Loader2, ShoppingCart } 
 import Turnstile from "./Turnstile";
 import type { TicketType } from "@/lib/ticket-config";
 import { TICKET_LABELS } from "@/lib/ticket-config";
+import { calculateFees } from "@/lib/fees";
 
 interface TicketTypeOption {
   key: TicketType;
@@ -66,8 +67,9 @@ export default function TicketCartModal({
       return { ticketType: type as TicketType, quantity: qty, price: tt?.price || 0 };
     });
 
-  const total = cartItems.reduce((s, i) => s + i.price * i.quantity, 0);
+  const subtotal = cartItems.reduce((s, i) => s + i.price * i.quantity, 0);
   const totalTickets = cartItems.reduce((s, i) => s + i.quantity, 0);
+  const fees = totalTickets > 0 ? calculateFees(subtotal, totalTickets) : null;
   const canProceed = totalTickets > 0;
 
   const handleCheckout = async (e: React.FormEvent) => {
@@ -229,7 +231,7 @@ export default function TicketCartModal({
 
           {/* Sticky footer */}
           <div className="flex-shrink-0 border-t border-white/10 p-4">
-            {/* Cart summary */}
+            {/* Cart summary chips */}
             {cartItems.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mb-3">
                 {cartItems.map(item => (
@@ -240,12 +242,38 @@ export default function TicketCartModal({
               </div>
             )}
 
+            {/* Fee breakdown */}
+            {fees && (
+              <div className="space-y-1.5 mb-3 pb-3 border-b border-white/10">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-white/50">Tickets ({totalTickets})</span>
+                  <span className="text-white/70">${fees.subtotal.toFixed(2)}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-white/50">Service Fee</span>
+                    <div className="group relative">
+                      <span className="text-white/20 text-xs cursor-help border border-white/15 rounded-full w-4 h-4 inline-flex items-center justify-center">?</span>
+                      <div className="absolute bottom-6 left-0 w-52 bg-black/90 border border-white/15 rounded-xl p-3 text-xs text-white/60 hidden group-hover:block z-10 pointer-events-none">
+                        <p className="mb-1">Platform fee: ${fees.platformFee.toFixed(2)} (${fees.platformFee / totalTickets}/ticket)</p>
+                        <p>Processing: ${fees.stripeFee.toFixed(2)} (2.9% + $0.30)</p>
+                      </div>
+                    </div>
+                  </div>
+                  <span className="text-white/70">${fees.serviceFee.toFixed(2)}</span>
+                </div>
+              </div>
+            )}
+
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2 text-white/40 text-sm">
                 <ShoppingCart size={14} />
                 <span>{totalTickets} ticket{totalTickets !== 1 ? "s" : ""}</span>
               </div>
-              <p className="font-display text-white text-2xl">${total}</p>
+              <div className="text-right">
+                <p className="font-display text-white text-2xl">${fees ? fees.total.toFixed(2) : "0.00"}</p>
+                <p className="text-white/20 text-xs">total incl. fees</p>
+              </div>
             </div>
 
             {step === "cart" ? (
@@ -261,7 +289,7 @@ export default function TicketCartModal({
                 style={{ background: eventColor, color: "#0d0500" }}>
                 {loading
                   ? <><Loader2 size={18} className="animate-spin" /> Redirecting...</>
-                  : <>Pay ${total} <ArrowRight size={18} /></>}
+                  : <>Pay ${fees ? fees.total.toFixed(2) : "0.00"} <ArrowRight size={18} /></>}
               </button>
             )}
           </div>

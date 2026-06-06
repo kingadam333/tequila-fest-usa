@@ -46,6 +46,19 @@ async function getSupabaseStats() {
     byCity[city].byType[type] = (byCity[city].byType[type] || 0) + o.quantity;
   }
 
+  // Fee analytics
+  const { calculateFees } = await import("@/lib/fees");
+  let totalServiceFees = 0;
+  let totalTicketRevenue = 0;
+  for (const o of rows) {
+    const qty = Number(o.quantity);
+    const total = Number(o.total);
+    // Estimate ticket subtotal (total includes fees for new orders, may not for migrated ones)
+    const f = calculateFees(total, qty);
+    totalServiceFees += f.serviceFee;
+    totalTicketRevenue += f.subtotal;
+  }
+
   return NextResponse.json({
     source: "supabase",
     totalRevenue,
@@ -53,6 +66,8 @@ async function getSupabaseStats() {
     totalOrders: rows.length,
     ordersToday,
     byCity,
+    totalServiceFees: parseFloat(totalServiceFees.toFixed(2)),
+    totalTicketRevenue: parseFloat(totalTicketRevenue.toFixed(2)),
   });
 }
 

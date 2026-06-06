@@ -4,6 +4,7 @@ import { TICKET_PRICES, TICKET_LABELS, type TicketType } from "@/lib/ticket-conf
 import { getEvent } from "@/lib/events";
 import { verifyTurnstile } from "@/lib/turnstile";
 import { supabaseAdmin } from "@/lib/supabase";
+import { calculateFees } from "@/lib/fees";
 
 interface CartItem { ticketType: TicketType; quantity: number; price: number; }
 
@@ -43,20 +44,37 @@ export async function POST(req: NextRequest) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://tequila-fest-usa.vercel.app";
   const orderNumber = `TF-${Date.now().toString(36).toUpperCase()}`;
   const totalQty = cartItems.reduce((s, i) => s + i.quantity, 0);
-  const totalAmount = cartItems.reduce((s, i) => s + i.price * i.quantity, 0);
+  const totalAmount = cartItems.reduce((s, i) => s + i.price * i.quantity, 0); // tickets only, fees added below
 
-  // Build Stripe line items from cart
-  const stripeLineItems = cartItems.map(item => ({
-    price_data: {
-      currency: "usd",
-      unit_amount: TICKET_PRICES[item.ticketType],
-      product_data: {
-        name: `${TICKET_LABELS[item.ticketType]} — Tequila Fest ${event.city} 2026`,
-        description: `${event.date} · ${event.venue}, ${event.venueDetail}`,
+  // Calculate service fee
+  const fees = calculateFees(totalAmount, totalQty);
+  const serviceFeeCents = Math.round(fees.serviceFee * 100);
+
+  // Build Stripe line items from cart + service fee
+  const stripeLineItems = [
+    ...cartItems.map(item => ({
+      price_data: {
+        currency: "usd",
+        unit_amount: TICKET_PRICES[item.ticketType],
+        product_data: {
+          name: `${TICKET_LABELS[item.ticketType]} — Tequila Fest ${event.city} 2026`,
+          description: `${event.date} · ${event.venue}, ${event.venueDetail}`,
+        },
       },
+      quantity: item.quantity,
+    })),
+    {
+      price_data: {
+        currency: "usd",
+        unit_amount: serviceFeeCents,
+        product_data: {
+          name: "Service Fee",
+          description: `$3.00/ticket platform fee + 2.9% + $0.30 processing`,
+        },
+      },
+      quantity: 1,
     },
-    quantity: item.quantity,
-  }));
+  ];
 
   // Build ticket summary for metadata
   const ticketSummary = cartItems.map(i => `${i.quantity}x ${TICKET_LABELS[i.ticketType]}`).join(", ");
@@ -82,6 +100,9 @@ export async function POST(req: NextRequest) {
       customerPhone: phone || "",
       orderNumber,
       cartItems: JSON.stringify(cartItems.map(i => ({ type: i.ticketType, qty: i.quantity }))),
+      serviceFee: fees.serviceFee.toFixed(2),
+      platformFee: fees.platformFee.toFixed(2),
+      ticketSubtotal: totalAmount.toFixed(2),
     },
     payment_intent_data: {
       description: `Tequila Fest ${event.city} 2026 — ${ticketSummary}`,
