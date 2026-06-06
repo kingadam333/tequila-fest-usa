@@ -118,6 +118,90 @@ export function ticketConfirmationHtml({
 </html>`;
 }
 
+// ─── Generate readable password ──────────────────────────────────────────────
+export function generatePassword(): string {
+  const words = ["Agave","Blanco","Fiesta","Tequila","Mezcal","Jalisco","Ambar","Reposado","Anejo","Sauza","Patron","Ocho","Clase","Fortaleza"];
+  const w1 = words[Math.floor(Math.random() * words.length)];
+  const w2 = words[Math.floor(Math.random() * words.length)];
+  const num = Math.floor(Math.random() * 900) + 100;
+  return `${w1}${w2}${num}`;
+}
+
+// ─── Welcome Email (auto-created account after ticket purchase) ───────────────
+export function welcomeAccountHtml({
+  firstName,
+  email,
+  password,
+  orderNumber,
+  eventCity,
+  accountUrl,
+}: {
+  firstName: string;
+  email: string;
+  password: string;
+  orderNumber: string;
+  eventCity: string;
+  accountUrl: string;
+}) {
+  return `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#0d0500;font-family:'Segoe UI',Arial,sans-serif;color:#fff8f0">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#0d0500;padding:40px 20px">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%">
+        <tr><td style="text-align:center;padding-bottom:32px">
+          <p style="font-family:Arial;font-size:36px;font-weight:900;letter-spacing:4px;color:#F5A623;margin:0">TEQUILA FEST USA</p>
+        </td></tr>
+
+        <tr><td style="background:rgba(245,166,35,0.08);border:1px solid rgba(245,166,35,0.2);border-radius:16px;padding:32px;text-align:center;margin-bottom:24px">
+          <p style="font-size:40px;margin:0 0 12px">🥃</p>
+          <p style="font-size:24px;font-weight:900;color:#F5A623;letter-spacing:2px;margin:0">YOUR ACCOUNT IS READY</p>
+          <p style="color:rgba(255,248,240,0.6);margin:8px 0 0">Welcome to Tequila Fest USA, ${firstName}!</p>
+        </td></tr>
+
+        <tr><td style="height:24px"></td></tr>
+
+        <tr><td style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:24px">
+          <p style="color:rgba(255,248,240,0.4);font-size:11px;font-weight:700;letter-spacing:3px;text-transform:uppercase;margin:0 0 16px">Your Login Details</p>
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr><td style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.06)">
+              <p style="margin:0;color:rgba(255,248,240,0.4);font-size:12px;text-transform:uppercase;letter-spacing:1px">Email</p>
+              <p style="margin:4px 0 0;color:#fff8f0;font-size:15px;font-weight:600">${email}</p>
+            </td></tr>
+            <tr><td style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.06)">
+              <p style="margin:0;color:rgba(255,248,240,0.4);font-size:12px;text-transform:uppercase;letter-spacing:1px">Temporary Password</p>
+              <p style="margin:4px 0 0;color:#F5A623;font-size:22px;font-weight:900;letter-spacing:2px;font-family:monospace">${password}</p>
+              <p style="margin:4px 0 0;color:rgba(255,248,240,0.3);font-size:11px">You can change this in your account settings</p>
+            </td></tr>
+            <tr><td style="padding:10px 0">
+              <p style="margin:0;color:rgba(255,248,240,0.4);font-size:12px;text-transform:uppercase;letter-spacing:1px">Order</p>
+              <p style="margin:4px 0 0;color:#fff8f0;font-size:15px;font-weight:600">${orderNumber} — Tequila Fest ${eventCity}</p>
+            </td></tr>
+          </table>
+        </td></tr>
+
+        <tr><td style="height:24px"></td></tr>
+
+        <tr><td style="text-align:center">
+          <a href="${accountUrl}" style="display:inline-block;background:#F5A623;color:#0d0500;font-weight:900;font-size:18px;letter-spacing:2px;text-transform:uppercase;text-decoration:none;padding:18px 48px;border-radius:50px">
+            VIEW MY TICKETS
+          </a>
+          <p style="color:rgba(255,248,240,0.25);font-size:12px;margin-top:16px">Or go to: ${accountUrl}</p>
+        </td></tr>
+
+        <tr><td style="height:40px"></td></tr>
+        <tr><td style="text-align:center;border-top:1px solid rgba(255,255,255,0.08);padding-top:24px">
+          <p style="color:rgba(255,248,240,0.25);font-size:12px;margin:0">Tequila Fest USA · tequilafestusa.com</p>
+          <p style="color:rgba(255,248,240,0.15);font-size:11px;margin:8px 0 0">Must be 21+ · Tickets are non-transferable</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+}
+
 // ─── Password Reset Email ─────────────────────────────────────────────────────
 export function passwordResetHtml({ resetUrl }: { resetUrl: string }) {
   return `<!DOCTYPE html>

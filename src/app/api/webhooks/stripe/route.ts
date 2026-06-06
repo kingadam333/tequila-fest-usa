@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
-import { resend, FROM_EMAIL, ticketConfirmationHtml } from "@/lib/resend";
+import { resend, FROM_EMAIL, ticketConfirmationHtml, welcomeAccountHtml, generatePassword } from "@/lib/resend";
 import { getEvent } from "@/lib/events";
 import { TICKET_LABELS } from "@/lib/stripe";
 import type Stripe from "stripe";
@@ -55,13 +55,13 @@ export async function POST(req: NextRequest) {
 }
 
 async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
-  const { eventSlug, ticketType, quantity, eventCity } = session.metadata || {};
+  const { eventSlug, ticketType, quantity, eventCity, customerName: metaName, customerPhone } = session.metadata || {};
   const customerEmail = session.customer_email || session.customer_details?.email || "";
-  const customerName = session.customer_details?.name || "Guest";
+  const customerName = metaName || session.customer_details?.name || "Guest";
   const firstName = customerName.split(" ")[0] || "there";
   const amountTotal = (session.amount_total || 0) / 100;
   const qty = parseInt(quantity || "1");
-  const orderNumber = `TF-${new Date().getFullYear()}-${session.id.slice(-6).toUpperCase()}`;
+  const orderNumber = session.metadata?.orderNumber || `TF-${new Date().getFullYear()}-${session.id.slice(-6).toUpperCase()}`;
 
   console.log("✅ Payment completed:", { sessionId: session.id, customerEmail, eventSlug, ticketType, qty, amountTotal });
 
@@ -115,9 +115,73 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
         if (ticketError) console.error("Ticket instances error:", ticketError);
 
         // Award loyalty points (100 per ticket)
+        // ── Auto-create Supabase Auth account ─────────────────────
         if (customerEmail) {
-          // Find or note customer for points (full auth needed for this)
-          console.log(`💰 ${qty * 100} loyalty points to award to ${customerEmail}`);
+          try {
+            const { createClient } = await import("@supabase/supabase-js");
+            const adminAuth = createClient(
+              process.env.NEXT_PUBLIC_SUPABASE_URL!,
+              process.env.SUPABASE_SERVICE_ROLE_KEY!,
+              { auth: { autoRefreshToken: false, persistSession: false } }
+            );
+
+            // Check if auth user already exists
+            const { data: existingUsers } = await adminAuth.auth.admin.listUsers();
+            const alreadyExists = existingUsers?.users?.some(u => u.email === customerEmail);
+
+            if (!alreadyExists) {
+              const password = generatePassword();
+              const nameParts = customerName.split(" ");
+              const { data: authUser, error: authErr } = await adminAuth.auth.admin.createUser({
+                email: customerEmail,
+                password,
+                email_confirm: true,
+                user_metadata: {
+                  first_name: nameParts[0] || firstName,
+                  last_name: nameParts.slice(1).join(" ") || "",
+                  phone: customerPhone || "",
+                },
+              });
+
+              if (!authErr && authUser?.user) {
+                // Update customer_accounts with auth user id
+                await db.from("customer_accounts").upsert({
+                  id: authUser.user.id,
+                  email: customerEmail,
+                  first_name: nameParts[0] || firstName,
+                  last_name: nameParts.slice(1).join(" ") || null,
+                  phone: customerPhone || null,
+                }, { onConflict: "email" });
+
+                // Send welcome email with password
+                const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://tequila-fest-usa.vercel.app";
+                await resend.emails.send({
+                  from: FROM_EMAIL,
+                  to: customerEmail,
+                  subject: `Your Tequila Fest USA account is ready 🥃`,
+                  html: welcomeAccountHtml({
+                    firstName: nameParts[0] || firstName,
+                    email: customerEmail,
+                    password,
+                    orderNumber,
+                    eventCity: eventCity || event?.city || "",
+                    accountUrl: `${appUrl}/account`,
+                  }),
+                });
+                console.log(`🔑 Account created and welcome email sent to ${customerEmail}`);
+              }
+            } else {
+              console.log(`👤 Account already exists for ${customerEmail}`);
+              // Update customer_accounts with latest order data
+              await db.from("customer_accounts").upsert({
+                email: customerEmail,
+                first_name: customerName.split(" ")[0] || firstName,
+                phone: customerPhone || null,
+              }, { onConflict: "email", ignoreDuplicates: true });
+            }
+          } catch (authErr) {
+            console.error("Auth account creation error:", authErr);
+          }
         }
 
         console.log(`📋 Order ${orderNumber} saved to Supabase with ${qty} ticket(s)`);

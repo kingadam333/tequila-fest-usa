@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
-import { MapPin, Calendar, Clock, Ticket, ArrowLeft, Star, Loader2 } from "lucide-react";
+import { MapPin, Calendar, Clock, Ticket, ArrowLeft, Star } from "lucide-react";
 import { PRICING } from "@/lib/events";
 import type { EventData } from "@/lib/events";
 import type { TicketType } from "@/lib/stripe";
@@ -12,6 +12,8 @@ import Navbar from "@/components/Navbar";
 import OfficialBanner from "@/components/OfficialBanner";
 import Footer from "@/components/Footer";
 import Confetti from "@/components/Confetti";
+import PreCheckoutModal from "@/components/PreCheckoutModal";
+import { TICKET_LABELS } from "@/lib/stripe";
 
 function Countdown({ dateISO }: { dateISO: string }) {
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
@@ -70,46 +72,38 @@ const VIP_PERKS = [
 ];
 
 function CheckoutButton({
-  eventSlug, ticketType, quantity = 1, children, className, style,
+  eventSlug, eventCity, ticketType, price, quantity = 1, children, className, style,
 }: {
   eventSlug: string;
+  eventCity: string;
   ticketType: TicketType;
+  price: number;
   quantity?: number;
   children: React.ReactNode;
   className?: string;
   style?: React.CSSProperties;
 }) {
-  const [loading, setLoading] = useState(false);
-
-  const handleClick = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ eventSlug, ticketType, quantity }),
-      });
-      const data = await res.json();
-      if (data.url) {
-        window.location.href = data.url;
-      } else {
-        alert(data.error || "Something went wrong. Please try again.");
-        setLoading(false);
-      }
-    } catch {
-      alert("Network error. Please try again.");
-      setLoading(false);
-    }
-  };
+  const [showModal, setShowModal] = useState(false);
 
   return (
-    <button onClick={handleClick} disabled={loading} className={`${className} disabled:opacity-70 disabled:cursor-not-allowed`} style={style}>
-      {loading ? (
-        <span className="flex items-center justify-center gap-2">
-          <Loader2 size={16} className="animate-spin" /> Redirecting...
-        </span>
-      ) : children}
-    </button>
+    <>
+      <button onClick={() => setShowModal(true)}
+        className={`${className} disabled:opacity-70 disabled:cursor-not-allowed`} style={style}>
+        {children}
+      </button>
+      {showModal && (
+        <PreCheckoutModal
+          eventSlug={eventSlug}
+          eventCity={eventCity}
+          ticketType={ticketType}
+          ticketLabel={TICKET_LABELS[ticketType] || ticketType}
+          price={price}
+          quantity={quantity}
+          color="#F5A623"
+          onClose={() => setShowModal(false)}
+        />
+      )}
+    </>
   );
 }
 
@@ -277,6 +271,8 @@ export default function EventPage({ event }: { event: EventData }) {
                     ) : tier.available ? (
                       <CheckoutButton
                         eventSlug={event.slug}
+                        eventCity={event.city}
+                        price={tier.price}
                         ticketType={ticketTypeKey}
                         className="mt-auto w-full text-center font-bold text-base py-3 rounded-full transition-all duration-200 hover:scale-105"
                         style={highlight ? { background: event.color, color: "#0d0500" } : { background: "rgba(255,255,255,0.1)", color: "white" }}
@@ -343,7 +339,9 @@ export default function EventPage({ event }: { event: EventData }) {
 
                   <CheckoutButton
                     eventSlug={event.slug}
+                    eventCity={event.city}
                     ticketType="vip"
+                    price={PRICING.vip.price}
                     className="mt-auto w-full text-center font-bold text-lg py-4 rounded-full transition-all duration-200 hover:scale-105"
                     style={{ background: "linear-gradient(135deg, #888, #d4d4d4, #fff, #c0c0c0)", color: "#0d0500" }}
                   >
@@ -384,6 +382,8 @@ export default function EventPage({ event }: { event: EventData }) {
                     </ul>
                     <CheckoutButton
                       eventSlug={event.slug}
+                      eventCity={event.city}
+                      price={5}
                       ticketType="ga"
                       className="w-full text-center font-bold text-base py-3 rounded-full border border-white/20 hover:border-white/40 text-white/70 hover:text-white transition-all duration-200"
                     >
@@ -454,6 +454,8 @@ export default function EventPage({ event }: { event: EventData }) {
             </h2>
             <CheckoutButton
               eventSlug={event.slug}
+              eventCity={event.city}
+              price={PRICING.earlyBird.price}
               ticketType="earlyBird"
               className="animate-pulse-glow inline-flex items-center justify-center gap-3 bg-yellow-500 hover:bg-yellow-400 text-black font-bold text-xl px-12 py-5 rounded-full transition-all duration-200 hover:scale-105"
             >
