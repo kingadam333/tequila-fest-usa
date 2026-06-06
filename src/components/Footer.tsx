@@ -46,7 +46,8 @@ export default function Footer() {
             <p className="text-white/20 text-xs font-bold tracking-[0.2em] uppercase mb-3">Links</p>
             <ul className="space-y-1.5">
               {[
-                { label: "Get Tickets", href: "#events" },
+                { label: "Get Tickets", href: "/#events" },
+                { label: "Earn Points", href: "/earn-points" },
                 { label: "Contact", href: "mailto:info@tequilafestusa.com" },
                 { label: "Become an Affiliate", href: "/affiliates" },
                 { label: "Sponsor Opportunities", href: "/contact" },

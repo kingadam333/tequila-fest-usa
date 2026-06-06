@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
+import { resend, FROM_EMAIL, ticketConfirmationHtml } from "@/lib/resend";
+import { getEvent } from "@/lib/events";
+import { TICKET_LABELS } from "@/lib/stripe";
 import type Stripe from "stripe";
 
 // Stripe requires the raw body — disable body parsing
@@ -57,21 +60,45 @@ export async function POST(req: NextRequest) {
 
 async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
   const { eventSlug, ticketType, quantity, eventCity } = session.metadata || {};
+  const customerEmail = session.customer_email || session.customer_details?.email;
+  const customerName = session.customer_details?.name || "Guest";
+  const firstName = customerName.split(" ")[0] || "there";
+  const amountTotal = (session.amount_total || 0) / 100;
+  const qty = parseInt(quantity || "1");
+  const orderNumber = session.id.slice(-8).toUpperCase();
 
-  console.log("✅ Payment completed:", {
-    sessionId: session.id,
-    customer: session.customer_email,
-    eventSlug,
-    ticketType,
-    quantity,
-    eventCity,
-    amountTotal: session.amount_total,
-  });
+  console.log("✅ Payment completed:", { sessionId: session.id, customerEmail, eventSlug, ticketType, qty, amountTotal });
 
-  // TODO: wire to Railway backend to:
-  // 1. Create ticketOrder record in DB
-  // 2. Generate ticketInstances with unique QR codes
-  // 3. Send confirmation email via Resend
-  // 4. Create/link customerAccount
-  // 5. Add to Brevo marketing list
+  // Send confirmation email via Resend
+  if (customerEmail) {
+    try {
+      const event = eventSlug ? getEvent(eventSlug) : null;
+      const ticketLabel = TICKET_LABELS[ticketType as keyof typeof TICKET_LABELS] || ticketType || "All Inclusive";
+
+      await resend.emails.send({
+        from: FROM_EMAIL,
+        to: customerEmail,
+        subject: `🥃 You're in! Tequila Fest ${eventCity || ""} — Order Confirmed`,
+        html: ticketConfirmationHtml({
+          firstName,
+          eventCity: eventCity || "USA",
+          eventDate: event?.date || "2026",
+          eventVenue: event ? `${event.venue}, ${event.venueDetail}` : "",
+          ticketType: ticketLabel,
+          quantity: qty,
+          total: amountTotal,
+          orderNumber,
+        }),
+      });
+      console.log("✉️ Confirmation email sent to", customerEmail);
+    } catch (emailErr) {
+      console.error("Failed to send confirmation email:", emailErr);
+    }
+  }
+
+  // TODO: when Railway backend is live:
+  // 1. POST to backend to create ticketOrder + ticketInstances in DB
+  // 2. Generate QR codes and send ticket email
+  // 3. Create/link customerAccount
+  // 4. Add to Brevo marketing list
 }
