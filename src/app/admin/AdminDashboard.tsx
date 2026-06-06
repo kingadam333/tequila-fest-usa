@@ -313,57 +313,328 @@ function OrdersSection({ orders, loading, adminToken, onRefetch }: { orders: Ord
   );
 }
 
-function EventsSection() {
+interface TicketType {
+  id: string;
+  name: string;
+  price: number;
+  capacity: number;
+  sold_count: number;
+  sort_order: number;
+  is_active: boolean;
+  is_ga: boolean;
+}
+
+interface EventRow {
+  id: string;
+  slug: string;
+  city: string;
+  state: string;
+  title: string;
+  date: string;
+  date_iso: string;
+  time: string;
+  venue: string;
+  venue_detail: string;
+  venue_address: string;
+  description: string;
+  color: string;
+  tag: string;
+  emoji: string;
+  free_parking: boolean;
+  capacity: number;
+  status: string;
+  ticket_types: TicketType[];
+}
+
+const TICKET_TYPE_ORDER = ["Early Bird", "Regular Rate", "Late Registration", "VIP Experience", "GA"];
+
+function EventEditor({ event, adminToken, onSaved }: { event: EventRow; adminToken: string; onSaved: () => void }) {
+  const [ev, setEv] = useState(event);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [newTypeName, setNewTypeName] = useState("");
+  const [newTypePrice, setNewTypePrice] = useState("");
+  const [newTypeCapacity, setNewTypeCapacity] = useState("");
+  const [addingType, setAddingType] = useState(false);
+
+  const field = (k: keyof EventRow) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
+    setEv(prev => ({ ...prev, [k]: e.target.value }));
+
+  const saveEvent = async () => {
+    setSaving(true);
+    const { ticket_types: _, ...payload } = ev;
+    const res = await fetch(`/api/admin/events/${ev.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", "x-admin-token": adminToken },
+      body: JSON.stringify(payload),
+    });
+    setSaving(false);
+    if (res.ok) { setSaved(true); setTimeout(() => setSaved(false), 2000); onSaved(); }
+  };
+
+  const updateTicketType = async (ttId: string, updates: Partial<TicketType>) => {
+    setEv(prev => ({ ...prev, ticket_types: prev.ticket_types.map(t => t.id === ttId ? { ...t, ...updates } : t) }));
+    await fetch(`/api/admin/ticket-types/${ttId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", "x-admin-token": adminToken },
+      body: JSON.stringify(updates),
+    });
+  };
+
+  const deleteTicketType = async (ttId: string) => {
+    if (!confirm("Delete this ticket type?")) return;
+    setEv(prev => ({ ...prev, ticket_types: prev.ticket_types.filter(t => t.id !== ttId) }));
+    await fetch(`/api/admin/ticket-types/${ttId}`, { method: "DELETE", headers: { "x-admin-token": adminToken } });
+  };
+
+  const addTicketType = async () => {
+    if (!newTypeName || !newTypePrice) return;
+    setAddingType(true);
+    const res = await fetch("/api/admin/ticket-types", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-admin-token": adminToken },
+      body: JSON.stringify({
+        event_id: ev.id, name: newTypeName,
+        price: parseFloat(newTypePrice),
+        capacity: parseInt(newTypeCapacity) || 300,
+        sort_order: ev.ticket_types.length + 1,
+      }),
+    });
+    const data = await res.json();
+    if (data.ticketType) {
+      setEv(prev => ({ ...prev, ticket_types: [...prev.ticket_types, data.ticketType] }));
+      setNewTypeName(""); setNewTypePrice(""); setNewTypeCapacity("");
+    }
+    setAddingType(false);
+  };
+
+  const sortedTypes = [...ev.ticket_types].sort((a, b) => {
+    const ai = TICKET_TYPE_ORDER.indexOf(a.name);
+    const bi = TICKET_TYPE_ORDER.indexOf(b.name);
+    return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+  });
+
+  return (
+    <div className="space-y-6">
+      {/* Event Details */}
+      <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-5">
+        <h3 className="text-white font-bold mb-4 flex items-center gap-2">
+          <span style={{ color: ev.color }}>{ev.emoji}</span> Event Details
+        </h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {[
+            { label: "City", key: "city" as const },
+            { label: "State", key: "state" as const },
+            { label: "Date (display)", key: "date" as const },
+            { label: "Time", key: "time" as const },
+            { label: "Venue", key: "venue" as const },
+            { label: "Venue Detail", key: "venue_detail" as const },
+            { label: "Address", key: "venue_address" as const },
+            { label: "Tag", key: "tag" as const },
+          ].map(f => (
+            <div key={f.key}>
+              <label className="text-white/40 text-xs uppercase tracking-wider block mb-1">{f.label}</label>
+              <input value={String(ev[f.key] || "")} onChange={field(f.key)}
+                className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-3 py-2.5 text-white text-sm outline-none" />
+            </div>
+          ))}
+          <div className="sm:col-span-2">
+            <label className="text-white/40 text-xs uppercase tracking-wider block mb-1">Description</label>
+            <textarea value={ev.description || ""} onChange={field("description")} rows={3}
+              className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-3 py-2.5 text-white text-sm outline-none resize-none" />
+          </div>
+          <div>
+            <label className="text-white/40 text-xs uppercase tracking-wider block mb-1">Status</label>
+            <select value={ev.status} onChange={field("status")}
+              className="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2.5 text-white text-sm outline-none cursor-pointer appearance-none">
+              {["on_sale","sold_out","draft","cancelled"].map(s => <option key={s} value={s} className="bg-[#0d0500]">{s.replace("_"," ")}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-white/40 text-xs uppercase tracking-wider block mb-1">Total Capacity</label>
+            <input type="number" value={ev.capacity} onChange={e => setEv(p => ({ ...p, capacity: parseInt(e.target.value) || 0 }))}
+              className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-3 py-2.5 text-white text-sm outline-none" />
+          </div>
+          <div className="flex items-center gap-3 pt-2">
+            <label className="text-white text-sm font-medium">Free Parking</label>
+            <button onClick={() => setEv(p => ({ ...p, free_parking: !p.free_parking }))}
+              className={`w-10 h-5 rounded-full transition-all cursor-pointer relative ${ev.free_parking ? "bg-green-500" : "bg-white/20"}`}>
+              <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${ev.free_parking ? "left-5.5 translate-x-0" : "left-0.5"}`} />
+            </button>
+          </div>
+        </div>
+        <button onClick={saveEvent} disabled={saving}
+          className="mt-4 flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-60 text-black font-bold text-sm px-6 py-2.5 rounded-xl transition-all cursor-pointer">
+          {saving ? "Saving..." : saved ? "✓ Saved!" : "Save Event Details"}
+        </button>
+      </div>
+
+      {/* Ticket Types */}
+      <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-5">
+        <h3 className="text-white font-bold mb-4">Ticket Types</h3>
+        <div className="space-y-3 mb-5">
+          {sortedTypes.map(tt => (
+            <div key={tt.id} className={`border rounded-xl p-4 transition-all ${tt.is_active ? "border-white/15 bg-white/[0.02]" : "border-white/5 opacity-50"}`}>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 items-end">
+                <div>
+                  <label className="text-white/40 text-xs uppercase tracking-wider block mb-1">Name</label>
+                  <input value={tt.name}
+                    onChange={e => updateTicketType(tt.id, { name: e.target.value })}
+                    className="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2 text-white text-sm outline-none" />
+                </div>
+                <div>
+                  <label className="text-white/40 text-xs uppercase tracking-wider block mb-1">Price ($)</label>
+                  <input type="number" step="0.01" value={tt.price}
+                    onChange={e => updateTicketType(tt.id, { price: parseFloat(e.target.value) })}
+                    className="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2 text-white text-sm outline-none" />
+                </div>
+                <div>
+                  <label className="text-white/40 text-xs uppercase tracking-wider block mb-1">Capacity</label>
+                  <input type="number" value={tt.capacity}
+                    onChange={e => updateTicketType(tt.id, { capacity: parseInt(e.target.value) })}
+                    className="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2 text-white text-sm outline-none" />
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="text-center">
+                    <p className="text-white/30 text-xs mb-1">Sold</p>
+                    <p className="text-white font-bold">{tt.sold_count}</p>
+                  </div>
+                  <div className="flex flex-col gap-1 ml-auto">
+                    <button onClick={() => updateTicketType(tt.id, { is_active: !tt.is_active })}
+                      className={`text-xs font-bold px-2.5 py-1 rounded-full border cursor-pointer transition-all ${tt.is_active ? "bg-green-500/15 border-green-500/30 text-green-400" : "bg-white/10 border-white/20 text-white/40"}`}>
+                      {tt.is_active ? "Active" : "Off"}
+                    </button>
+                    <button onClick={() => deleteTicketType(tt.id)}
+                      className="p-1 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-lg text-red-400 cursor-pointer transition-all">
+                      <Trash2 size={11} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-2">
+                <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+                  <div className="h-full rounded-full" style={{ width: `${Math.min((tt.sold_count / tt.capacity) * 100, 100)}%`, background: ev.color }} />
+                </div>
+                <p className="text-white/20 text-xs mt-0.5">{tt.sold_count} / {tt.capacity} sold</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Add ticket type */}
+        <div className="border border-dashed border-white/15 rounded-xl p-4">
+          <p className="text-white/40 text-xs uppercase tracking-wider mb-3">Add Ticket Type</p>
+          <div className="grid grid-cols-3 gap-2 mb-3">
+            <input value={newTypeName} onChange={e => setNewTypeName(e.target.value)} placeholder="Name (e.g. Early Bird)"
+              className="bg-white/5 border border-white/15 rounded-xl px-3 py-2 text-white text-sm outline-none placeholder-white/20" />
+            <input type="number" value={newTypePrice} onChange={e => setNewTypePrice(e.target.value)} placeholder="Price ($)"
+              className="bg-white/5 border border-white/15 rounded-xl px-3 py-2 text-white text-sm outline-none placeholder-white/20" />
+            <input type="number" value={newTypeCapacity} onChange={e => setNewTypeCapacity(e.target.value)} placeholder="Capacity"
+              className="bg-white/5 border border-white/15 rounded-xl px-3 py-2 text-white text-sm outline-none placeholder-white/20" />
+          </div>
+          <button onClick={addTicketType} disabled={addingType || !newTypeName || !newTypePrice}
+            className="flex items-center gap-2 bg-white/10 hover:bg-white/15 disabled:opacity-40 border border-white/20 text-white text-sm font-semibold px-4 py-2 rounded-xl transition-all cursor-pointer">
+            <Plus size={13} /> {addingType ? "Adding..." : "Add Ticket Type"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EventsSection({ adminToken, stats }: { adminToken: string; stats: StatsData | null }) {
+  const [events, setEvents] = useState<EventRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  const fetchEvents = async () => {
+    const res = await fetch("/api/admin/events", { headers: { "x-admin-token": adminToken } });
+    const data = await res.json();
+    setEvents(data.events || []);
+    setLoading(false);
+  };
+
+  useEffect(() => { fetchEvents(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (loading) return <div className="space-y-4">{[...Array(4)].map((_, i) => <div key={i} className="h-32 bg-white/5 rounded-2xl animate-pulse" />)}</div>;
+
+  const editing = editingId ? events.find(e => e.id === editingId) : null;
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
         <h2 className="font-display text-white text-3xl">EVENTS</h2>
-      </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        {EVENTS_CONFIG.map(ev => (
-          <div key={ev.id} className="bg-white/[0.03] border border-white/10 rounded-2xl p-6 hover:border-white/20 transition-all">
-            <div className="flex items-start justify-between mb-4">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <StatusBadge status={ev.status} />
-                </div>
-                <h3 className="font-display text-2xl" style={{ color: ev.color }}>{ev.city.toUpperCase()}</h3>
-                <p className="text-white/50 text-sm">{ev.date}</p>
-                <p className="text-white/40 text-xs">{ev.venue}</p>
-              </div>
-              <div className="text-right">
-                <p className="font-display text-white text-3xl">{0}</p>
-                <p className="text-white/30 text-xs">of {ev.capacity} sold</p>
-              </div>
-            </div>
-            <div className="h-2 bg-white/10 rounded-full overflow-hidden mb-4">
-              <div className="h-full rounded-full" style={{ width: `${(0 / ev.capacity) * 100}%`, background: ev.color }} />
-            </div>
-            <div className="flex gap-2">
-              <Link href={`/events/${ev.city.toLowerCase()}`} target="_blank"
-                className="flex-1 flex items-center justify-center gap-1.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white/60 hover:text-white text-xs font-semibold py-2 rounded-xl transition-all cursor-pointer">
-                <Eye size={12} /> View Page
-              </Link>
-              <button className="flex-1 flex items-center justify-center gap-1.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white/60 hover:text-white text-xs font-semibold py-2 rounded-xl transition-all cursor-pointer">
-                <BarChart2 size={12} /> Analytics
-              </button>
-              <button className="flex-1 flex items-center justify-center gap-1.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white/60 hover:text-white text-xs font-semibold py-2 rounded-xl transition-all cursor-pointer">
-                <Download size={12} /> Export
-              </button>
-            </div>
-          </div>
-        ))}
+        {editing && (
+          <button onClick={() => setEditingId(null)}
+            className="flex items-center gap-2 text-white/40 hover:text-white text-sm border border-white/15 px-4 py-2 rounded-xl transition-all cursor-pointer">
+            ← Back to Events
+          </button>
+        )}
       </div>
 
-      <div className="mt-8 bg-yellow-500/10 border border-yellow-500/20 rounded-2xl p-5">
-        <div className="flex items-start gap-3">
-          <AlertCircle size={18} className="text-yellow-400 flex-shrink-0 mt-0.5" />
-          <div>
-            <p className="text-yellow-400 font-semibold text-sm">Cincinnati is in 1 week</p>
-            <p className="text-white/50 text-sm mt-1">Make sure check-in portals are set up and staff have been invited before June 13.</p>
+      {editing ? (
+        <EventEditor event={editing} adminToken={adminToken} onSaved={fetchEvents} />
+      ) : (
+        <>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            {events.map(ev => {
+              const cityStats = stats?.byCity?.[ev.city];
+              const sold = cityStats?.tickets ?? ev.ticket_types.reduce((s, t) => s + t.sold_count, 0);
+              return (
+                <div key={ev.id} className="bg-white/[0.03] border border-white/10 rounded-2xl p-6 hover:border-white/20 transition-all">
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <StatusBadge status={ev.status} />
+                      <h3 className="font-display text-2xl mt-1" style={{ color: ev.color }}>{ev.city.toUpperCase()}</h3>
+                      <p className="text-white/50 text-sm">{ev.date} · {ev.time}</p>
+                      <p className="text-white/40 text-xs">{ev.venue}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-display text-white text-3xl">{sold}</p>
+                      <p className="text-white/30 text-xs">of {ev.capacity} sold</p>
+                    </div>
+                  </div>
+                  <div className="h-2 bg-white/10 rounded-full overflow-hidden mb-3">
+                    <div className="h-full rounded-full transition-all" style={{ width: `${Math.min((sold / ev.capacity) * 100, 100)}%`, background: ev.color }} />
+                  </div>
+                  {/* Ticket type summary */}
+                  <div className="flex flex-wrap gap-1.5 mb-4">
+                    {[...ev.ticket_types].sort((a, b) => a.sort_order - b.sort_order).map(tt => (
+                      <span key={tt.id} className="text-xs px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-white/50">
+                        {tt.name}: <span className="text-white/80 font-semibold">{tt.sold_count}</span>
+                        <span className="text-white/20">/{tt.capacity}</span>
+                      </span>
+                    ))}
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => setEditingId(ev.id)}
+                      className="flex-1 flex items-center justify-center gap-1.5 bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/30 text-yellow-400 text-xs font-semibold py-2 rounded-xl transition-all cursor-pointer">
+                      <Edit2 size={12} /> Edit Event
+                    </button>
+                    <Link href={`/events/${ev.slug}`} target="_blank"
+                      className="flex-1 flex items-center justify-center gap-1.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white/60 hover:text-white text-xs font-semibold py-2 rounded-xl transition-all cursor-pointer">
+                      <Eye size={12} /> View Page
+                    </Link>
+                    <button className="flex-1 flex items-center justify-center gap-1.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white/60 hover:text-white text-xs font-semibold py-2 rounded-xl transition-all cursor-pointer">
+                      <Download size={12} /> Export
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        </div>
-      </div>
+
+          <div className="mt-8 bg-yellow-500/10 border border-yellow-500/20 rounded-2xl p-5">
+            <div className="flex items-start gap-3">
+              <AlertCircle size={18} className="text-yellow-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-yellow-400 font-semibold text-sm">Cincinnati is in 1 week</p>
+                <p className="text-white/50 text-sm mt-1">Make sure check-in portals are set up and staff have been invited before June 13.</p>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -762,7 +1033,7 @@ export default function AdminDashboard() {
   const SECTION_MAP: Record<string, React.ReactNode> = {
     overview:  <OverviewSection stats={stats} orders={orders} loading={loading} />,
     orders:    <OrdersSection orders={orders} loading={loading} adminToken={adminToken} onRefetch={refetch} />,
-    events:    <EventsSection />,
+    events:    <EventsSection adminToken={adminToken} stats={stats} />,
     customers: <CustomersSection orders={orders} />,
     coupons:   <CouponsSection />,
     checkin:   <CheckInSection />,
