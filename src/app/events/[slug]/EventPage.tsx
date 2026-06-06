@@ -7,13 +7,13 @@ import Link from "next/link";
 import { MapPin, Calendar, Clock, Ticket, ArrowLeft, Star } from "lucide-react";
 import { PRICING } from "@/lib/events";
 import type { EventData } from "@/lib/events";
-import type { TicketType } from "@/lib/stripe";
+import type { TicketType } from "@/lib/ticket-config";
 import Navbar from "@/components/Navbar";
 import OfficialBanner from "@/components/OfficialBanner";
 import Footer from "@/components/Footer";
 import Confetti from "@/components/Confetti";
 import PreCheckoutModal from "@/components/PreCheckoutModal";
-import { TICKET_LABELS } from "@/lib/stripe";
+import { TICKET_LABELS } from "@/lib/ticket-config";
 
 function Countdown({ dateISO }: { dateISO: string }) {
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
