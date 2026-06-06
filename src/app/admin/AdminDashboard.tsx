@@ -319,6 +319,7 @@ interface TicketType {
   id: string;
   name: string;
   price: number;
+  platform_fee: number;
   capacity: number;
   sold_count: number;
   sort_order: number;
@@ -477,8 +478,8 @@ function EventEditor({ event, adminToken, onSaved }: { event: EventRow; adminTok
         <div className="space-y-3 mb-5">
           {sortedTypes.map(tt => (
             <div key={tt.id} className={`border rounded-xl p-4 transition-all ${tt.is_active ? "border-white/15 bg-white/[0.02]" : "border-white/5 opacity-50"}`}>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 items-end">
-                <div>
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 items-end">
+                <div className="sm:col-span-2">
                   <label className="text-white/40 text-xs uppercase tracking-wider block mb-1">Name</label>
                   <input value={tt.name}
                     onChange={e => updateTicketType(tt.id, { name: e.target.value })}
@@ -489,6 +490,15 @@ function EventEditor({ event, adminToken, onSaved }: { event: EventRow; adminTok
                   <input type="number" step="0.01" value={tt.price}
                     onChange={e => updateTicketType(tt.id, { price: parseFloat(e.target.value) })}
                     className="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2 text-white text-sm outline-none" />
+                </div>
+                <div>
+                  <label className="text-white/40 text-xs uppercase tracking-wider block mb-1 flex items-center gap-1">
+                    Platform Fee ($)
+                    <span className="text-white/20 normal-case font-normal text-[10px]">per ticket</span>
+                  </label>
+                  <input type="number" step="0.01" min="0" value={tt.platform_fee ?? 3}
+                    onChange={e => updateTicketType(tt.id, { platform_fee: parseFloat(e.target.value) })}
+                    className="w-full bg-yellow-500/10 border border-yellow-500/20 focus:border-yellow-500/50 rounded-xl px-3 py-2 text-yellow-400 text-sm outline-none" />
                 </div>
                 <div>
                   <label className="text-white/40 text-xs uppercase tracking-wider block mb-1">Capacity</label>

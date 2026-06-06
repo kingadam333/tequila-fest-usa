@@ -10,7 +10,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
 
   const { data: ticketTypes } = await db
     .from("ticket_types")
-    .select("name, price, capacity, sold_count, is_active, sort_order")
+    .select("name, price, capacity, sold_count, is_active, sort_order, platform_fee")
     .eq("event_id", event.id)
     .eq("is_active", true)
     .order("sort_order");

@@ -6,12 +6,13 @@ import { X, Plus, Minus, User, Mail, Phone, ArrowRight, Loader2, ShoppingCart } 
 import Turnstile from "./Turnstile";
 import type { TicketType } from "@/lib/ticket-config";
 import { TICKET_LABELS } from "@/lib/ticket-config";
-import { calculateFees } from "@/lib/fees";
+import { calculateFeesForCart } from "@/lib/fees";
 
 interface TicketTypeOption {
   key: TicketType;
   label: string;
   price: number;
+  platformFee?: number;  // per-ticket platform fee, defaults to $3
   soldOut: boolean;
   available: boolean;
   note?: string;
@@ -69,7 +70,12 @@ export default function TicketCartModal({
 
   const subtotal = cartItems.reduce((s, i) => s + i.price * i.quantity, 0);
   const totalTickets = cartItems.reduce((s, i) => s + i.quantity, 0);
-  const fees = totalTickets > 0 ? calculateFees(subtotal, totalTickets) : null;
+  const fees = totalTickets > 0 ? calculateFeesForCart(
+    cartItems.map(i => {
+      const tt = ticketTypes.find(t => t.key === i.ticketType);
+      return { price: i.price, quantity: i.quantity, platformFee: tt?.platformFee ?? 3.00 };
+    })
+  ) : null;
   const canProceed = totalTickets > 0;
 
   const handleCheckout = async (e: React.FormEvent) => {

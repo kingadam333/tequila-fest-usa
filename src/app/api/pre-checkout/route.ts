@@ -4,9 +4,9 @@ import { TICKET_PRICES, TICKET_LABELS, type TicketType } from "@/lib/ticket-conf
 import { getEvent } from "@/lib/events";
 import { verifyTurnstile } from "@/lib/turnstile";
 import { supabaseAdmin } from "@/lib/supabase";
-import { calculateFees } from "@/lib/fees";
+import { calculateFeesForCart } from "@/lib/fees";
 
-interface CartItem { ticketType: TicketType; quantity: number; price: number; }
+interface CartItem { ticketType: TicketType; quantity: number; price: number; platformFee?: number; }
 
 export async function POST(req: NextRequest) {
   const { firstName, lastName, email, phone, eventSlug, items, ticketType, quantity, captchaToken } = await req.json();
@@ -46,8 +46,10 @@ export async function POST(req: NextRequest) {
   const totalQty = cartItems.reduce((s, i) => s + i.quantity, 0);
   const totalAmount = cartItems.reduce((s, i) => s + i.price * i.quantity, 0); // tickets only, fees added below
 
-  // Calculate service fee
-  const fees = calculateFees(totalAmount, totalQty);
+  // Calculate service fee using per-type platform fees
+  const fees = calculateFeesForCart(
+    cartItems.map(i => ({ price: i.price, quantity: i.quantity, platformFee: i.platformFee ?? 3.00 }))
+  );
   const serviceFeeCents = Math.round(fees.serviceFee * 100);
 
   // Build Stripe line items from cart + service fee

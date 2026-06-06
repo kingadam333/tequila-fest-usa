@@ -93,6 +93,7 @@ function useCartModal(event: EventData, liveTypes: LiveTicketType[]) {
     const live = liveTypes.find(lt => lt.name === tt.label || PRICING_MAP[lt.name] === tt.key);
     return {
       ...tt,
+      platformFee: live?.platform_fee ?? (tt.key === "ga" ? 1.00 : tt.key === "vip" ? 5.00 : 3.00),
       soldOut: live ? live.sold_count >= live.capacity : false,
       available: true,
     };
@@ -120,6 +121,7 @@ interface LiveTicketType {
   capacity: number;
   sold_count: number;
   is_active: boolean;
+  platform_fee?: number;
 }
 
 function useLiveTicketTypes(eventSlug: string) {
