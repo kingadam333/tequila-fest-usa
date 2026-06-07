@@ -1,7 +1,22 @@
 import { Resend } from "resend";
 
 export const resend = new Resend(process.env.RESEND_API_KEY || "re_placeholder");
-export const FROM_EMAIL = "Tequila Fest USA <help@tequilafestusa.com>";
+
+// ─── Email addresses per inbox ────────────────────────────────────────────────
+export const FROM_EMAIL = "Tequila Fest USA <help@mail.tequilafestusa.com>";
+export const FROM_SUPPORT    = "Tequila Fest USA <help@mail.tequilafestusa.com>";
+export const FROM_AFFILIATES = "Tequila Fest USA Affiliates <affiliate@mail.tequilafestusa.com>";
+export const FROM_PARTNERS   = "Tequila Fest USA Partners <partners@mail.tequilafestusa.com>";
+
+export const INBOX_ROUTING: Record<string, { from: string; to: string; label: string }> = {
+  "General Inquiry":        { from: FROM_SUPPORT,    to: "help@mail.tequilafestusa.com",       label: "Support" },
+  "Ticket Support":         { from: FROM_SUPPORT,    to: "help@mail.tequilafestusa.com",       label: "Support" },
+  "Other":                  { from: FROM_SUPPORT,    to: "help@mail.tequilafestusa.com",       label: "Support" },
+  "Press / Media":          { from: FROM_SUPPORT,    to: "help@mail.tequilafestusa.com",       label: "Support" },
+  "Vendor Application":     { from: FROM_SUPPORT,    to: "help@mail.tequilafestusa.com",       label: "Support" },
+  "Affiliate Program":      { from: FROM_AFFILIATES, to: "affiliate@mail.tequilafestusa.com",  label: "Affiliates" },
+  "Sponsorship Opportunity":{ from: FROM_PARTNERS,   to: "partners@mail.tequilafestusa.com",   label: "Sponsors" },
+};
 
 // ─── Ticket Confirmation Email ────────────────────────────────────────────────
 export function ticketConfirmationHtml({

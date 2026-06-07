@@ -895,9 +895,17 @@ function CheckInSection() {
 interface ContactSubmission {
   id: string; name: string; email: string; subject: string;
   message: string; status: string; created_at: string; admin_reply?: string;
+  inbox?: string;
 }
 
+const INBOXES = [
+  { id: "Support",    label: "Support",    email: "help@mail.tequilafestusa.com",       color: "#F5A623", icon: "💬" },
+  { id: "Affiliates", label: "Affiliates", email: "affiliate@mail.tequilafestusa.com",  color: "#7B2FBE", icon: "🤝" },
+  { id: "Sponsors",   label: "Sponsors",   email: "partners@mail.tequilafestusa.com",   color: "#C0C0C0", icon: "⭐" },
+];
+
 function ContactSection({ adminToken }: { adminToken: string }) {
+  const [activeInbox, setActiveInbox] = useState("Support");
   const [submissions, setSubmissions] = useState<ContactSubmission[]>([]);
   const [selected, setSelected] = useState<ContactSubmission | null>(null);
   const [reply, setReply] = useState("");
@@ -907,11 +915,15 @@ function ContactSection({ adminToken }: { adminToken: string }) {
   useEffect(() => {
     const load = async () => {
       const db = (await import("@/lib/supabase")).supabaseAdmin as any;
-      const { data } = await db.from("contact_submissions").select("*").order("created_at", { ascending: false }).limit(50);
+      const { data } = await db.from("contact_submissions").select("*").order("created_at", { ascending: false }).limit(100);
       setSubmissions(data || []);
     };
     load();
   }, []);
+
+  const inbox = INBOXES.find(i => i.id === activeInbox) || INBOXES[0];
+  const filtered = submissions.filter(s => (s.inbox || "Support") === activeInbox);
+  const unread = (id: string) => submissions.filter(s => (s.inbox || "Support") === id && s.status === "new").length;
 
   const handleSendReply = async () => {
     if (!selected || !reply.trim()) return;
@@ -924,14 +936,16 @@ function ContactSection({ adminToken }: { adminToken: string }) {
           submissionId: selected.id,
           replyTo: selected.email,
           replyToName: selected.name,
+          fromEmail: inbox.email,
           subject: `Re: ${selected.subject}`,
           message: reply,
+          inbox: activeInbox,
         }),
       });
       if (res.ok) {
         setSent(true);
-        setSubmissions(prev => prev.map(s => s.id === selected.id ? { ...s, status: "replied" } : s));
-        setTimeout(() => { setSent(false); setReply(""); }, 2000);
+        setSubmissions(prev => prev.map(s => s.id === selected.id ? { ...s, status: "replied", admin_reply: reply } : s));
+        setTimeout(() => { setSent(false); setReply(""); }, 2500);
       }
     } catch { /* ignore */ }
     setSending(false);
@@ -939,18 +953,40 @@ function ContactSection({ adminToken }: { adminToken: string }) {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="font-display text-white text-3xl">SUPPORT INBOX</h2>
-        <span className="text-white/30 text-sm">{submissions.length} messages</span>
+      <h2 className="font-display text-white text-3xl mb-6">INBOX</h2>
+
+      {/* Inbox tabs */}
+      <div className="grid grid-cols-3 gap-3 mb-6">
+        {INBOXES.map(ib => {
+          const count = unread(ib.id);
+          const total = submissions.filter(s => (s.inbox || "Support") === ib.id).length;
+          return (
+            <button key={ib.id} onClick={() => { setActiveInbox(ib.id); setSelected(null); setReply(""); }}
+              className={`rounded-2xl p-4 border text-left transition-all cursor-pointer ${activeInbox === ib.id ? "border-opacity-50" : "border-white/10 bg-white/[0.02] hover:border-white/20"}`}
+              style={activeInbox === ib.id ? { borderColor: `${ib.color}60`, background: `${ib.color}10` } : {}}>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xl">{ib.icon}</span>
+                {count > 0 && (
+                  <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-red-500 text-white">{count}</span>
+                )}
+              </div>
+              <p className="font-bold text-sm" style={{ color: activeInbox === ib.id ? ib.color : "rgba(255,248,240,0.7)" }}>{ib.label}</p>
+              <p className="text-white/30 text-xs mt-0.5">{ib.email}</p>
+              <p className="text-white/20 text-xs mt-1">{total} message{total !== 1 ? "s" : ""}</p>
+            </button>
+          );
+        })}
       </div>
+
+      {/* Messages + reply */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        <div className="space-y-2 overflow-y-auto max-h-[600px]">
-          {submissions.length === 0 ? (
+        <div className="space-y-2 overflow-y-auto max-h-[500px]">
+          {filtered.length === 0 ? (
             <div className="text-center py-10 text-white/25 border border-dashed border-white/10 rounded-2xl">
               <MessageSquare size={28} className="mx-auto mb-2 opacity-30" />
-              <p className="text-sm">No messages yet.</p>
+              <p className="text-sm">No {activeInbox.toLowerCase()} messages yet.</p>
             </div>
-          ) : submissions.map(s => (
+          ) : filtered.map(s => (
             <button key={s.id} onClick={() => { setSelected(s); setReply(""); setSent(false); }}
               className={`w-full text-left bg-white/[0.03] border rounded-2xl px-4 py-3.5 transition-all cursor-pointer ${selected?.id === s.id ? "border-yellow-500/40 bg-yellow-500/5" : "border-white/10 hover:border-white/20"}`}>
               <div className="flex items-center justify-between mb-1">
@@ -970,7 +1006,7 @@ function ContactSection({ adminToken }: { adminToken: string }) {
               <div className="mb-4 pb-4 border-b border-white/10">
                 <p className="text-white font-bold">{selected.name}</p>
                 <p className="text-white/40 text-xs">{selected.email} · {new Date(selected.created_at).toLocaleDateString()}</p>
-                <p className="text-yellow-400 text-sm font-semibold mt-2">{selected.subject}</p>
+                <p className="text-sm font-semibold mt-2" style={{ color: inbox.color }}>{selected.subject}</p>
                 <p className="text-white/60 text-sm mt-2 leading-relaxed">{selected.message}</p>
                 {selected.admin_reply && (
                   <div className="mt-3 p-3 bg-green-900/20 border border-green-500/20 rounded-xl">
@@ -979,13 +1015,18 @@ function ContactSection({ adminToken }: { adminToken: string }) {
                   </div>
                 )}
               </div>
-              <h4 className="text-white/40 text-xs uppercase tracking-wider mb-3">Reply</h4>
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-white/30 text-xs">Replying from:</span>
+                <span className="text-xs font-semibold px-2 py-0.5 rounded-full border" style={{ color: inbox.color, borderColor: `${inbox.color}40` }}>
+                  {inbox.email}
+                </span>
+              </div>
               <textarea value={reply} onChange={e => setReply(e.target.value)} rows={5}
                 placeholder={`Type your reply to ${selected.name}...`}
                 className="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-yellow-500/40 resize-none placeholder-white/30 mb-3" />
               <button onClick={handleSendReply} disabled={sending || !reply.trim()}
                 className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-50 text-black font-bold text-sm px-5 py-2.5 rounded-xl transition-all cursor-pointer">
-                {sending ? "Sending..." : sent ? "✓ Sent!" : <><Send size={13} /> Send Reply to {selected.email}</>}
+                {sending ? "Sending..." : sent ? "✓ Sent!" : <><Send size={13} /> Send Reply</>}
               </button>
             </>
           ) : (

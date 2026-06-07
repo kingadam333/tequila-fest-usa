@@ -1,12 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAdminToken, unauthorizedResponse } from "@/lib/adminAuth";
 import { supabaseAdmin } from "@/lib/supabase";
-import { resend, FROM_EMAIL } from "@/lib/resend";
+import { resend, FROM_SUPPORT, FROM_AFFILIATES, FROM_PARTNERS } from "@/lib/resend";
+
+const INBOX_FROM: Record<string, string> = {
+  Support:    FROM_SUPPORT,
+  Affiliates: FROM_AFFILIATES,
+  Sponsors:   FROM_PARTNERS,
+};
 
 export async function POST(req: NextRequest) {
   if (!verifyAdminToken(req)) return unauthorizedResponse();
 
-  const { submissionId, replyTo, replyToName, subject, message } = await req.json();
+  const { submissionId, replyTo, replyToName, subject, message, inbox } = await req.json();
+  const fromEmail = INBOX_FROM[inbox || "Support"] || FROM_SUPPORT;
 
   if (!replyTo || !message) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -15,7 +22,7 @@ export async function POST(req: NextRequest) {
   // Send reply email
   try {
     await resend.emails.send({
-      from: FROM_EMAIL,
+      from: fromEmail,
       to: replyTo,
       subject: subject || `Re: Your message to Tequila Fest USA`,
       html: `<!DOCTYPE html>
