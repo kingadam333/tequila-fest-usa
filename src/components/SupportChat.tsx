@@ -130,36 +130,26 @@ export default function SupportChat() {
       </AnimatePresence>
 
       {/* Floating button */}
-      <div className="fixed bottom-5 right-4 sm:right-6 z-50 flex flex-col items-center gap-1.5">
-        {!open && (
-          <motion.span
-            initial={{ opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-black/70 text-white text-xs font-semibold px-2.5 py-1 rounded-full border border-white/10"
-          >
-            Help
-          </motion.span>
-        )}
-        <motion.button
-          onClick={() => setOpen(!open)}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          className="w-14 h-14 bg-yellow-500 hover:bg-yellow-400 text-black rounded-full shadow-lg flex items-center justify-center transition-colors cursor-pointer"
-          aria-label="Open support chat"
-        >
-          <AnimatePresence mode="wait">
-            {open ? (
-              <motion.div key="x" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }}>
-                <X size={22} />
-              </motion.div>
-            ) : (
-              <motion.div key="chat" initial={{ rotate: 90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -90, opacity: 0 }}>
-                <MessageCircle size={22} />
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </motion.button>
-      </div>
+      <motion.button
+        onClick={() => setOpen(!open)}
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+        className="fixed bottom-5 right-4 sm:right-6 z-50 h-14 px-5 bg-yellow-500 hover:bg-yellow-400 text-black rounded-full shadow-lg flex items-center gap-2.5 transition-colors cursor-pointer"
+        aria-label="Open support chat"
+      >
+        <AnimatePresence mode="wait">
+          {open ? (
+            <motion.div key="x" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }}>
+              <X size={22} />
+            </motion.div>
+          ) : (
+            <motion.div key="chat" initial={{ rotate: 90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -90, opacity: 0 }} className="flex items-center gap-2.5">
+              <MessageCircle size={22} />
+              <span className="font-bold text-sm">Help</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.button>
     </>
   );
 }
