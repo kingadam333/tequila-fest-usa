@@ -1147,11 +1147,13 @@ const INBOXES = [
 
 function ContactSection({ adminToken }: { adminToken: string }) {
   const [activeInbox, setActiveInbox] = useState("Support");
+  const [activeTab, setActiveTab] = useState<"inbox" | "knowledge">("inbox");
   const [submissions, setSubmissions] = useState<ContactSubmission[]>([]);
   const [selected, setSelected] = useState<ContactSubmission | null>(null);
   const [reply, setReply] = useState("");
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -1192,9 +1194,38 @@ function ContactSection({ adminToken }: { adminToken: string }) {
     setSending(false);
   };
 
+  const suggestReply = async () => {
+    if (!selected) return;
+    setAiLoading(true);
+    try {
+      const res = await fetch("/api/admin/ai-reply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-token": adminToken },
+        body: JSON.stringify({ name: selected.name, email: selected.email, subject: selected.subject, message: selected.message }),
+      });
+      const data = await res.json();
+      if (data.reply) setReply(data.reply);
+    } catch { /* ignore */ }
+    setAiLoading(false);
+  };
+
   return (
     <div>
-      <h2 className="font-display text-white text-3xl mb-6">INBOX</h2>
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="font-display text-white text-3xl">INBOX</h2>
+        {/* Section tabs */}
+        <div className="flex bg-white/[0.04] border border-white/10 rounded-xl p-1">
+          {(["inbox", "knowledge"] as const).map(t => (
+            <button key={t} onClick={() => setActiveTab(t)}
+              className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-all cursor-pointer capitalize ${activeTab === t ? "bg-yellow-500 text-black" : "text-white/40 hover:text-white/70"}`}>
+              {t === "knowledge" ? "Knowledge Base" : "Inbox"}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {activeTab === "knowledge" && <KnowledgeBaseSection adminToken={adminToken} />}
+      {activeTab === "inbox" && <>
 
       {/* Inbox tabs */}
       <div className="grid grid-cols-3 gap-3 mb-6">
@@ -1265,10 +1296,19 @@ function ContactSection({ adminToken }: { adminToken: string }) {
               <textarea value={reply} onChange={e => setReply(e.target.value)} rows={5}
                 placeholder={`Type your reply to ${selected.name}...`}
                 className="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-yellow-500/40 resize-none placeholder-white/30 mb-3" />
-              <button onClick={handleSendReply} disabled={sending || !reply.trim()}
-                className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-50 text-black font-bold text-sm px-5 py-2.5 rounded-xl transition-all cursor-pointer">
-                {sending ? "Sending..." : sent ? "✓ Sent!" : <><Send size={13} /> Send Reply</>}
-              </button>
+              <div className="flex items-center gap-2">
+                <button onClick={handleSendReply} disabled={sending || !reply.trim()}
+                  className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-50 text-black font-bold text-sm px-5 py-2.5 rounded-xl transition-all cursor-pointer">
+                  {sending ? "Sending..." : sent ? "✓ Sent!" : <><Send size={13} /> Send Reply</>}
+                </button>
+                <button onClick={suggestReply} disabled={aiLoading}
+                  className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/15 hover:border-yellow-500/40 text-white/60 hover:text-yellow-400 text-sm px-4 py-2.5 rounded-xl transition-all cursor-pointer">
+                  {aiLoading ? (
+                    <svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>
+                  ) : <span>✨</span>}
+                  {aiLoading ? "Thinking..." : "AI Suggest"}
+                </button>
+              </div>
             </>
           ) : (
             <div className="h-full flex items-center justify-center text-white/20 py-10">
@@ -1277,6 +1317,7 @@ function ContactSection({ adminToken }: { adminToken: string }) {
           )}
         </div>
       </div>
+      </>}
     </div>
   );
 }
@@ -1563,6 +1604,243 @@ function StaffSection({ adminToken }: { adminToken: string }) {
   );
 }
 
+// ─── Knowledge Base Section ────────────────────────────────────────────────────
+const KB_CATEGORIES = ["General", "Events", "Tickets", "Policies", "Account", "VIP"];
+
+interface KBArticle { id: string; title: string; content: string; category: string; active: boolean; }
+
+function KnowledgeBaseSection({ adminToken }: { adminToken: string }) {
+  const [articles, setArticles] = useState<KBArticle[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState<KBArticle | null>(null);
+  const [showAdd, setShowAdd] = useState(false);
+  const [form, setForm] = useState({ title: "", content: "", category: "General" });
+  const [saving, setSaving] = useState(false);
+  const headers = { "x-admin-token": adminToken };
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const res = await fetch("/api/admin/knowledge-base", { headers: headers as any });
+    if (res.ok) setArticles(await res.json());
+    setLoading(false);
+  }, [adminToken]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => { load(); }, [load]);
+
+  const save = async () => {
+    setSaving(true);
+    if (editing) {
+      await fetch(`/api/admin/knowledge-base/${editing.id}`, {
+        method: "PATCH",
+        headers: { ...headers, "Content-Type": "application/json" } as any,
+        body: JSON.stringify({ title: form.title, content: form.content, category: form.category }),
+      });
+    } else {
+      await fetch("/api/admin/knowledge-base", {
+        method: "POST",
+        headers: { ...headers, "Content-Type": "application/json" } as any,
+        body: JSON.stringify(form),
+      });
+    }
+    setEditing(null); setShowAdd(false); setForm({ title: "", content: "", category: "General" });
+    load(); setSaving(false);
+  };
+
+  const del = async (id: string) => {
+    if (!confirm("Delete this article?")) return;
+    await fetch(`/api/admin/knowledge-base/${id}`, { method: "DELETE", headers: headers as any });
+    load();
+  };
+
+  const toggleActive = async (article: KBArticle) => {
+    await fetch(`/api/admin/knowledge-base/${article.id}`, {
+      method: "PATCH",
+      headers: { ...headers, "Content-Type": "application/json" } as any,
+      body: JSON.stringify({ active: !article.active }),
+    });
+    load();
+  };
+
+  const startEdit = (a: KBArticle) => { setEditing(a); setForm({ title: a.title, content: a.content, category: a.category }); setShowAdd(true); };
+
+  const grouped = KB_CATEGORIES.reduce((acc, cat) => {
+    acc[cat] = articles.filter(a => a.category === cat);
+    return acc;
+  }, {} as Record<string, KBArticle[]>);
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-white font-bold text-lg">Knowledge Base</p>
+          <p className="text-white/30 text-sm">{articles.filter(a => a.active).length} active articles · powers AI replies & chat bot</p>
+        </div>
+        <button onClick={() => { setShowAdd(!showAdd); setEditing(null); setForm({ title: "", content: "", category: "General" }); }}
+          className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-black font-bold text-sm px-4 py-2 rounded-xl transition-all cursor-pointer">
+          <Plus size={14} /> Add Article
+        </button>
+      </div>
+
+      <AnimatePresence>
+        {showAdd && (
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+            <div className="bg-white/[0.03] border border-yellow-500/20 rounded-2xl p-5 space-y-3">
+              <p className="font-bold text-white">{editing ? "Edit Article" : "New Article"}</p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="sm:col-span-2">
+                  <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Title *</label>
+                  <input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="Article title"
+                    className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-2.5 text-white placeholder-white/25 outline-none text-sm" />
+                </div>
+                <div>
+                  <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Category</label>
+                  <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
+                    className="w-full appearance-none bg-white/5 border border-white/15 rounded-xl px-4 py-2.5 text-white outline-none text-sm cursor-pointer">
+                    {KB_CATEGORIES.map(c => <option key={c} value={c} className="bg-[#0d0500]">{c}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Content *</label>
+                <textarea value={form.content} onChange={e => setForm(f => ({ ...f, content: e.target.value }))} rows={4}
+                  placeholder="Write the article content. This is what the AI uses to answer questions."
+                  className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-3 text-white placeholder-white/25 outline-none text-sm resize-none" />
+              </div>
+              <div className="flex gap-3">
+                <button onClick={save} disabled={saving || !form.title || !form.content}
+                  className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-60 text-black font-bold text-sm px-5 py-2.5 rounded-xl transition-all cursor-pointer">
+                  {saving ? "Saving..." : editing ? "Save Changes" : "Add Article"}
+                </button>
+                <button onClick={() => { setShowAdd(false); setEditing(null); }}
+                  className="text-white/40 hover:text-white/70 text-sm px-4 py-2.5 rounded-xl border border-white/10 transition-all cursor-pointer">Cancel</button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {loading ? (
+        <div className="text-center py-8 text-white/25 text-sm">Loading...</div>
+      ) : (
+        <div className="space-y-4">
+          {Object.entries(grouped).filter(([, items]) => items.length > 0).map(([cat, items]) => (
+            <div key={cat}>
+              <p className="text-white/30 text-xs uppercase tracking-wider mb-2">{cat}</p>
+              <div className="space-y-2">
+                {items.map(a => (
+                  <div key={a.id} className={`bg-white/[0.03] border rounded-xl px-4 py-3 transition-all ${a.active ? "border-white/10" : "border-white/[0.04] opacity-50"}`}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className={`font-semibold text-sm ${a.active ? "text-white" : "text-white/40"}`}>{a.title}</p>
+                        <p className="text-white/30 text-xs mt-1 line-clamp-2">{a.content}</p>
+                      </div>
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <button onClick={() => toggleActive(a)} title={a.active ? "Disable" : "Enable"}
+                          className={`text-xs px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${a.active ? "bg-green-500/10 border-green-500/20 text-green-400" : "bg-white/5 border-white/10 text-white/30"}`}>
+                          {a.active ? "On" : "Off"}
+                        </button>
+                        <button onClick={() => startEdit(a)} className="p-1.5 hover:bg-white/10 rounded-lg text-white/30 hover:text-white transition-all cursor-pointer"><Edit2 size={12} /></button>
+                        <button onClick={() => del(a.id)} className="p-1.5 hover:bg-red-500/10 rounded-lg text-white/20 hover:text-red-400 transition-all cursor-pointer"><Trash2 size={12} /></button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Tools Section ─────────────────────────────────────────────────────────────
+function ToolsSection({ adminToken }: { adminToken: string }) {
+  const [syncLog, setSyncLog] = useState<string[]>([]);
+  const [syncing, setSyncing] = useState(false);
+  const [syncDone, setSyncDone] = useState(false);
+
+  const runSync = async () => {
+    setSyncing(true);
+    setSyncDone(false);
+    setSyncLog(["Starting sync..."]);
+
+    const res = await fetch("/api/admin/sync", {
+      method: "POST",
+      headers: { "x-admin-token": adminToken },
+    });
+
+    if (!res.body) { setSyncLog(["Error: no response"]); setSyncing(false); return; }
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+      for (const line of lines) {
+        if (line.startsWith("data: ")) {
+          try {
+            const { msg } = JSON.parse(line.slice(6));
+            setSyncLog(prev => [...prev, msg]);
+            if (msg.startsWith("✅ Done") || msg.includes("up to date")) setSyncDone(true);
+          } catch { /* skip */ }
+        }
+      }
+    }
+    setSyncing(false);
+  };
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h2 className="font-display text-white text-3xl mb-1">TOOLS</h2>
+        <p className="text-white/30 text-sm">Admin utilities and data management</p>
+      </div>
+
+      {/* Sync from old site */}
+      <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-6">
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <h3 className="text-white font-bold text-lg flex items-center gap-2">
+              <RefreshCw size={18} className="text-yellow-400" /> Sync from Old Site
+            </h3>
+            <p className="text-white/40 text-sm mt-1">
+              Pull any new ticket sales from the old Replit site that aren&apos;t already in the new database.
+              Safe to run anytime — duplicate orders are automatically skipped.
+            </p>
+          </div>
+        </div>
+
+        <button onClick={runSync} disabled={syncing}
+          className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-60 text-black font-bold px-5 py-2.5 rounded-xl text-sm transition-all cursor-pointer mb-4">
+          <RefreshCw size={15} className={syncing ? "animate-spin" : ""} />
+          {syncing ? "Syncing..." : "Run Sync Now"}
+        </button>
+
+        {syncLog.length > 0 && (
+          <div className="bg-black/40 border border-white/10 rounded-xl p-4 font-mono text-xs space-y-1 max-h-64 overflow-y-auto">
+            {syncLog.map((line, i) => (
+              <p key={i} className={
+                line.startsWith("✅") ? "text-green-400" :
+                line.startsWith("❌") ? "text-red-400" :
+                line.startsWith("⚠️") ? "text-yellow-400" :
+                line.startsWith("🆕") ? "text-blue-400" :
+                "text-white/50"
+              }>{line}</p>
+            ))}
+            {syncDone && <p className="text-white/20 mt-2 pt-2 border-t border-white/10">— sync complete —</p>}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Nav config ───────────────────────────────────────────────────────────────
 const NAV_ITEMS = [
   { id: "overview",   label: "Overview",    icon: <LayoutDashboard size={17} /> },
@@ -1573,6 +1851,7 @@ const NAV_ITEMS = [
   { id: "checkin",    label: "Check-In",    icon: <QrCode size={17} /> },
   { id: "contacts",   label: "Inbox",       icon: <MessageSquare size={17} /> },
   { id: "staff",      label: "Staff",       icon: <Users size={17} /> },
+  { id: "tools",      label: "Tools",       icon: <RefreshCw size={17} /> },
   { id: "blog",       label: "Blog",        icon: <FileText size={17} /> },
 ];
 
@@ -1653,6 +1932,7 @@ export default function AdminDashboard() {
     checkin:   <CheckInSection />,
     contacts:  <ContactSection adminToken={adminToken} />,
     staff:     <StaffSection adminToken={adminToken} />,
+    tools:     <ToolsSection adminToken={adminToken} />,
     blog:      <BlogAdminSection />,
   };
 
