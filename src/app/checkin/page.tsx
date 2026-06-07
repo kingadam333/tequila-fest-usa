@@ -44,9 +44,14 @@ interface Stats {
 }
 
 export default function CheckinPortal() {
-  const [token, setToken] = useState("");
-  const [tokenInput, setTokenInput] = useState("");
-  const [tokenError, setTokenError] = useState(false);
+  const [token, setToken] = useState(""); // raw password OR "Bearer <jwt>"
+  const [staffName, setStaffName] = useState("");
+  // Login form state
+  const [loginMode, setLoginMode] = useState<"staff" | "admin">("staff");
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [adminPwInput, setAdminPwInput] = useState("");
+  const [tokenError, setTokenError] = useState("");
   const [selectedEvent, setSelectedEvent] = useState(EVENTS[0].slug);
   const [searchQ, setSearchQ] = useState("");
   const [results, setResults] = useState<TicketResult[]>([]);
@@ -62,10 +67,37 @@ export default function CheckinPortal() {
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Auth ─────────────────────────────────────────────────────────────────
-  const login = () => {
-    if (!tokenInput.trim()) return;
-    setToken(tokenInput.trim());
-    setTokenError(false);
+  const [loginLoading, setLoginLoading] = useState(false);
+
+  const loginAsStaff = async () => {
+    if (!loginEmail || !loginPassword) return;
+    setLoginLoading(true);
+    setTokenError("");
+    try {
+      const res = await fetch("/api/staff/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: loginEmail, password: loginPassword }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setToken(`Bearer ${data.token}`);
+        setStaffName(data.staff.name);
+      } else {
+        setTokenError(data.error || "Invalid email or password");
+      }
+    } catch {
+      setTokenError("Network error — try again");
+    } finally {
+      setLoginLoading(false);
+    }
+  };
+
+  const loginAsAdmin = () => {
+    if (!adminPwInput.trim()) return;
+    setToken(adminPwInput.trim());
+    setStaffName("Admin");
+    setTokenError("");
   };
 
   // ── Stats ─────────────────────────────────────────────────────────────────
@@ -74,7 +106,7 @@ export default function CheckinPortal() {
       headers: { "x-checkin-token": t },
     });
     if (res.ok) setStats(await res.json());
-    else if (res.status === 401) { setToken(""); setTokenError(true); }
+    else if (res.status === 401) { setToken(""); setTokenError("Session expired"); }
   }, []);
 
   useEffect(() => {
@@ -182,28 +214,62 @@ export default function CheckinPortal() {
             <p className="font-display text-yellow-400 text-2xl tracking-widest mb-1">TEQUILA FEST USA</p>
             <p className="text-white/30 text-sm">Door Staff Check-In</p>
           </div>
+
+          {/* Mode tabs */}
+          <div className="flex bg-white/[0.04] border border-white/10 rounded-xl p-1 mb-4">
+            {(["staff", "admin"] as const).map(mode => (
+              <button key={mode} onClick={() => { setLoginMode(mode); setTokenError(""); }}
+                className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all duration-200 cursor-pointer ${
+                  loginMode === mode ? "bg-yellow-500 text-black" : "text-white/40 hover:text-white/60"
+                }`}>
+                {mode === "staff" ? "Staff Login" : "Admin"}
+              </button>
+            ))}
+          </div>
+
           <div className="bg-white/[0.04] border border-white/10 rounded-2xl p-6 space-y-4">
             {tokenError && (
               <p className="text-red-400 text-sm text-center bg-red-900/20 border border-red-500/30 rounded-xl px-4 py-2">
-                Incorrect password
+                {tokenError}
               </p>
             )}
-            <div>
-              <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Staff Password</label>
-              <input
-                type="password"
-                value={tokenInput}
-                onChange={e => setTokenInput(e.target.value)}
-                onKeyDown={e => e.key === "Enter" && login()}
-                placeholder="Enter password"
-                className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-3 text-white placeholder-white/20 outline-none text-sm"
-                autoFocus
-              />
-            </div>
-            <button onClick={login}
-              className="w-full bg-yellow-500 hover:bg-yellow-400 text-black font-bold py-3 rounded-xl transition-all duration-200 cursor-pointer">
-              ENTER
-            </button>
+
+            {loginMode === "staff" ? (
+              <>
+                <div>
+                  <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Email</label>
+                  <input type="email" value={loginEmail} onChange={e => setLoginEmail(e.target.value)}
+                    onKeyDown={e => e.key === "Enter" && loginAsStaff()}
+                    placeholder="your@email.com" autoFocus
+                    className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-3 text-white placeholder-white/20 outline-none text-sm" />
+                </div>
+                <div>
+                  <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Password</label>
+                  <input type="password" value={loginPassword} onChange={e => setLoginPassword(e.target.value)}
+                    onKeyDown={e => e.key === "Enter" && loginAsStaff()}
+                    placeholder="Your password"
+                    className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-3 text-white placeholder-white/20 outline-none text-sm" />
+                </div>
+                <button onClick={loginAsStaff} disabled={loginLoading || !loginEmail || !loginPassword}
+                  className="w-full bg-yellow-500 hover:bg-yellow-400 disabled:opacity-50 text-black font-bold py-3 rounded-xl transition-all duration-200 cursor-pointer">
+                  {loginLoading ? "Signing in..." : "SIGN IN"}
+                </button>
+              </>
+            ) : (
+              <>
+                <div>
+                  <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Admin Password</label>
+                  <input type="password" value={adminPwInput} onChange={e => setAdminPwInput(e.target.value)}
+                    onKeyDown={e => e.key === "Enter" && loginAsAdmin()}
+                    placeholder="Admin password" autoFocus
+                    className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-3 text-white placeholder-white/20 outline-none text-sm" />
+                </div>
+                <button onClick={loginAsAdmin} disabled={!adminPwInput}
+                  className="w-full bg-yellow-500 hover:bg-yellow-400 disabled:opacity-50 text-black font-bold py-3 rounded-xl transition-all duration-200 cursor-pointer">
+                  ENTER
+                </button>
+              </>
+            )}
           </div>
         </motion.div>
       </div>
@@ -217,7 +283,7 @@ export default function CheckinPortal() {
       <div className="bg-black/60 border-b border-white/10 px-4 py-3 flex items-center justify-between sticky top-0 z-40">
         <div>
           <p className="font-display text-yellow-400 text-sm tracking-widest">TEQUILA FEST</p>
-          <p className="text-white/30 text-xs">Check-In Portal</p>
+          <p className="text-white/30 text-xs">{staffName ? `Hi, ${staffName}` : "Check-In Portal"}</p>
         </div>
         <div className="flex items-center gap-3">
           {/* Event selector */}

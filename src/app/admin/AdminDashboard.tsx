@@ -1078,6 +1078,250 @@ function BlogAdminSection() {
   );
 }
 
+// ─── Staff Section ────────────────────────────────────────────────────────────
+const PERMISSION_OPTIONS = [
+  { id: "checkin", label: "Event Check-In",  desc: "Access to the door check-in portal" },
+  { id: "orders",  label: "View Orders",      desc: "Read-only access to order list" },
+  { id: "inbox",   label: "Contact Inbox",    desc: "View and reply to contact messages" },
+  { id: "events",  label: "View Events",      desc: "View event details and ticket counts" },
+];
+
+interface StaffMember {
+  id: string;
+  name: string;
+  email: string;
+  permissions: string[];
+  status: string;
+  last_login_at: string | null;
+  created_at: string;
+}
+
+function StaffSection({ adminToken }: { adminToken: string }) {
+  const [staff, setStaff] = useState<StaffMember[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showInvite, setShowInvite] = useState(false);
+  const [inviteName, setInviteName] = useState("");
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [invitePerms, setInvitePerms] = useState<string[]>(["checkin"]);
+  const [inviting, setInviting] = useState(false);
+  const [inviteError, setInviteError] = useState("");
+  const [inviteSuccess, setInviteSuccess] = useState("");
+
+  const headers = { "x-admin-token": adminToken };
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const res = await fetch("/api/admin/staff", { headers: headers as any });
+    if (res.ok) setStaff(await res.json());
+    setLoading(false);
+  }, [adminToken]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => { load(); }, [load]);
+
+  const invite = async () => {
+    setInviteError(""); setInviteSuccess("");
+    if (!inviteName || !inviteEmail) { setInviteError("Name and email required"); return; }
+    if (!invitePerms.length) { setInviteError("Select at least one permission"); return; }
+    setInviting(true);
+    const res = await fetch("/api/admin/staff", {
+      method: "POST",
+      headers: { ...headers, "Content-Type": "application/json" } as any,
+      body: JSON.stringify({ name: inviteName, email: inviteEmail, permissions: invitePerms }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      setInviteSuccess(`Invite sent to ${inviteEmail}!`);
+      setInviteName(""); setInviteEmail(""); setInvitePerms(["checkin"]);
+      setShowInvite(false);
+      load();
+    } else {
+      setInviteError(data.error || "Failed to send invite");
+    }
+    setInviting(false);
+  };
+
+  const removeStaff = async (id: string, name: string) => {
+    if (!confirm(`Remove ${name} from staff?`)) return;
+    await fetch(`/api/admin/staff/${id}`, { method: "DELETE", headers: headers as any });
+    load();
+  };
+
+  const resendInvite = async (id: string) => {
+    await fetch(`/api/admin/staff/${id}`, {
+      method: "PATCH",
+      headers: { ...headers, "Content-Type": "application/json" } as any,
+      body: JSON.stringify({ action: "resend_invite" }),
+    });
+    alert("Invite resent!");
+  };
+
+  const togglePerm = (perm: string) => {
+    setInvitePerms(prev => prev.includes(perm) ? prev.filter(p => p !== perm) : [...prev, perm]);
+  };
+
+  const STATUS_COLORS: Record<string, string> = {
+    active:  "#22c55e",
+    invited: "#F5A623",
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="font-display text-white text-2xl">STAFF</h2>
+          <p className="text-white/40 text-sm mt-0.5">Invite team members and manage their portal access</p>
+        </div>
+        <button onClick={() => { setShowInvite(!showInvite); setInviteError(""); setInviteSuccess(""); }}
+          className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-black font-bold text-sm px-4 py-2.5 rounded-xl transition-all cursor-pointer">
+          <Plus size={15} /> Invite Staff
+        </button>
+      </div>
+
+      {/* Invite success toast */}
+      {inviteSuccess && (
+        <div className="bg-green-500/10 border border-green-500/30 text-green-400 text-sm rounded-xl px-4 py-3 flex items-center gap-2">
+          <CheckCircle size={16} /> {inviteSuccess}
+        </div>
+      )}
+
+      {/* Invite form */}
+      <AnimatePresence>
+        {showInvite && (
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden">
+            <div className="bg-white/[0.03] border border-yellow-500/20 rounded-2xl p-6 space-y-5">
+              <h3 className="font-bold text-white text-lg">Invite a Team Member</h3>
+
+              {inviteError && (
+                <p className="text-red-400 text-sm bg-red-900/20 border border-red-500/30 rounded-xl px-4 py-2">{inviteError}</p>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Full Name *</label>
+                  <input value={inviteName} onChange={e => setInviteName(e.target.value)} placeholder="Their name"
+                    className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-2.5 text-white placeholder-white/25 outline-none text-sm" />
+                </div>
+                <div>
+                  <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Email *</label>
+                  <input type="email" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} placeholder="their@email.com"
+                    className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-2.5 text-white placeholder-white/25 outline-none text-sm" />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-white/30 text-xs uppercase tracking-wider mb-3 block">Permissions *</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {PERMISSION_OPTIONS.map(opt => {
+                    const checked = invitePerms.includes(opt.id);
+                    return (
+                      <button key={opt.id} type="button" onClick={() => togglePerm(opt.id)}
+                        className={`flex items-start gap-3 p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                          checked ? "bg-yellow-500/10 border-yellow-500/40" : "bg-white/[0.02] border-white/10 hover:border-white/20"
+                        }`}>
+                        <div className={`w-4 h-4 rounded border flex-shrink-0 mt-0.5 flex items-center justify-center transition-all ${
+                          checked ? "bg-yellow-500 border-yellow-500" : "border-white/30"
+                        }`}>
+                          {checked && <span className="text-black text-[10px] font-black">✓</span>}
+                        </div>
+                        <div>
+                          <p className={`text-sm font-semibold ${checked ? "text-yellow-400" : "text-white/70"}`}>{opt.label}</p>
+                          <p className="text-white/30 text-xs mt-0.5">{opt.desc}</p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-1">
+                <button onClick={invite} disabled={inviting}
+                  className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-60 text-black font-bold text-sm px-5 py-2.5 rounded-xl transition-all cursor-pointer">
+                  <Send size={14} /> {inviting ? "Sending..." : "Send Invite"}
+                </button>
+                <button onClick={() => setShowInvite(false)}
+                  className="text-white/40 hover:text-white/70 text-sm px-4 py-2.5 rounded-xl border border-white/10 hover:border-white/20 transition-all cursor-pointer">
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Staff list */}
+      {loading ? (
+        <div className="text-center py-10 text-white/30 text-sm">Loading staff...</div>
+      ) : staff.length === 0 ? (
+        <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-10 text-center">
+          <Users size={32} className="text-white/10 mx-auto mb-3" />
+          <p className="text-white/30 text-sm">No staff members yet</p>
+          <p className="text-white/15 text-xs mt-1">Click &ldquo;Invite Staff&rdquo; to get started</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {staff.map(member => (
+            <div key={member.id} className="bg-white/[0.03] border border-white/10 rounded-2xl px-5 py-4">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2.5 mb-1">
+                    <p className="text-white font-semibold text-sm">{member.name}</p>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full border font-medium"
+                      style={{ color: STATUS_COLORS[member.status] || "#aaa", borderColor: `${STATUS_COLORS[member.status] || "#aaa"}40`, background: `${STATUS_COLORS[member.status] || "#aaa"}10` }}>
+                      {member.status}
+                    </span>
+                  </div>
+                  <p className="text-white/40 text-xs mb-3">{member.email}</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {member.permissions.map((p: string) => {
+                      const opt = PERMISSION_OPTIONS.find(o => o.id === p);
+                      return (
+                        <span key={p} className="text-xs px-2.5 py-0.5 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-yellow-400/80">
+                          {opt?.label || p}
+                        </span>
+                      );
+                    })}
+                  </div>
+                  {member.last_login_at && (
+                    <p className="text-white/20 text-xs mt-2">
+                      Last login: {new Date(member.last_login_at).toLocaleDateString()}
+                    </p>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {member.status === "invited" && (
+                    <button onClick={() => resendInvite(member.id)}
+                      className="text-yellow-400/60 hover:text-yellow-400 text-xs px-3 py-1.5 rounded-lg border border-yellow-500/20 hover:border-yellow-500/40 transition-all cursor-pointer">
+                      Resend
+                    </button>
+                  )}
+                  <button onClick={() => removeStaff(member.id, member.name)}
+                    className="text-red-400/50 hover:text-red-400 p-1.5 rounded-lg hover:bg-red-500/10 transition-all cursor-pointer">
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Quick link to check-in */}
+      <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl px-5 py-4 flex items-center justify-between">
+        <div>
+          <p className="text-white/60 text-sm font-semibold">Check-In Portal</p>
+          <p className="text-white/25 text-xs mt-0.5">Share this link with door staff</p>
+        </div>
+        <a href="/checkin" target="_blank"
+          className="flex items-center gap-2 text-yellow-400 text-sm border border-yellow-500/30 hover:border-yellow-500/60 px-4 py-2 rounded-xl transition-all">
+          <QrCode size={14} /> Open Portal
+        </a>
+      </div>
+    </div>
+  );
+}
+
 // ─── Nav config ───────────────────────────────────────────────────────────────
 const NAV_ITEMS = [
   { id: "overview",   label: "Overview",    icon: <LayoutDashboard size={17} /> },
@@ -1087,6 +1331,7 @@ const NAV_ITEMS = [
   { id: "coupons",    label: "Coupons",     icon: <Tag size={17} /> },
   { id: "checkin",    label: "Check-In",    icon: <QrCode size={17} /> },
   { id: "contacts",   label: "Inbox",       icon: <MessageSquare size={17} /> },
+  { id: "staff",      label: "Staff",       icon: <Users size={17} /> },
   { id: "blog",       label: "Blog",        icon: <FileText size={17} /> },
 ];
 
@@ -1166,6 +1411,7 @@ export default function AdminDashboard() {
     coupons:   <CouponsSection />,
     checkin:   <CheckInSection />,
     contacts:  <ContactSection adminToken={adminToken} />,
+    staff:     <StaffSection adminToken={adminToken} />,
     blog:      <BlogAdminSection />,
   };
 

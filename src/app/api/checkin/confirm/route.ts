@@ -1,13 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
-
-function verifyToken(req: NextRequest) {
-  const auth = req.headers.get("x-checkin-token") || "";
-  return auth === process.env.ADMIN_PASSWORD;
-}
+import { verifyCheckinAccess } from "@/lib/checkinAuth";
 
 export async function POST(req: NextRequest) {
-  if (!verifyToken(req)) {
+  if (!await verifyCheckinAccess(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
