@@ -12,7 +12,7 @@ interface Message {
 export default function SupportChat() {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
-    { role: "assistant", content: "Hey! 🥃 I'm the Tequila Fest support bot. I can help you find your tickets, reset your password, or answer questions about the event. What can I help you with?" },
+    { role: "assistant", content: "Hey! 🥃 I'm your Tequila Loving Support Friend. I can help you find your tickets, reset your password, or answer questions about the event. What can I help you with?" },
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -69,7 +69,7 @@ export default function SupportChat() {
                     <Bot size={15} className="text-yellow-400" />
                   </div>
                   <div>
-                    <p className="text-white font-semibold text-sm">Tequila Fest Support</p>
+                    <p className="text-white font-semibold text-sm">Tequila Loving Support Friend</p>
                     <p className="text-green-400 text-[10px] flex items-center gap-1">
                       <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block" />
                       Online now
