@@ -661,67 +661,303 @@ function EventsSection({ adminToken, stats, editingId, setEditingId }: { adminTo
   );
 }
 
-function CustomersSection({ orders }: { orders: Order[] }) {
-  const [search, setSearch] = useState("");
+const EVENTS_LIST = [
+  { slug: "cincinnati", city: "Cincinnati" },
+  { slug: "cleveland",  city: "Cleveland" },
+  { slug: "columbus",   city: "Columbus" },
+  { slug: "phoenix",    city: "Phoenix" },
+];
 
-  // Derive unique customers from real Stripe orders
-  const customerMap = new Map<string, { name: string; email: string; orders: number; totalSpent: number; lastOrder: string }>();
-  for (const o of orders) {
-    if (!o.email || o.email === "—") continue;
-    const existing = customerMap.get(o.email);
-    if (existing) {
-      existing.orders += 1;
-      existing.totalSpent += o.total;
-      if (o.date > existing.lastOrder) existing.lastOrder = o.date;
-    } else {
-      customerMap.set(o.email, { name: o.customer, email: o.email, orders: 1, totalSpent: o.total, lastOrder: o.date });
+const TICKET_TYPES = ["Early Bird", "Regular Rate", "Late Registration", "VIP Experience", "GA"];
+
+interface UserRecord {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  phone: string | null;
+  loyalty_points: number;
+  created_at: string;
+  name: string;
+  hasTickets: boolean;
+  totalSpent: number;
+  ticketCount: number;
+  orders: Array<{ order_number: string; ticket_type: string; quantity: number; total: number; event_city: string; created_at: string; status: string }>;
+}
+
+function UsersSection({ adminToken }: { adminToken: string }) {
+  const [tab, setTab] = useState<"tickets" | "free">("tickets");
+  const [users, setUsers] = useState<UserRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [showAdd, setShowAdd] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [compUserId, setCompUserId] = useState<string | null>(null);
+
+  // Add user form
+  const [addForm, setAddForm] = useState({ firstName: "", lastName: "", email: "", phone: "", sendWelcome: true });
+  const [addError, setAddError] = useState("");
+  const [adding, setAdding] = useState(false);
+
+  // Comp ticket form
+  const [compForm, setCompForm] = useState({ eventSlug: "cincinnati", ticketType: "GA" });
+  const [comping, setComping] = useState(false);
+  const [compSuccess, setCompSuccess] = useState("");
+
+  const headers = { "x-admin-token": adminToken };
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const res = await fetch("/api/admin/users", { headers: headers as any });
+    if (res.ok) {
+      const data = await res.json();
+      setUsers(data.users || []);
     }
-  }
-  const customers = Array.from(customerMap.values());
-  const filtered = customers.filter(c =>
-    c.name.toLowerCase().includes(search.toLowerCase()) ||
-    c.email.toLowerCase().includes(search.toLowerCase())
-  );
+    setLoading(false);
+  }, [adminToken]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => { load(); }, [load]);
+
+  const filtered = users
+    .filter(u => tab === "tickets" ? u.hasTickets : !u.hasTickets)
+    .filter(u =>
+      u.name.toLowerCase().includes(search.toLowerCase()) ||
+      u.email.toLowerCase().includes(search.toLowerCase())
+    );
+
+  const addUser = async () => {
+    setAddError("");
+    if (!addForm.email) { setAddError("Email is required"); return; }
+    setAdding(true);
+    const res = await fetch("/api/admin/users", {
+      method: "POST",
+      headers: { ...headers, "Content-Type": "application/json" } as any,
+      body: JSON.stringify(addForm),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      setShowAdd(false);
+      setAddForm({ firstName: "", lastName: "", email: "", phone: "", sendWelcome: true });
+      load();
+    } else {
+      setAddError(data.error || "Failed to create user");
+    }
+    setAdding(false);
+  };
+
+  const compTicket = async () => {
+    if (!compUserId) return;
+    setComping(true);
+    setCompSuccess("");
+    const eventCity = EVENTS_LIST.find(e => e.slug === compForm.eventSlug)?.city || compForm.eventSlug;
+    const res = await fetch(`/api/admin/users/${compUserId}`, {
+      method: "POST",
+      headers: { ...headers, "Content-Type": "application/json" } as any,
+      body: JSON.stringify({ action: "comp_ticket", eventSlug: compForm.eventSlug, eventCity, ticketType: compForm.ticketType }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      setCompSuccess(`✓ Comp ticket created — Order ${data.orderNumber}`);
+      load();
+      setTimeout(() => { setCompUserId(null); setCompSuccess(""); }, 3000);
+    }
+    setComping(false);
+  };
+
+  const ticketCount = users.filter(u => u.hasTickets).length;
+  const freeCount = users.filter(u => !u.hasTickets).length;
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="font-display text-white text-3xl">CUSTOMERS</h2>
-        <p className="text-white/30 text-sm">{customers.length} total</p>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="font-display text-white text-3xl">USERS</h2>
+          <p className="text-white/30 text-sm mt-0.5">{users.length} total accounts</p>
+        </div>
+        <button onClick={() => { setShowAdd(!showAdd); setAddError(""); }}
+          className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-black font-bold text-sm px-4 py-2.5 rounded-xl transition-all cursor-pointer">
+          <Plus size={14} /> Add User
+        </button>
       </div>
-      <div className="relative mb-5">
+
+      {/* Add user form */}
+      <AnimatePresence>
+        {showAdd && (
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+            <div className="bg-white/[0.03] border border-yellow-500/20 rounded-2xl p-6 space-y-4">
+              <h3 className="font-bold text-white">Add User</h3>
+              {addError && <p className="text-red-400 text-sm bg-red-900/20 border border-red-500/30 rounded-xl px-4 py-2">{addError}</p>}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">First Name</label>
+                  <input value={addForm.firstName} onChange={e => setAddForm(f => ({ ...f, firstName: e.target.value }))} placeholder="First name"
+                    className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-2.5 text-white placeholder-white/25 outline-none text-sm" />
+                </div>
+                <div>
+                  <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Last Name</label>
+                  <input value={addForm.lastName} onChange={e => setAddForm(f => ({ ...f, lastName: e.target.value }))} placeholder="Last name"
+                    className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-2.5 text-white placeholder-white/25 outline-none text-sm" />
+                </div>
+                <div>
+                  <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Email *</label>
+                  <input type="email" value={addForm.email} onChange={e => setAddForm(f => ({ ...f, email: e.target.value }))} placeholder="user@email.com"
+                    className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-2.5 text-white placeholder-white/25 outline-none text-sm" />
+                </div>
+                <div>
+                  <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Phone</label>
+                  <input type="tel" value={addForm.phone} onChange={e => setAddForm(f => ({ ...f, phone: e.target.value }))} placeholder="(555) 000-0000"
+                    className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-2.5 text-white placeholder-white/25 outline-none text-sm" />
+                </div>
+              </div>
+              <label className="flex items-center gap-2.5 cursor-pointer">
+                <div onClick={() => setAddForm(f => ({ ...f, sendWelcome: !f.sendWelcome }))}
+                  className={`w-5 h-5 rounded border flex items-center justify-center transition-all ${addForm.sendWelcome ? "bg-yellow-500 border-yellow-500" : "border-white/30"}`}>
+                  {addForm.sendWelcome && <span className="text-black text-[10px] font-black">✓</span>}
+                </div>
+                <span className="text-white/60 text-sm">Send welcome email with account link</span>
+              </label>
+              <div className="flex gap-3">
+                <button onClick={addUser} disabled={adding}
+                  className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-60 text-black font-bold text-sm px-5 py-2.5 rounded-xl transition-all cursor-pointer">
+                  <Plus size={14} /> {adding ? "Creating..." : "Create User"}
+                </button>
+                <button onClick={() => setShowAdd(false)} className="text-white/40 hover:text-white/70 text-sm px-4 py-2.5 rounded-xl border border-white/10 hover:border-white/20 transition-all cursor-pointer">Cancel</button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Tabs */}
+      <div className="flex gap-1 bg-white/[0.04] border border-white/10 rounded-xl p-1 w-fit">
+        {([["tickets", `Tickets (${ticketCount})`], ["free", `Free (${freeCount})`]] as const).map(([id, label]) => (
+          <button key={id} onClick={() => { setTab(id); setExpandedId(null); setSearch(""); }}
+            className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer ${tab === id ? "bg-yellow-500 text-black" : "text-white/40 hover:text-white/70"}`}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* Search */}
+      <div className="relative">
         <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30" />
-        <input value={search} onChange={e => setSearch(e.target.value)}
-          placeholder="Search customers..."
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder={`Search ${tab} users...`}
           className="w-full bg-white/5 border border-white/15 rounded-xl pl-9 pr-4 py-2.5 text-white placeholder-white/30 text-sm outline-none focus:border-yellow-500/40" />
       </div>
-      {customers.length === 0 ? (
-        <div className="text-center py-16 text-white/25">
-          <Users size={36} className="mx-auto mb-3 opacity-30" />
-          <p>No customers yet — they&apos;ll appear here once tickets are purchased.</p>
+
+      {/* Comp ticket modal */}
+      <AnimatePresence>
+        {compUserId && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={() => setCompUserId(null)}>
+            <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }}
+              className="bg-[#1a0e02] border border-white/15 rounded-2xl p-6 w-full max-w-sm" onClick={e => e.stopPropagation()}>
+              <h3 className="font-bold text-white text-lg mb-1">Comp a Ticket</h3>
+              <p className="text-white/40 text-sm mb-5">
+                {users.find(u => u.id === compUserId)?.name}
+              </p>
+              {compSuccess ? (
+                <p className="text-green-400 text-sm bg-green-500/10 border border-green-500/30 rounded-xl px-4 py-3">{compSuccess}</p>
+              ) : (
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Event</label>
+                    <select value={compForm.eventSlug} onChange={e => setCompForm(f => ({ ...f, eventSlug: e.target.value }))}
+                      className="w-full appearance-none bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-2.5 text-white outline-none text-sm cursor-pointer">
+                      {EVENTS_LIST.map(ev => (
+                        <option key={ev.slug} value={ev.slug} className="bg-[#0d0500]">{ev.city}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Ticket Type</label>
+                    <select value={compForm.ticketType} onChange={e => setCompForm(f => ({ ...f, ticketType: e.target.value }))}
+                      className="w-full appearance-none bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-2.5 text-white outline-none text-sm cursor-pointer">
+                      {TICKET_TYPES.map(t => <option key={t} value={t} className="bg-[#0d0500]">{t}</option>)}
+                    </select>
+                  </div>
+                  <div className="flex gap-3">
+                    <button onClick={compTicket} disabled={comping}
+                      className="flex-1 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-60 text-black font-bold text-sm py-2.5 rounded-xl transition-all cursor-pointer">
+                      {comping ? "Creating..." : "Comp Ticket"}
+                    </button>
+                    <button onClick={() => setCompUserId(null)}
+                      className="text-white/40 hover:text-white/70 text-sm px-4 py-2.5 rounded-xl border border-white/10 transition-all cursor-pointer">Cancel</button>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* User list */}
+      {loading ? (
+        <div className="text-center py-16 text-white/30 text-sm">Loading users...</div>
+      ) : filtered.length === 0 ? (
+        <div className="text-center py-16 text-white/20">
+          <Users size={32} className="mx-auto mb-3 opacity-30" />
+          <p className="text-sm">{search ? "No users match your search" : `No ${tab} users yet`}</p>
         </div>
       ) : (
         <div className="space-y-2">
-          {filtered.map(c => (
-            <div key={c.email} className="flex items-center justify-between bg-white/[0.03] border border-white/10 rounded-xl px-4 py-3 hover:border-white/20 transition-all">
-              <div>
-                <p className="text-white font-semibold text-sm">{c.name}</p>
-                <p className="text-white/40 text-xs">{c.email} · last order {c.lastOrder}</p>
-              </div>
-              <div className="flex items-center gap-4">
-                <div className="text-right">
-                  <p className="text-white text-sm font-bold">${c.totalSpent.toFixed(2)}</p>
-                  <p className="text-white/30 text-xs">{c.orders} order{c.orders !== 1 ? "s" : ""}</p>
+          {filtered.map(u => (
+            <div key={u.id} className="bg-white/[0.03] border border-white/10 rounded-xl overflow-hidden transition-all">
+              {/* Row */}
+              <div className="flex items-center justify-between px-4 py-3.5">
+                <div className="flex-1 min-w-0">
+                  <p className="text-white font-semibold text-sm truncate">{u.name}</p>
+                  <p className="text-white/35 text-xs mt-0.5 truncate">{u.email}{u.phone ? ` · ${u.phone}` : ""}</p>
                 </div>
-                <div className="flex gap-1">
-                  <button className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-white/40 hover:text-white transition-all cursor-pointer" title="Send password reset">
-                    <Send size={13} />
-                  </button>
+                <div className="flex items-center gap-3 ml-3 flex-shrink-0">
+                  {u.hasTickets && (
+                    <div className="text-right">
+                      <p className="text-white text-sm font-bold">${u.totalSpent.toFixed(0)}</p>
+                      <p className="text-white/30 text-xs">{u.ticketCount} ticket{u.ticketCount !== 1 ? "s" : ""}</p>
+                    </div>
+                  )}
+                  {/* Action buttons */}
+                  <div className="flex items-center gap-1.5">
+                    {u.hasTickets && (
+                      <button onClick={() => setExpandedId(expandedId === u.id ? null : u.id)}
+                        className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-lg text-white/40 hover:text-white transition-all cursor-pointer" title="View orders & tickets">
+                        <Eye size={13} />
+                      </button>
+                    )}
+                    <button onClick={() => { setCompUserId(u.id); setCompSuccess(""); }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/20 hover:border-yellow-500/40 text-yellow-400 text-xs font-semibold rounded-lg transition-all cursor-pointer">
+                      <Ticket size={11} /> Comp
+                    </button>
+                  </div>
                 </div>
               </div>
+
+              {/* Expanded orders */}
+              <AnimatePresence>
+                {expandedId === u.id && u.orders.length > 0 && (
+                  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+                    className="overflow-hidden border-t border-white/[0.06]">
+                    <div className="px-4 py-3 space-y-2">
+                      <p className="text-white/30 text-xs uppercase tracking-wider mb-2">Orders</p>
+                      {u.orders.map((o, i) => (
+                        <div key={i} className="flex items-center justify-between bg-white/[0.02] rounded-lg px-3 py-2">
+                          <div>
+                            <p className="text-white/70 text-xs font-mono">{o.order_number}</p>
+                            <p className="text-white/40 text-xs">{o.event_city} · {o.ticket_type} × {o.quantity}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-white/70 text-xs font-semibold">{o.total === 0 ? "COMP" : `$${Number(o.total).toFixed(2)}`}</p>
+                            <p className="text-white/25 text-xs">{new Date(o.created_at).toLocaleDateString()}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           ))}
-          {filtered.length === 0 && <p className="text-center text-white/30 py-8">No customers match your search</p>}
         </div>
       )}
     </div>
@@ -1327,7 +1563,7 @@ const NAV_ITEMS = [
   { id: "overview",   label: "Overview",    icon: <LayoutDashboard size={17} /> },
   { id: "orders",     label: "Orders",      icon: <Ticket size={17} /> },
   { id: "events",     label: "Events",      icon: <CalendarDays size={17} /> },
-  { id: "customers",  label: "Customers",   icon: <Users size={17} /> },
+  { id: "customers",  label: "Users",       icon: <Users size={17} /> },
   { id: "coupons",    label: "Coupons",     icon: <Tag size={17} /> },
   { id: "checkin",    label: "Check-In",    icon: <QrCode size={17} /> },
   { id: "contacts",   label: "Inbox",       icon: <MessageSquare size={17} /> },
@@ -1407,7 +1643,7 @@ export default function AdminDashboard() {
     overview:  <OverviewSection stats={stats} orders={orders} loading={loading} />,
     orders:    <OrdersSection orders={orders} loading={loading} adminToken={adminToken} onRefetch={refetch} />,
     events:    <EventsSection adminToken={adminToken} stats={stats} editingId={editingEventId} setEditingId={setEditingEventId} />,
-    customers: <CustomersSection orders={orders} />,
+    customers: <UsersSection adminToken={adminToken} />,
     coupons:   <CouponsSection />,
     checkin:   <CheckInSection />,
     contacts:  <ContactSection adminToken={adminToken} />,
