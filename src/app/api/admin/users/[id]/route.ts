@@ -23,7 +23,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!verifyAdminToken(req)) return unauthorizedResponse();
   const { id } = await params;
-  const { action, eventSlug, eventCity, ticketType } = await req.json();
+  const { action, eventSlug, eventCity, ticketType, email: emailOverride } = await req.json();
 
   const db = supabaseAdmin as any;
 
@@ -32,7 +32,18 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return NextResponse.json({ error: "eventSlug and ticketType required" }, { status: 400 });
     }
 
-    const { data: user } = await db.from("customer_accounts").select("*").eq("id", id).single();
+    // Support both account-based (UUID id) and order-only users (email passed directly)
+    let user: any = null;
+    if (emailOverride || id === "none") {
+      // ticket-only user — no customer_accounts row, build a minimal user object from orders
+      const { data: orders } = await db.from("ticket_orders").select("customer_name, customer_email").eq("customer_email", emailOverride).limit(1);
+      if (orders?.length) {
+        user = { email: emailOverride, first_name: (orders[0].customer_name || "").split(" ")[0], last_name: (orders[0].customer_name || "").split(" ").slice(1).join(" ") };
+      }
+    } else {
+      const { data } = await db.from("customer_accounts").select("*").eq("id", id).single();
+      user = data;
+    }
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
     const orderNumber = `COMP-${Date.now().toString(36).toUpperCase()}`;

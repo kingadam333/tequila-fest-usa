@@ -671,8 +671,9 @@ const EVENTS_LIST = [
 const TICKET_TYPES = ["Early Bird", "Regular Rate", "Late Registration", "VIP Experience", "GA"];
 
 interface UserRecord {
-  id: string;
+  id: string | null;
   email: string;
+  hasAccount: boolean;
   first_name: string;
   last_name: string;
   phone: string | null;
@@ -749,11 +750,15 @@ function UsersSection({ adminToken }: { adminToken: string }) {
     if (!compUserId) return;
     setComping(true);
     setCompSuccess("");
+    const compUser = users.find(u => (u.id || u.email) === compUserId);
     const eventCity = EVENTS_LIST.find(e => e.slug === compForm.eventSlug)?.city || compForm.eventSlug;
-    const res = await fetch(`/api/admin/users/${compUserId}`, {
+    // Use "none" as id placeholder for ticket-only users; pass email in body
+    const urlId = compUser?.id || "none";
+    const emailOverride = compUser?.id ? undefined : compUser?.email;
+    const res = await fetch(`/api/admin/users/${urlId}`, {
       method: "POST",
       headers: { ...headers, "Content-Type": "application/json" } as any,
-      body: JSON.stringify({ action: "comp_ticket", eventSlug: compForm.eventSlug, eventCity, ticketType: compForm.ticketType }),
+      body: JSON.stringify({ action: "comp_ticket", eventSlug: compForm.eventSlug, eventCity, ticketType: compForm.ticketType, email: emailOverride }),
     });
     const data = await res.json();
     if (res.ok) {
@@ -920,12 +925,12 @@ function UsersSection({ adminToken }: { adminToken: string }) {
                   {/* Action buttons */}
                   <div className="flex items-center gap-1.5">
                     {u.hasTickets && (
-                      <button onClick={() => setExpandedId(expandedId === u.id ? null : u.id)}
+                      <button onClick={() => { const key = u.id || u.email; setExpandedId(expandedId === key ? null : key); }}
                         className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-lg text-white/40 hover:text-white transition-all cursor-pointer" title="View orders & tickets">
                         <Eye size={13} />
                       </button>
                     )}
-                    <button onClick={() => { setCompUserId(u.id); setCompSuccess(""); }}
+                    <button onClick={() => { setCompUserId(u.id || u.email); setCompSuccess(""); }}
                       className="flex items-center gap-1.5 px-3 py-1.5 bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/20 hover:border-yellow-500/40 text-yellow-400 text-xs font-semibold rounded-lg transition-all cursor-pointer">
                       <Ticket size={11} /> Comp
                     </button>
@@ -935,7 +940,7 @@ function UsersSection({ adminToken }: { adminToken: string }) {
 
               {/* Expanded orders */}
               <AnimatePresence>
-                {expandedId === u.id && u.orders.length > 0 && (
+                {expandedId === (u.id || u.email) && u.orders.length > 0 && (
                   <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
                     className="overflow-hidden border-t border-white/[0.06]">
                     <div className="px-4 py-3 space-y-2">

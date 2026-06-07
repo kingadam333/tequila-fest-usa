@@ -7,32 +7,83 @@ export async function GET(req: NextRequest) {
   if (!verifyAdminToken(req)) return unauthorizedResponse();
   const db = supabaseAdmin as any;
 
-  // All customer accounts
+  // All customer accounts (keyed by email)
   const { data: accounts } = await db
     .from("customer_accounts")
-    .select("id, email, first_name, last_name, phone, loyalty_points, created_at")
-    .order("created_at", { ascending: false });
+    .select("id, email, first_name, last_name, phone, loyalty_points, created_at");
 
-  // All orders — to know who has tickets
+  const accountMap = new Map<string, any>();
+  for (const a of (accounts || [])) accountMap.set(a.email.toLowerCase(), a);
+
+  // All orders
   const { data: orders } = await db
     .from("ticket_orders")
-    .select("customer_email, order_number, ticket_type, quantity, total, event_city, created_at, status");
+    .select("customer_email, customer_name, order_number, ticket_type, quantity, total, event_city, created_at, status")
+    .order("created_at", { ascending: false });
 
   // Build per-email order map
-  const orderMap = new Map<string, typeof orders>();
+  const orderMap = new Map<string, any[]>();
   for (const o of (orders || [])) {
-    if (!orderMap.has(o.customer_email)) orderMap.set(o.customer_email, []);
-    orderMap.get(o.customer_email)!.push(o);
+    const key = (o.customer_email || "").toLowerCase();
+    if (!orderMap.has(key)) orderMap.set(key, []);
+    orderMap.get(key)!.push(o);
   }
 
-  const users = (accounts || []).map((a: any) => ({
-    ...a,
-    name: [a.first_name, a.last_name].filter(Boolean).join(" ") || a.email,
-    orders: orderMap.get(a.email) || [],
-    hasTickets: orderMap.has(a.email),
-    totalSpent: (orderMap.get(a.email) || []).reduce((s: number, o: any) => s + Number(o.total), 0),
-    ticketCount: (orderMap.get(a.email) || []).reduce((s: number, o: any) => s + Number(o.quantity), 0),
-  }));
+  // Union: start with all ticket buyers, merge account data if it exists
+  const emailsSeen = new Set<string>();
+  const users: any[] = [];
+
+  // First: all ticket buyers
+  for (const [email, userOrders] of orderMap.entries()) {
+    emailsSeen.add(email);
+    const acct = accountMap.get(email);
+    const firstName = acct?.first_name || (userOrders[0]?.customer_name || "").split(" ")[0] || "";
+    const lastName  = acct?.last_name  || (userOrders[0]?.customer_name || "").split(" ").slice(1).join(" ") || "";
+    users.push({
+      id:             acct?.id || null,
+      email,
+      first_name:     firstName,
+      last_name:      lastName,
+      phone:          acct?.phone || null,
+      loyalty_points: acct?.loyalty_points || 0,
+      created_at:     acct?.created_at || userOrders[0]?.created_at,
+      hasAccount:     !!acct,
+      name:           acct ? [acct.first_name, acct.last_name].filter(Boolean).join(" ") || email
+                           : (userOrders[0]?.customer_name || email),
+      orders:         userOrders,
+      hasTickets:     true,
+      totalSpent:     userOrders.reduce((s: number, o: any) => s + Number(o.total || 0), 0),
+      ticketCount:    userOrders.reduce((s: number, o: any) => s + Number(o.quantity || 0), 0),
+    });
+  }
+
+  // Second: account-only users (no orders)
+  for (const acct of (accounts || [])) {
+    const key = acct.email.toLowerCase();
+    if (emailsSeen.has(key)) continue;
+    users.push({
+      id:             acct.id,
+      email:          acct.email,
+      first_name:     acct.first_name,
+      last_name:      acct.last_name,
+      phone:          acct.phone,
+      loyalty_points: acct.loyalty_points,
+      created_at:     acct.created_at,
+      hasAccount:     true,
+      name:           [acct.first_name, acct.last_name].filter(Boolean).join(" ") || acct.email,
+      orders:         [],
+      hasTickets:     false,
+      totalSpent:     0,
+      ticketCount:    0,
+    });
+  }
+
+  // Sort: ticket buyers first by most recent order, then free by created_at
+  users.sort((a, b) => {
+    const aDate = a.orders[0]?.created_at || a.created_at || "";
+    const bDate = b.orders[0]?.created_at || b.created_at || "";
+    return bDate.localeCompare(aDate);
+  });
 
   return NextResponse.json({ users });
 }
