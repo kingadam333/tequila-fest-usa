@@ -23,8 +23,8 @@ const CONTACT_CARDS = [
   {
     icon: <Mail size={20} />,
     label: "Email",
-    value: "info@tequilafestusa.com",
-    href: "mailto:info@tequilafestusa.com",
+    value: "help@tequilafestusa.com",
+    href: "mailto:help@mail.tequilafestusa.com",
     color: "#F5A623",
   },
   {
@@ -37,9 +37,9 @@ const CONTACT_CARDS = [
   {
     icon: <span className="text-base font-black">f</span>,
     label: "Facebook",
-    value: "Tequila Fest USA",
-    href: "https://facebook.com/tequilafestusa",
-    color: "#7B2FBE",
+    value: "@tequilafestcleveland",
+    href: "https://facebook.com/tequilafestcleveland",
+    color: "#1877F2",
   },
 ];
 
@@ -273,9 +273,9 @@ export default function ContactPage() {
                 <div className="space-y-2">
                   {[
                     { label: "Affiliate Program", href: "/affiliates", desc: "Earn commission promoting events" },
-                    { label: "Sponsorship Packages", href: "/contact", desc: "Brand partnerships & sponsorships" },
-                    { label: "Vendor Application", href: "/contact", desc: "Sell at our festivals" },
-                    { label: "Press & Media Kit", href: "/contact", desc: "Assets, bios & press releases" },
+                    { label: "Sponsorship Packages", href: "/sponsors", desc: "Brand partnerships & sponsorships" },
+                    { label: "Vendor Application", href: "/vendors", desc: "Sell at our festivals" },
+                    { label: "Press & Media Kit", href: "/press", desc: "Assets, bios & press releases" },
                   ].map(link => (
                     <Link key={link.label} href={link.href}
                       className="flex items-center justify-between bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.06] hover:border-white/15 rounded-xl px-4 py-3 transition-all duration-200 group"

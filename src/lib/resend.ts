@@ -9,13 +9,16 @@ export const FROM_AFFILIATES = "Tequila Fest USA Affiliates <affiliate@mail.tequ
 export const FROM_PARTNERS   = "Tequila Fest USA Partners <partners@mail.tequilafestusa.com>";
 
 export const INBOX_ROUTING: Record<string, { from: string; to: string; label: string }> = {
+  // Support inbox
   "General Inquiry":        { from: FROM_SUPPORT,    to: "help@mail.tequilafestusa.com",       label: "Support" },
   "Ticket Support":         { from: FROM_SUPPORT,    to: "help@mail.tequilafestusa.com",       label: "Support" },
   "Other":                  { from: FROM_SUPPORT,    to: "help@mail.tequilafestusa.com",       label: "Support" },
-  "Press / Media":          { from: FROM_SUPPORT,    to: "help@mail.tequilafestusa.com",       label: "Support" },
-  "Vendor Application":     { from: FROM_SUPPORT,    to: "help@mail.tequilafestusa.com",       label: "Support" },
-  "Affiliate Program":      { from: FROM_AFFILIATES, to: "affiliate@mail.tequilafestusa.com",  label: "Affiliates" },
+  // Partners/Sponsors inbox
   "Sponsorship Opportunity":{ from: FROM_PARTNERS,   to: "partners@mail.tequilafestusa.com",   label: "Sponsors" },
+  "Vendor Application":     { from: FROM_PARTNERS,   to: "partners@mail.tequilafestusa.com",   label: "Sponsors" },
+  // Affiliates inbox
+  "Press / Media":          { from: FROM_AFFILIATES, to: "affiliate@mail.tequilafestusa.com",  label: "Affiliates" },
+  "Affiliate Program":      { from: FROM_AFFILIATES, to: "affiliate@mail.tequilafestusa.com",  label: "Affiliates" },
 };
 
 // ─── Ticket Confirmation Email ────────────────────────────────────────────────
