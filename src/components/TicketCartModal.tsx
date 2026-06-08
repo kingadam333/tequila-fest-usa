@@ -6,6 +6,7 @@ import { X, Plus, Minus, User, Mail, Phone, ArrowRight, Loader2, ShoppingCart } 
 import type { TicketType } from "@/lib/ticket-config";
 import { TICKET_LABELS } from "@/lib/ticket-config";
 import { calculateFeesForCart } from "@/lib/fees";
+import Turnstile from "@/components/Turnstile";
 
 interface TicketTypeOption {
   key: TicketType;
@@ -44,6 +45,7 @@ export default function TicketCartModal({
   const [form, setForm] = useState({ firstName: "", lastName: "", email: "", phone: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [captchaToken, setCaptchaToken] = useState("");
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm(f => ({ ...f, [k]: e.target.value }));
@@ -79,6 +81,10 @@ export default function TicketCartModal({
   const handleCheckout = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.firstName || !form.email) return;
+    if (!captchaToken) {
+      setError("Please complete the verification challenge.");
+      return;
+    }
     setError("");
     setLoading(true);
     try {
@@ -92,7 +98,7 @@ export default function TicketCartModal({
           phone: form.phone,
           eventSlug,
           items: cartItems,
-          captchaToken: "bypass",
+          captchaToken,
         }),
       });
       const data = await res.json();
@@ -100,10 +106,12 @@ export default function TicketCartModal({
         window.location.href = data.url;
       } else {
         setError(data.error || "Something went wrong. Please try again.");
+        setCaptchaToken("");
         setLoading(false);
       }
     } catch {
       setError("Network error. Please try again.");
+      setCaptchaToken("");
       setLoading(false);
     }
   };
@@ -226,6 +234,11 @@ export default function TicketCartModal({
                       className="w-full bg-white/5 border border-yellow-500/15 focus:border-yellow-500/40 rounded-xl pl-9 pr-4 py-3 text-white placeholder-white/25 text-sm outline-none" />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-yellow-500/50 text-xs font-semibold hidden sm:block">⚡ Flash Deals</span>
                   </div>
+                  <Turnstile
+                    onVerify={setCaptchaToken}
+                    onError={() => setCaptchaToken("")}
+                    onExpire={() => setCaptchaToken("")}
+                  />
                 </form>
                 <p className="text-white/20 text-xs text-center mt-3">By continuing you agree to our Terms of Service. Must be 21+.</p>
               </div>
@@ -287,7 +300,7 @@ export default function TicketCartModal({
               </button>
             ) : (
               <button type="submit" form="checkout-form"
-                disabled={loading || !form.firstName || !form.email}
+                disabled={loading || !form.firstName || !form.email || !captchaToken}
                 className="w-full flex items-center justify-center gap-2 font-bold text-lg py-4 rounded-2xl transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{ background: eventColor, color: "#0d0500" }}>
                 {loading

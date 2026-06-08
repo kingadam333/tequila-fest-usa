@@ -9,28 +9,37 @@ import { Mail, ArrowLeft } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import OfficialBanner from "@/components/OfficialBanner";
 import Footer from "@/components/Footer";
+import Turnstile from "@/components/Turnstile";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
-  
+  const [captchaToken, setCaptchaToken] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    if (!captchaToken) {
+      setError("Please complete the verification challenge.");
+      return;
+    }
     setLoading(true);
     try {
       const res = await fetch("/api/auth/forgot-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, captchaToken: "bypass" }),
+        body: JSON.stringify({ email, captchaToken }),
       });
       if (res.ok) setSubmitted(true);
-      else setError("Something went wrong. Please try again.");
+      else {
+        setError("Something went wrong. Please try again.");
+        setCaptchaToken("");
+      }
     } catch {
       setError("Network error. Please try again.");
+      setCaptchaToken("");
     } finally {
       setLoading(false);
     }
@@ -67,8 +76,13 @@ export default function ForgotPasswordPage() {
                     <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Your email address" required
                       className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl pl-11 pr-4 py-3.5 text-white placeholder-white/30 outline-none transition-colors text-sm" />
                   </div>
-                  
-                  <button type="submit" disabled={loading}
+                  <Turnstile
+                    onVerify={setCaptchaToken}
+                    onError={() => setCaptchaToken("")}
+                    onExpire={() => setCaptchaToken("")}
+                  />
+
+                  <button type="submit" disabled={loading || !captchaToken}
                     className="w-full bg-yellow-500 hover:bg-yellow-400 disabled:opacity-60 text-black font-bold text-base py-4 rounded-xl transition-all hover:scale-[1.02] cursor-pointer">
                     {loading ? "Sending..." : "SEND RESET LINK"}
                   </button>

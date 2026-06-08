@@ -6,6 +6,7 @@ import { DollarSign, Link2, Users, TrendingUp, CheckCircle, Send } from "lucide-
 import Navbar from "@/components/Navbar";
 import OfficialBanner from "@/components/OfficialBanner";
 import Footer from "@/components/Footer";
+import Turnstile from "@/components/Turnstile";
 
 
 const PERKS = [
@@ -27,6 +28,7 @@ export default function AffiliatesPage() {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
+  const [captchaToken, setCaptchaToken] = useState("");
   
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
@@ -35,6 +37,10 @@ export default function AffiliatesPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    if (!captchaToken) {
+      setError("Please complete the verification challenge.");
+      return;
+    }
     setLoading(true);
     try {
       const res = await fetch("/api/contact", {
@@ -46,14 +52,18 @@ export default function AffiliatesPage() {
           phone: form.phone,
           subject: "Affiliate Program",
           message: `Platform/Channel: ${form.platform}\nAudience Size: ${form.audience}\n\n${form.message}`,
-          captchaToken: "bypass",
+          captchaToken,
         }),
       });
       const data = await res.json();
       if (res.ok) setSubmitted(true);
-      else setError(data.error || "Something went wrong. Please try again.");
+      else {
+        setError(data.error || "Something went wrong. Please try again.");
+        setCaptchaToken("");
+      }
     } catch {
       setError("Network error. Please try again.");
+      setCaptchaToken("");
     } finally {
       setLoading(false);
     }
@@ -181,7 +191,13 @@ export default function AffiliatesPage() {
                       className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-3 text-white placeholder-white/30 outline-none transition-colors text-sm resize-none" />
                   </div>
                   
-                  <button type="submit" disabled={loading}
+                  <Turnstile
+                    onVerify={setCaptchaToken}
+                    onError={() => setCaptchaToken("")}
+                    onExpire={() => setCaptchaToken("")}
+                  />
+
+                  <button type="submit" disabled={loading || !captchaToken}
                     className="w-full flex items-center justify-center gap-2 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-60 text-black font-bold text-base py-4 rounded-xl transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer">
                     {loading ? "Submitting..." : <><Send size={16} /> APPLY NOW</>}
                   </button>

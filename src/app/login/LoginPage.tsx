@@ -10,6 +10,7 @@ import { useSearchParams } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import OfficialBanner from "@/components/OfficialBanner";
 import Footer from "@/components/Footer";
+import Turnstile from "@/components/Turnstile";
 
 export default function LoginPage() {
   const params = useSearchParams();
@@ -18,6 +19,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [captchaToken, setCaptchaToken] = useState("");
 
   useEffect(() => {
     const prefill = params.get("email");
@@ -29,21 +31,27 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    if (!captchaToken) {
+      setError("Please complete the verification challenge.");
+      return;
+    }
     setLoading(true);
     try {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, captchaToken: "bypass" }),
+        body: JSON.stringify({ email, password, captchaToken }),
       });
       const data = await res.json();
       if (res.ok) {
         window.location.href = redirectTo;
       } else {
         setError(data.error || "Invalid email or password.");
+        setCaptchaToken("");
       }
     } catch {
       setError("Network error. Please try again.");
+      setCaptchaToken("");
     } finally {
       setLoading(false);
     }
@@ -138,12 +146,16 @@ export default function LoginPage() {
                 </Link>
               </div>
 
-              
+              <Turnstile
+                onVerify={setCaptchaToken}
+                onError={() => setCaptchaToken("")}
+                onExpire={() => setCaptchaToken("")}
+              />
 
               {/* Submit */}
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || !captchaToken}
                 className="w-full bg-yellow-500 hover:bg-yellow-400 disabled:opacity-60 disabled:cursor-not-allowed text-black font-bold text-base py-4 rounded-xl transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer mt-2"
               >
                 {loading ? (

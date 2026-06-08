@@ -8,6 +8,7 @@ import { Mail, Send, ChevronDown } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import OfficialBanner from "@/components/OfficialBanner";
 import Footer from "@/components/Footer";
+import Turnstile from "@/components/Turnstile";
 
 const SUBJECTS = [
   "General Inquiry",
@@ -48,7 +49,8 @@ export default function ContactPage() {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
-  
+  const [captchaToken, setCaptchaToken] = useState("");
+
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
     setForm(f => ({ ...f, [k]: e.target.value }));
@@ -56,18 +58,26 @@ export default function ContactPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    if (!captchaToken) {
+      setError("Please complete the verification challenge.");
+      return;
+    }
     setLoading(true);
     try {
       const res = await fetch("/api/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, captchaToken: "bypass" }),
+        body: JSON.stringify({ ...form, captchaToken }),
       });
       const data = await res.json();
       if (res.ok) setSubmitted(true);
-      else setError(data.error || "Something went wrong. Please try again.");
+      else {
+        setError(data.error || "Something went wrong. Please try again.");
+        setCaptchaToken(""); // tokens are single-use — force a fresh challenge
+      }
     } catch {
       setError("Network error. Please try again.");
+      setCaptchaToken("");
     } finally {
       setLoading(false);
     }
@@ -208,11 +218,15 @@ export default function ContactPage() {
                       />
                     </div>
 
-                    
+                    <Turnstile
+                      onVerify={setCaptchaToken}
+                      onError={() => setCaptchaToken("")}
+                      onExpire={() => setCaptchaToken("")}
+                    />
 
                     <button
                       type="submit"
-                      disabled={loading}
+                      disabled={loading || !captchaToken}
                       className="w-full flex items-center justify-center gap-2 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-60 text-black font-bold text-base py-4 rounded-xl transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
                     >
                       {loading ? (

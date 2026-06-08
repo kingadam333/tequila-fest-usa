@@ -3,16 +3,16 @@
  * https://developers.cloudflare.com/turnstile/get-started/server-side-validation/
  */
 export async function verifyTurnstile(token: string, ip?: string): Promise<boolean> {
-  // Turnstile disabled — widget removed from all forms
-  if (!token || token === "bypass") return true;
-
   const secret = process.env.TURNSTILE_SECRET_KEY;
 
-  // If no secret configured (dev mode), skip verification
+  // Dev mode: no secret configured — skip verification so local forms work.
   if (!secret) {
     console.warn("TURNSTILE_SECRET_KEY not set — skipping CAPTCHA verification");
     return true;
   }
+
+  // Secret is configured (production) — a real token is required.
+  if (!token) return false;
 
   const formData = new FormData();
   formData.append("secret", secret);

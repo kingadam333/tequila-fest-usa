@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { resend, FROM_SUPPORT } from "@/lib/resend";
+import { verifyTurnstile } from "@/lib/turnstile";
 
 export async function POST(req: NextRequest) {
   const { name, business, email, phone, type, cities, description, captchaToken } = await req.json();
@@ -9,16 +10,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Name, business, email, and vendor type are required" }, { status: 400 });
   }
 
-  // Verify Turnstile captcha
-  if (process.env.TURNSTILE_SECRET_KEY && captchaToken) {
-    const verify = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ secret: process.env.TURNSTILE_SECRET_KEY, response: captchaToken }),
-    });
-    const v = await verify.json();
-    if (!v.success) return NextResponse.json({ error: "CAPTCHA verification failed" }, { status: 400 });
-  }
+  // Turnstile verification — always enforced (verifyTurnstile self-skips in dev when no secret is set)
+  const ip = req.headers.get("cf-connecting-ip") || req.headers.get("x-forwarded-for") || undefined;
+  const captchaOk = await verifyTurnstile(captchaToken || "", ip);
+  if (!captchaOk) return NextResponse.json({ error: "CAPTCHA verification failed" }, { status: 400 });
 
   const db = supabaseAdmin as any;
 

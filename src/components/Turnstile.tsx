@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 
 declare global {
   interface Window {
-    turnstile: {
+    turnstile?: {
       render: (container: HTMLElement, options: Record<string, unknown>) => string;
       reset: (widgetId: string) => void;
       remove: (widgetId: string) => void;
@@ -19,27 +19,46 @@ interface TurnstileProps {
   onExpire?: () => void;
 }
 
+const SCRIPT_SRC =
+  "https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onTurnstileLoad&render=explicit";
+
 export default function Turnstile({ onVerify, onError, onExpire }: TurnstileProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const widgetIdRef = useRef<string | null>(null);
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
+  // Keep the latest callbacks in refs so the render effect below has a STABLE
+  // dependency list and runs exactly once. Putting the callbacks directly in
+  // the effect deps causes the widget to remove + re-render on every parent
+  // re-render, which shows up as an endlessly spinning / resetting widget.
+  const onVerifyRef = useRef(onVerify);
+  const onErrorRef = useRef(onError);
+  const onExpireRef = useRef(onExpire);
+  onVerifyRef.current = onVerify;
+  onErrorRef.current = onError;
+  onExpireRef.current = onExpire;
+
   useEffect(() => {
-    // If no site key (dev), auto-verify with a placeholder
+    // Dev / no key configured: auto-verify with a placeholder so forms still work.
     if (!siteKey) {
-      onVerify("dev-bypass-token");
+      onVerifyRef.current("dev-bypass-token");
       return;
     }
 
+    let cancelled = false;
+
     const render = () => {
-      if (!containerRef.current || widgetIdRef.current) return;
+      if (cancelled || !containerRef.current || widgetIdRef.current || !window.turnstile) {
+        return;
+      }
       widgetIdRef.current = window.turnstile.render(containerRef.current, {
         sitekey: siteKey,
-        callback: onVerify,
-        "error-callback": onError,
-        "expired-callback": onExpire,
+        callback: (token: string) => onVerifyRef.current(token),
+        "error-callback": () => onErrorRef.current?.(),
+        "expired-callback": () => onExpireRef.current?.(),
         theme: "dark",
         size: "normal",
+        retry: "never", // don't auto-respawn on error — prevents loops
       });
     };
 
@@ -47,9 +66,9 @@ export default function Turnstile({ onVerify, onError, onExpire }: TurnstileProp
       render();
     } else {
       window.onTurnstileLoad = render;
-      if (!document.querySelector('script[src*="turnstile"]')) {
+      if (!document.querySelector(`script[src*="turnstile/v0/api.js"]`)) {
         const script = document.createElement("script");
-        script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onTurnstileLoad";
+        script.src = SCRIPT_SRC;
         script.async = true;
         script.defer = true;
         document.head.appendChild(script);
@@ -57,12 +76,18 @@ export default function Turnstile({ onVerify, onError, onExpire }: TurnstileProp
     }
 
     return () => {
+      cancelled = true;
       if (widgetIdRef.current && window.turnstile) {
-        window.turnstile.remove(widgetIdRef.current);
+        try {
+          window.turnstile.remove(widgetIdRef.current);
+        } catch {
+          /* widget already gone */
+        }
         widgetIdRef.current = null;
       }
     };
-  }, [siteKey, onVerify, onError, onExpire]);
+    // siteKey is the ONLY real dependency — callbacks are read via refs.
+  }, [siteKey]);
 
   if (!siteKey) return null;
 
