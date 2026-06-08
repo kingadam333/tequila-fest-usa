@@ -72,6 +72,7 @@ const EVENTS = [
     gaTicket: null,
     freeParking: true,
     slug: "phoenix",
+    status: "coming_soon",
     color: "#7B2FBE",
     gradient: "from-purple-900/40 to-violet-950/40",
     border: "border-purple-500/30",
@@ -128,9 +129,10 @@ export default function EventCards() {
               className="h-full"
             >
               <a
-                href={`/events/${event.slug}#tickets`}
-                className={`group flex flex-col h-full bg-gradient-to-br ${event.gradient} border ${event.border} rounded-2xl p-6 hover:scale-[1.02] transition-all duration-300 hover:shadow-2xl cursor-pointer`}
+                href={(event as any).status === "coming_soon" ? undefined : `/events/${event.slug}#tickets`}
+                className={`group flex flex-col h-full bg-gradient-to-br ${event.gradient} border ${event.border} rounded-2xl p-6 transition-all duration-300 ${(event as any).status === "coming_soon" ? "opacity-80 cursor-default" : "hover:scale-[1.02] hover:shadow-2xl cursor-pointer"}`}
                 style={{ boxShadow: `0 4px 40px ${event.color}10` }}
+                onClick={(event as any).status === "coming_soon" ? (e) => e.preventDefault() : undefined}
               >
                 {/* Top row */}
                 <div className="flex items-start justify-between mb-4">
@@ -213,18 +215,27 @@ export default function EventCards() {
                 </div>
 
                 {/* CTA — mt-auto pushes to bottom so all cards are uniform */}
-                <div
-                  className="mt-auto flex items-center justify-between w-full font-bold text-black px-6 py-3 rounded-full transition-all duration-200 group-hover:brightness-110"
-                  style={{ background: event.color }}
-                >
-                  <div className="flex items-center gap-2">
-                    <Ticket size={16} />
-                    <span>GET TICKETS</span>
+                {(event as any).status === "coming_soon" ? (
+                  <div className="mt-auto flex items-center justify-center gap-2 w-full font-bold px-6 py-3 rounded-full border-2"
+                    style={{ borderColor: event.color, color: event.color, background: `${event.color}12` }}
+                  >
+                    <span>🔔</span>
+                    <span>COMING SOON</span>
                   </div>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M5 12h14M12 5l7 7-7 7"/>
-                  </svg>
-                </div>
+                ) : (
+                  <div
+                    className="mt-auto flex items-center justify-between w-full font-bold text-black px-6 py-3 rounded-full transition-all duration-200 group-hover:brightness-110"
+                    style={{ background: event.color }}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Ticket size={16} />
+                      <span>GET TICKETS</span>
+                    </div>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M5 12h14M12 5l7 7-7 7"/>
+                    </svg>
+                  </div>
+                )}
               </a>
             </motion.div>
           ))}
