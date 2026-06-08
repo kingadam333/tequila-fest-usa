@@ -8,7 +8,7 @@ export const FROM_SUPPORT    = "Tequila Fest USA <help@mail.tequilafestusa.com>"
 export const FROM_AFFILIATES = "Tequila Fest USA Affiliates <affiliates@mail.tequilafestusa.com>";
 export const FROM_SPONSORS   = "Tequila Fest USA Sponsors <sponsors@mail.tequilafestusa.com>";
 export const FROM_VENDORS    = "Tequila Fest USA Vendors <vendors@mail.tequilafestusa.com>";
-export const FROM_BRANDS     = "Tequila Fest USA Brands <brands@mail.tequilafestusa.com>";
+export const FROM_BRANDS     = "Adam Bossin <brands@mail.tequilafestusa.com>";
 export const FROM_PARTNERS   = FROM_SPONSORS; // alias kept for backward compatibility
 
 export const INBOX_ROUTING: Record<string, { from: string; to: string; label: string }> = {
