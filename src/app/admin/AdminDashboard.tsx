@@ -1481,6 +1481,29 @@ function ContactSection({ adminToken }: { adminToken: string }) {
   const [sent, setSent] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [forwardOpen, setForwardOpen] = useState(false);
+  const [forwardTo, setForwardTo] = useState("");
+  const [forwardNote, setForwardNote] = useState("");
+  const [forwarding, setForwarding] = useState(false);
+  const [forwardStatus, setForwardStatus] = useState("");
+
+  const handleForward = async () => {
+    if (!selected || !forwardTo.trim()) return;
+    setForwarding(true); setForwardStatus("");
+    try {
+      const res = await fetch("/api/admin/contact/forward", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-token": adminToken },
+        body: JSON.stringify({ id: selected.id, to: forwardTo, note: forwardNote }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setForwardStatus("Forwarded");
+        setTimeout(() => { setForwardOpen(false); setForwardTo(""); setForwardNote(""); setForwardStatus(""); }, 900);
+      } else setForwardStatus(`Error: ${data.error || "failed"}`);
+    } catch (e: any) { setForwardStatus(`Error: ${e?.message || "failed"}`); }
+    setForwarding(false);
+  };
 
   useEffect(() => {
     const load = async () => {
@@ -1663,11 +1686,34 @@ function ContactSection({ adminToken }: { adminToken: string }) {
               <div className="mb-4 pb-4 border-b border-white/10">
                 <div className="flex items-start justify-between">
                   <p className="text-white font-bold">{selected.name}</p>
-                  <button onClick={() => handleDelete(selected.id)} disabled={deleting}
-                    className="flex items-center gap-1 text-xs text-red-400/60 hover:text-red-400 transition-all cursor-pointer">
-                    <Trash2 size={12} /> Delete
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <button onClick={() => { setForwardOpen(o => !o); setForwardStatus(""); }}
+                      className="flex items-center gap-1 text-xs text-white/50 hover:text-yellow-400 transition-all cursor-pointer">
+                      <Send size={12} /> Forward
+                    </button>
+                    <button onClick={() => handleDelete(selected.id)} disabled={deleting}
+                      className="flex items-center gap-1 text-xs text-red-400/60 hover:text-red-400 transition-all cursor-pointer">
+                      <Trash2 size={12} /> Delete
+                    </button>
+                  </div>
                 </div>
+                {forwardOpen && (
+                  <div className="mt-3 p-3 bg-white/[0.03] border border-white/10 rounded-xl space-y-2">
+                    <input value={forwardTo} onChange={e => setForwardTo(e.target.value)} placeholder="forward to (email, comma-separated)"
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-yellow-500/40" />
+                    <textarea value={forwardNote} onChange={e => setForwardNote(e.target.value)} rows={2} placeholder="optional note above the forwarded message"
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-yellow-500/40 resize-y" />
+                    <div className="flex items-center gap-2">
+                      <button onClick={handleForward} disabled={forwarding || !forwardTo.trim()}
+                        className="px-3 py-1.5 bg-yellow-500 hover:bg-yellow-400 text-black text-xs font-semibold rounded-lg cursor-pointer disabled:opacity-40">
+                        {forwarding ? "Sending…" : "Send Forward"}
+                      </button>
+                      <button onClick={() => { setForwardOpen(false); setForwardTo(""); setForwardNote(""); }}
+                        className="text-xs text-white/40 hover:text-white cursor-pointer">Cancel</button>
+                      {forwardStatus && <span className="text-xs text-white/60 ml-auto">{forwardStatus}</span>}
+                    </div>
+                  </div>
+                )}
                 <p className="text-white/40 text-xs">{selected.email} · {new Date(selected.created_at).toLocaleDateString()}</p>
                 <p className="text-sm font-semibold mt-2" style={{ color: inbox.color }}>{selected.subject}</p>
                 <p className="text-white/60 text-sm mt-2 leading-relaxed">{selected.message}</p>
@@ -1832,6 +1878,40 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
   const [selectedMsg, setSelectedMsg] = useState<ContactSubmission | null>(null);
   const [reply, setReply] = useState("");
   const [sending, setSending] = useState(false);
+  const [bForwardOpen, setBForwardOpen] = useState(false);
+  const [bForwardTo, setBForwardTo] = useState("");
+  const [bForwardNote, setBForwardNote] = useState("");
+  const [bForwarding, setBForwarding] = useState(false);
+  const [bForwardStatus, setBForwardStatus] = useState("");
+
+  const deleteBrandMsg = async (id: string) => {
+    if (!confirm("Delete this message?")) return;
+    await fetch("/api/admin/contact", {
+      method: "DELETE",
+      headers: { ...headers, "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+    setBrandMessages(prev => prev.filter(m => m.id !== id));
+    if (selectedMsg?.id === id) setSelectedMsg(null);
+  };
+
+  const forwardBrandMsg = async () => {
+    if (!selectedMsg || !bForwardTo.trim()) return;
+    setBForwarding(true); setBForwardStatus("");
+    try {
+      const res = await fetch("/api/admin/contact/forward", {
+        method: "POST",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify({ id: selectedMsg.id, to: bForwardTo, note: bForwardNote }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setBForwardStatus("Forwarded");
+        setTimeout(() => { setBForwardOpen(false); setBForwardTo(""); setBForwardNote(""); setBForwardStatus(""); }, 900);
+      } else setBForwardStatus(`Error: ${data.error || "failed"}`);
+    } catch (e: any) { setBForwardStatus(`Error: ${e?.message || "failed"}`); }
+    setBForwarding(false);
+  };
 
   // ── Compose (broadcast) state
   const [showCompose, setShowCompose] = useState(false);
@@ -2111,10 +2191,36 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
           <div>
             {selectedMsg ? (
               <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-6 space-y-4">
-                <div>
-                  <p className="font-semibold text-white text-lg">{selectedMsg.subject}</p>
-                  <p className="text-white/40 text-sm">{selectedMsg.name} · {selectedMsg.email}</p>
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-white text-lg">{selectedMsg.subject}</p>
+                    <p className="text-white/40 text-sm">{selectedMsg.name} · {selectedMsg.email}</p>
+                  </div>
+                  <div className="flex items-center gap-3 flex-shrink-0">
+                    <button onClick={() => { setBForwardOpen(o => !o); setBForwardStatus(""); }} className="flex items-center gap-1 text-xs text-white/50 hover:text-yellow-400 cursor-pointer">
+                      <Send size={12} /> Forward
+                    </button>
+                    <button onClick={() => deleteBrandMsg(selectedMsg.id)} className="flex items-center gap-1 text-xs text-red-400/60 hover:text-red-400 cursor-pointer">
+                      <Trash2 size={12} /> Delete
+                    </button>
+                  </div>
                 </div>
+                {bForwardOpen && (
+                  <div className="p-3 bg-white/[0.03] border border-white/10 rounded-xl space-y-2">
+                    <input value={bForwardTo} onChange={e => setBForwardTo(e.target.value)} placeholder="forward to (email, comma-separated)"
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-yellow-500/40" />
+                    <textarea value={bForwardNote} onChange={e => setBForwardNote(e.target.value)} rows={2} placeholder="optional note above the forwarded message"
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-yellow-500/40 resize-y" />
+                    <div className="flex items-center gap-2">
+                      <button onClick={forwardBrandMsg} disabled={bForwarding || !bForwardTo.trim()}
+                        className="px-3 py-1.5 bg-yellow-500 hover:bg-yellow-400 text-black text-xs font-semibold rounded-lg cursor-pointer disabled:opacity-40">
+                        {bForwarding ? "Sending…" : "Send Forward"}
+                      </button>
+                      <button onClick={() => { setBForwardOpen(false); setBForwardTo(""); setBForwardNote(""); }} className="text-xs text-white/40 hover:text-white cursor-pointer">Cancel</button>
+                      {bForwardStatus && <span className="text-xs text-white/60 ml-auto">{bForwardStatus}</span>}
+                    </div>
+                  </div>
+                )}
                 <p className="text-white/70 text-sm whitespace-pre-wrap">{selectedMsg.message}</p>
                 <div className="border-t border-white/10 pt-4 space-y-3">
                   <textarea value={reply} onChange={e => setReply(e.target.value)} placeholder="Write a reply…" rows={4}
