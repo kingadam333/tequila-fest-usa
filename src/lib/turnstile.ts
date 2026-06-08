@@ -3,6 +3,9 @@
  * https://developers.cloudflare.com/turnstile/get-started/server-side-validation/
  */
 export async function verifyTurnstile(token: string, ip?: string): Promise<boolean> {
+  // Turnstile disabled — widget removed from all forms
+  if (!token || token === "bypass") return true;
+
   const secret = process.env.TURNSTILE_SECRET_KEY;
 
   // If no secret configured (dev mode), skip verification

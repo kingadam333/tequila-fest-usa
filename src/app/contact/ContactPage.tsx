@@ -4,7 +4,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { Mail, Send, ChevronDown } from "lucide-react";
-import Turnstile from "@/components/Turnstile";
+
 import Navbar from "@/components/Navbar";
 import OfficialBanner from "@/components/OfficialBanner";
 import Footer from "@/components/Footer";
@@ -48,7 +48,7 @@ export default function ContactPage() {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
-  const [captchaToken, setCaptchaToken] = useState("");
+  
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
     setForm(f => ({ ...f, [k]: e.target.value }));
@@ -61,7 +61,7 @@ export default function ContactPage() {
       const res = await fetch("/api/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, captchaToken }),
+        body: JSON.stringify({ ...form, captchaToken: "bypass" }),
       });
       const data = await res.json();
       if (res.ok) setSubmitted(true);
@@ -208,11 +208,11 @@ export default function ContactPage() {
                       />
                     </div>
 
-                    <Turnstile onVerify={setCaptchaToken} onExpire={() => setCaptchaToken("")} />
+                    
 
                     <button
                       type="submit"
-                      disabled={loading || !captchaToken}
+                      disabled={loading}
                       className="w-full flex items-center justify-center gap-2 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-60 text-black font-bold text-base py-4 rounded-xl transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
                     >
                       {loading ? (

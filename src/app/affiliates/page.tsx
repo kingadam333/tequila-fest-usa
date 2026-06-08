@@ -6,7 +6,7 @@ import { DollarSign, Link2, Users, TrendingUp, CheckCircle, Send } from "lucide-
 import Navbar from "@/components/Navbar";
 import OfficialBanner from "@/components/OfficialBanner";
 import Footer from "@/components/Footer";
-import Turnstile from "@/components/Turnstile";
+
 
 const PERKS = [
   { icon: <DollarSign size={22} />, title: "Earn Commission", desc: "Get paid for every ticket sold through your unique referral link." },
@@ -27,7 +27,7 @@ export default function AffiliatesPage() {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
-  const [captchaToken, setCaptchaToken] = useState("");
+  
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
     setForm(f => ({ ...f, [k]: e.target.value }));
@@ -46,7 +46,7 @@ export default function AffiliatesPage() {
           phone: form.phone,
           subject: "Affiliate Program",
           message: `Platform/Channel: ${form.platform}\nAudience Size: ${form.audience}\n\n${form.message}`,
-          captchaToken,
+          captchaToken: "bypass",
         }),
       });
       const data = await res.json();
@@ -180,8 +180,8 @@ export default function AffiliatesPage() {
                     <textarea value={form.message} onChange={set("message")} rows={4} placeholder="How do you plan to promote Tequila Fest USA? Link to your profile or site..."
                       className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-3 text-white placeholder-white/30 outline-none transition-colors text-sm resize-none" />
                   </div>
-                  <Turnstile onVerify={setCaptchaToken} onExpire={() => setCaptchaToken("")} />
-                  <button type="submit" disabled={loading || !captchaToken}
+                  
+                  <button type="submit" disabled={loading}
                     className="w-full flex items-center justify-center gap-2 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-60 text-black font-bold text-base py-4 rounded-xl transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer">
                     {loading ? "Submitting..." : <><Send size={16} /> APPLY NOW</>}
                   </button>

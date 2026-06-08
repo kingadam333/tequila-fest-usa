@@ -6,7 +6,7 @@ import { ShoppingBag, Users, MapPin, CheckCircle, Send, Utensils, Package } from
 import Navbar from "@/components/Navbar";
 import OfficialBanner from "@/components/OfficialBanner";
 import Footer from "@/components/Footer";
-import Turnstile from "@/components/Turnstile";
+
 
 const VENDOR_TYPES = [
   { icon: <Utensils size={20} />, title: "Food Vendors", desc: "Serve food that pairs perfectly with tequila — tacos, elotes, appetizers, and more." },
@@ -35,7 +35,7 @@ export default function VendorsPage() {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
-  const [captchaToken, setCaptchaToken] = useState("");
+  
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
     setForm(f => ({ ...f, [k]: e.target.value }));
@@ -56,7 +56,7 @@ export default function VendorsPage() {
           type: form.type,
           cities: form.cities ? [form.cities] : [],
           description: form.description,
-          captchaToken,
+          captchaToken: "bypass",
         }),
       });
       const data = await res.json();
@@ -215,8 +215,8 @@ export default function VendorsPage() {
                       placeholder="Tell us what you sell, your setup size, any power needs, and why you'd be a great fit..."
                       className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-3 text-white placeholder-white/30 outline-none transition-colors text-sm resize-none" />
                   </div>
-                  <Turnstile onVerify={setCaptchaToken} onExpire={() => setCaptchaToken("")} />
-                  <button type="submit" disabled={loading || !captchaToken}
+                  
+                  <button type="submit" disabled={loading}
                     className="w-full flex items-center justify-center gap-2 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-60 text-black font-bold text-base py-4 rounded-xl transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer">
                     {loading ? "Submitting..." : <><Send size={16} /> SUBMIT APPLICATION</>}
                   </button>

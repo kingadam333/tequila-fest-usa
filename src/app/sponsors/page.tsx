@@ -6,7 +6,7 @@ import { Star, Users, MapPin, TrendingUp, CheckCircle, Send } from "lucide-react
 import Navbar from "@/components/Navbar";
 import OfficialBanner from "@/components/OfficialBanner";
 import Footer from "@/components/Footer";
-import Turnstile from "@/components/Turnstile";
+
 
 const PACKAGES = [
   {
@@ -76,7 +76,7 @@ export default function SponsorsPage() {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
-  const [captchaToken, setCaptchaToken] = useState("");
+  
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
     setForm(f => ({ ...f, [k]: e.target.value }));
@@ -95,7 +95,7 @@ export default function SponsorsPage() {
           phone: form.phone,
           subject: "Sponsorship Opportunity",
           message: `Company: ${form.company}\nPackage Interest: ${form.package}\n\n${form.message}`,
-          captchaToken,
+          captchaToken: "bypass",
         }),
       });
       const data = await res.json();
@@ -258,8 +258,8 @@ export default function SponsorsPage() {
                     <textarea value={form.message} onChange={set("message")} rows={4} placeholder="Which cities? Goals for the sponsorship? Any questions?"
                       className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-3 text-white placeholder-white/30 outline-none transition-colors text-sm resize-none" />
                   </div>
-                  <Turnstile onVerify={setCaptchaToken} onExpire={() => setCaptchaToken("")} />
-                  <button type="submit" disabled={loading || !captchaToken}
+                  
+                  <button type="submit" disabled={loading}
                     className="w-full flex items-center justify-center gap-2 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-60 text-black font-bold text-base py-4 rounded-xl transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer">
                     {loading ? "Submitting..." : <><Send size={16} /> REQUEST INFO</>}
                   </button>
