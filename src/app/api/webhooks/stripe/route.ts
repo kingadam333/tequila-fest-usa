@@ -119,7 +119,7 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
         if (customerEmail) {
           try {
             const isGA = ticketType === "ga";
-            const pointsPerTicket = isGA ? 1 : 5;
+            const pointsPerTicket = isGA ? 20 : 100;
             const purchasePoints = qty * pointsPerTicket;
 
             const { data: buyer } = await db
@@ -252,7 +252,7 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
 
             if (refCodeRow && refCodeRow.customer_id !== order.customer_id) {
               const isGA = ticketType === "ga";
-              const POINTS = isGA ? 1 : 5;
+              const POINTS = isGA ? 20 : 100;
               const ENTRIES = isGA ? 0 : 1; // GA referrals: points only, no raffle entry
 
               // Log the referral conversion
