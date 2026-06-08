@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, User, Mail, Phone, ArrowRight, Loader2 } from "lucide-react";
 import Turnstile from "./Turnstile";
@@ -24,13 +24,17 @@ export default function PreCheckoutModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // Stable callbacks so Turnstile never remounts when form state changes
+  const handleVerify = useCallback((token: string) => setCaptchaToken(token), []);
+  const handleExpire = useCallback(() => setCaptchaToken(""), []);
+
   // If Turnstile hasn't verified after 4s, unblock the form anyway
   useEffect(() => {
     const t = setTimeout(() => {
-      if (!captchaToken) setCaptchaToken("bypass");
+      setCaptchaToken(prev => prev || "bypass");
     }, 4000);
     return () => clearTimeout(t);
-  }, [captchaToken]);
+  }, []);
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm(f => ({ ...f, [k]: e.target.value }));
@@ -141,7 +145,7 @@ export default function PreCheckoutModal({
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-yellow-500/50 text-xs font-semibold hidden sm:block">⚡ Flash Deals</span>
             </div>
 
-            <Turnstile onVerify={setCaptchaToken} onExpire={() => setCaptchaToken("")} />
+            <Turnstile onVerify={handleVerify} onExpire={handleExpire} />
 
             <button type="submit" disabled={loading || !captchaToken}
               className="w-full flex items-center justify-center gap-2 font-bold text-lg py-4 rounded-2xl transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed mt-1"
