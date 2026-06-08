@@ -40,7 +40,6 @@ export async function POST(req: NextRequest) {
   const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hour
 
   // Delete any existing tokens for this email, then insert new one
-  const db = supabaseAdmin as any;
   await db.from("password_reset_tokens").delete().eq("email", email.toLowerCase());
   await db.from("password_reset_tokens").insert({ token, email: email.toLowerCase(), expires_at: expiresAt });
 
