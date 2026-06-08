@@ -115,8 +115,9 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
         if (ticketError) console.error("Ticket instances error:", ticketError);
 
         // ── Award purchase points ──────────────────────────────────
-        // GA Entry: 1 point/ticket, no raffle. All other types: 5 points/ticket + raffle eligible.
-        if (customerEmail) {
+        // GA Entry: 10 pts/ticket, no raffle. All other types: 100 pts/ticket + raffle eligible.
+        // Comp tickets (amountTotal === 0) never earn points.
+        if (customerEmail && amountTotal > 0) {
           try {
             const isGA = ticketType === "ga";
             const pointsPerTicket = isGA ? 10 : 100;
