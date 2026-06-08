@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { Mail, Send, ChevronDown } from "lucide-react";
+import { Mail, Send, ChevronDown, Users, Star, ShoppingBag, Newspaper, Wine } from "lucide-react";
 
 import Navbar from "@/components/Navbar";
 import OfficialBanner from "@/components/OfficialBanner";
@@ -253,6 +253,34 @@ export default function ContactPage() {
               transition={{ duration: 0.5, delay: 0.2 }}
               className="lg:col-span-2 space-y-6"
             >
+              {/* Quick links (card style, moved above Reach Us Directly) */}
+              <div>
+                <h2 className="font-display text-white text-2xl mb-4">QUICK LINKS</h2>
+                <div className="space-y-3">
+                  {[
+                    { label: "Add Your Tequila Brand", desc: "Brand packages & festival presence", href: "/brand-packages", icon: <Wine size={20} />, color: "#F5A623" },
+                    { label: "Affiliate Program", desc: "Earn commission promoting events", href: "/affiliates", icon: <Users size={20} />, color: "#7B2FBE" },
+                    { label: "Sponsorship Packages", desc: "Brand partnerships & sponsorships", href: "/sponsors", icon: <Star size={20} />, color: "#C0C0C0" },
+                    { label: "Vendor Application", desc: "Sell at our festivals", href: "/vendors", icon: <ShoppingBag size={20} />, color: "#C8102E" },
+                    { label: "Press & Media Kit", desc: "Assets, bios & press releases", href: "/press", icon: <Newspaper size={20} />, color: "#1877F2" },
+                  ].map(link => (
+                    <Link key={link.label} href={link.href}
+                      className="flex items-center gap-4 bg-white/[0.03] border border-white/10 hover:border-white/20 rounded-2xl px-5 py-4 transition-all duration-200 group"
+                    >
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-200"
+                        style={{ background: `${link.color}18`, color: link.color, border: `1px solid ${link.color}30` }}>
+                        {link.icon}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-white/30 text-xs uppercase tracking-wider">{link.desc}</p>
+                        <p className="text-white/80 group-hover:text-white font-medium text-sm transition-colors duration-200">{link.label}</p>
+                      </div>
+                      <span className="text-white/20 group-hover:text-yellow-400 transition-colors duration-200 flex-shrink-0">→</span>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+
               {/* Contact cards */}
               <div>
                 <h2 className="font-display text-white text-2xl mb-4">REACH US DIRECTLY</h2>
@@ -279,29 +307,6 @@ export default function ContactPage() {
               <div className="bg-white/[0.03] border border-white/10 rounded-2xl px-5 py-4">
                 <p className="text-white/30 text-xs uppercase tracking-wider mb-2">Response Time</p>
                 <p className="text-white/70 text-sm">We typically respond within <span className="text-yellow-400 font-semibold">1–2 business days</span>. For urgent ticket issues, email is fastest.</p>
-              </div>
-
-              {/* Quick links */}
-              <div>
-                <p className="text-white/30 text-xs uppercase tracking-wider mb-3">Quick Links</p>
-                <div className="space-y-2">
-                  {[
-                    { label: "Affiliate Program", href: "/affiliates", desc: "Earn commission promoting events" },
-                    { label: "Sponsorship Packages", href: "/sponsors", desc: "Brand partnerships & sponsorships" },
-                    { label: "Vendor Application", href: "/vendors", desc: "Sell at our festivals" },
-                    { label: "Press & Media Kit", href: "/press", desc: "Assets, bios & press releases" },
-                  ].map(link => (
-                    <Link key={link.label} href={link.href}
-                      className="flex items-center justify-between bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.06] hover:border-white/15 rounded-xl px-4 py-3 transition-all duration-200 group"
-                    >
-                      <div>
-                        <p className="text-white/70 group-hover:text-yellow-400 text-sm font-medium transition-colors duration-200">{link.label}</p>
-                        <p className="text-white/25 text-xs">{link.desc}</p>
-                      </div>
-                      <span className="text-white/20 group-hover:text-yellow-400 transition-colors duration-200">→</span>
-                    </Link>
-                  ))}
-                </div>
               </div>
             </motion.div>
           </div>
