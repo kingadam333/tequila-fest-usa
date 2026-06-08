@@ -6,7 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { User, ShoppingBag, QrCode, LogOut, MapPin, Calendar, Phone, Mail, Edit2, Check, LayoutDashboard } from "lucide-react";
 import DashboardTab from "./DashboardTab";
-import { TICKET_LABELS } from "@/lib/stripe";
+import { TICKET_LABELS } from "@/lib/ticket-config";
 import Navbar from "@/components/Navbar";
 import OfficialBanner from "@/components/OfficialBanner";
 import Footer from "@/components/Footer";
