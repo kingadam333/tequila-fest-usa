@@ -19,10 +19,23 @@ export async function GET(req: NextRequest) {
     .select("event_city, ticket_type, quantity")
     .eq("status", "paid");
 
-  // Build lookup map: "city:type" → total quantity sold
+  // Normalize slug ticket types → display names so old and new orders both match
+  const SLUG_TO_DISPLAY: Record<string, string> = {
+    "regular":           "regular rate",
+    "vip":               "vip experience",
+    "ga":                "ga",
+    "early bird":        "early bird",
+    "early_bird":        "early bird",
+    "late registration": "late registration",
+    "late_registration": "late registration",
+  };
+
+  // Build lookup map: "city:normalized_type" → total quantity sold
   const countMap = new Map<string, number>();
   for (const row of liveCounts || []) {
-    const key = `${(row.event_city || "").toLowerCase()}:${(row.ticket_type || "").toLowerCase()}`;
+    const rawType = (row.ticket_type || "").toLowerCase();
+    const normalizedType = SLUG_TO_DISPLAY[rawType] ?? rawType;
+    const key = `${(row.event_city || "").toLowerCase()}:${normalizedType}`;
     countMap.set(key, (countMap.get(key) || 0) + (row.quantity || 1));
   }
 

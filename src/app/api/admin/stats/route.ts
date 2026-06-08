@@ -30,6 +30,28 @@ async function getSupabaseStats() {
   const totalTickets = rows.reduce((s, o) => s + Number(o.quantity), 0);
   const ordersToday = rows.filter(o => String(o.created_at).startsWith(today)).length;
 
+  // Normalize ticket type slugs → canonical display names
+  const SLUG_TO_DISPLAY: Record<string, string> = {
+    "regular":           "Regular Rate",
+    "vip":               "VIP Experience",
+    "ga":                "GA",
+    "early bird":        "Early Bird",
+    "early_bird":        "Early Bird",
+    "late registration": "Late Registration",
+    "late_registration": "Late Registration",
+    // Display names map to themselves (case-insensitive lookup below)
+    "early bird rate":   "Early Bird",
+    "regular rate":      "Regular Rate",
+    "vip experience":    "VIP Experience",
+    "late registration rate": "Late Registration",
+  };
+  const TICKET_TYPE_ORDER = ["Early Bird", "Regular Rate", "Late Registration", "VIP Experience", "GA"];
+
+  const normalizeType = (raw: string): string => {
+    const key = (raw || "").toLowerCase().trim();
+    return SLUG_TO_DISPLAY[key] ?? raw;
+  };
+
   // Per-city breakdown with ticket type split
   const byCity: Record<string, {
     revenue: number;
@@ -42,8 +64,22 @@ async function getSupabaseStats() {
     if (!byCity[city]) byCity[city] = { revenue: 0, tickets: 0, byType: {} };
     byCity[city].revenue += Number(o.total);
     byCity[city].tickets += o.quantity;
-    const type = o.ticket_type || "unknown";
+    const type = normalizeType(o.ticket_type);
     byCity[city].byType[type] = (byCity[city].byType[type] || 0) + o.quantity;
+  }
+
+  // Sort each city's byType into canonical order
+  for (const city of Object.keys(byCity)) {
+    const raw = byCity[city].byType;
+    const sorted: Record<string, number> = {};
+    for (const name of TICKET_TYPE_ORDER) {
+      if (raw[name]) sorted[name] = raw[name];
+    }
+    // Append any unknown types at the end
+    for (const name of Object.keys(raw)) {
+      if (!sorted[name]) sorted[name] = raw[name];
+    }
+    byCity[city].byType = sorted;
   }
 
   // Fee analytics
