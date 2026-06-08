@@ -8,20 +8,17 @@ export const FROM_SUPPORT    = "Tequila Fest USA <help@mail.tequilafestusa.com>"
 export const FROM_AFFILIATES = "Tequila Fest USA Affiliates <affiliate@mail.tequilafestusa.com>";
 export const FROM_PARTNERS   = "Tequila Fest USA Partners <partners@mail.tequilafestusa.com>";
 
-// Admin inbox — all contact form submissions route here
-const ADMIN_EMAIL = process.env.ADMIN_NOTIFICATION_EMAIL || "bossininfo@gmail.com";
-
 export const INBOX_ROUTING: Record<string, { from: string; to: string; label: string }> = {
   // Support inbox
-  "General Inquiry":        { from: FROM_SUPPORT,    to: ADMIN_EMAIL, label: "Support" },
-  "Ticket Support":         { from: FROM_SUPPORT,    to: ADMIN_EMAIL, label: "Support" },
-  "Other":                  { from: FROM_SUPPORT,    to: ADMIN_EMAIL, label: "Support" },
+  "General Inquiry":        { from: FROM_SUPPORT,    to: "help@mail.tequilafestusa.com",       label: "Support" },
+  "Ticket Support":         { from: FROM_SUPPORT,    to: "help@mail.tequilafestusa.com",       label: "Support" },
+  "Other":                  { from: FROM_SUPPORT,    to: "help@mail.tequilafestusa.com",       label: "Support" },
   // Partners/Sponsors inbox
-  "Sponsorship Opportunity":{ from: FROM_PARTNERS,   to: ADMIN_EMAIL, label: "Sponsors" },
-  "Vendor Application":     { from: FROM_PARTNERS,   to: ADMIN_EMAIL, label: "Sponsors" },
+  "Sponsorship Opportunity":{ from: FROM_PARTNERS,   to: "partners@mail.tequilafestusa.com",   label: "Sponsors" },
+  "Vendor Application":     { from: FROM_PARTNERS,   to: "partners@mail.tequilafestusa.com",   label: "Sponsors" },
   // Affiliates inbox
-  "Press / Media":          { from: FROM_AFFILIATES, to: ADMIN_EMAIL, label: "Affiliates" },
-  "Affiliate Program":      { from: FROM_AFFILIATES, to: ADMIN_EMAIL, label: "Affiliates" },
+  "Press / Media":          { from: FROM_AFFILIATES, to: "affiliate@mail.tequilafestusa.com",  label: "Affiliates" },
+  "Affiliate Program":      { from: FROM_AFFILIATES, to: "affiliate@mail.tequilafestusa.com",  label: "Affiliates" },
 };
 
 // ─── Ticket Confirmation Email ────────────────────────────────────────────────

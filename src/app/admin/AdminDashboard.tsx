@@ -1258,12 +1258,16 @@ function ContactSection({ adminToken }: { adminToken: string }) {
 
   useEffect(() => {
     const load = async () => {
-      const db = (await import("@/lib/supabase")).supabaseAdmin as any;
-      const { data } = await db.from("contact_submissions").select("*").order("created_at", { ascending: false }).limit(100);
-      setSubmissions(data || []);
+      const res = await fetch("/api/admin/contact", {
+        headers: { "x-admin-token": adminToken },
+      });
+      if (res.ok) {
+        const json = await res.json();
+        setSubmissions(json.submissions || []);
+      }
     };
-    load();
-  }, []);
+    if (adminToken) load();
+  }, [adminToken]);
 
   const inbox = INBOXES.find(i => i.id === activeInbox) || INBOXES[0];
   const filtered = submissions.filter(s => (s.inbox || "Support") === activeInbox);

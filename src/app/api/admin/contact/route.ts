@@ -9,6 +9,18 @@ const INBOX_FROM: Record<string, string> = {
   Sponsors:   FROM_PARTNERS,
 };
 
+export async function GET(req: NextRequest) {
+  if (!verifyAdminToken(req)) return unauthorizedResponse();
+  const db = supabaseAdmin as any;
+  const { data, error } = await db
+    .from("contact_submissions")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(200);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ submissions: data || [] });
+}
+
 export async function POST(req: NextRequest) {
   if (!verifyAdminToken(req)) return unauthorizedResponse();
 
