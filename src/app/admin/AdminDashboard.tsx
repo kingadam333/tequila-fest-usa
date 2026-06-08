@@ -1466,8 +1466,9 @@ interface ContactSubmission {
 
 const INBOXES = [
   { id: "Support",    label: "Support",    email: "help@mail.tequilafestusa.com",       color: "#F5A623", icon: "💬" },
-  { id: "Affiliates", label: "Affiliates", email: "affiliate@mail.tequilafestusa.com",  color: "#7B2FBE", icon: "🤝" },
-  { id: "Sponsors",   label: "Sponsors",   email: "partners@mail.tequilafestusa.com",   color: "#C0C0C0", icon: "⭐" },
+  { id: "Vendors",    label: "Vendors",    email: "vendors@mail.tequilafestusa.com",    color: "#7B2FBE", icon: "🛒" },
+  { id: "Sponsors",   label: "Sponsors",   email: "sponsors@mail.tequilafestusa.com",   color: "#C0C0C0", icon: "⭐" },
+  { id: "Affiliates", label: "Affiliates", email: "affiliates@mail.tequilafestusa.com", color: "#C8102E", icon: "🤝" },
 ];
 
 function ContactSection({ adminToken }: { adminToken: string }) {
@@ -1763,6 +1764,462 @@ function BlogAdminSection() {
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+// ─── Brands Section ───────────────────────────────────────────────────────────
+
+interface BrandEntry { name: string; price_per_bottle: string; }
+interface BrandContact {
+  id: string;
+  contact_name: string;
+  contact_email: string;
+  contact_phone?: string;
+  contact_type: "distributor" | "supplier" | "self_distributed";
+  brands: BrandEntry[];
+  distributor?: string;
+  supplier?: string;
+  notes?: string;
+  created_at: string;
+}
+interface BrandInvoice {
+  id: string;
+  invoice_number: string;
+  brand_contact_id: string;
+  event_name?: string;
+  line_items: { description: string; quantity: number; unit_price: number; total: number }[];
+  total: number;
+  status: string;
+  stripe_payment_link_url?: string;
+  due_date?: string;
+  created_at: string;
+  brand_contacts?: { contact_name: string; contact_email: string };
+}
+
+const CONTACT_TYPES = [
+  { value: "distributor", label: "Distributor" },
+  { value: "supplier", label: "Supplier" },
+  { value: "self_distributed", label: "Self Distributed" },
+];
+
+const BLANK_BRAND: BrandEntry = { name: "", price_per_bottle: "" };
+const BLANK_CONTACT = { contact_name: "", contact_email: "", contact_phone: "", contact_type: "self_distributed" as const, brands: [{ ...BLANK_BRAND }], distributor: "", supplier: "", notes: "" };
+const BLANK_LINE_ITEM = { description: "", quantity: 1, unit_price: 0, total: 0 };
+
+function BrandsSection({ adminToken }: { adminToken: string }) {
+  const headers = { "x-admin-token": adminToken };
+  const [view, setView] = useState<"contacts" | "invoices" | "inbox">("contacts");
+
+  // ── Contacts state
+  const [contacts, setContacts] = useState<BrandContact[]>([]);
+  const [loadingContacts, setLoadingContacts] = useState(true);
+  const [editContact, setEditContact] = useState<BrandContact | null>(null);
+  const [showAddContact, setShowAddContact] = useState(false);
+  const [contactForm, setContactForm] = useState({ ...BLANK_CONTACT });
+  const [savingContact, setSavingContact] = useState(false);
+  const [contactSearch, setContactSearch] = useState("");
+
+  // ── Invoice state
+  const [invoices, setInvoices] = useState<BrandInvoice[]>([]);
+  const [loadingInvoices, setLoadingInvoices] = useState(false);
+  const [showNewInvoice, setShowNewInvoice] = useState(false);
+  const [invoiceForm, setInvoiceForm] = useState({ brand_contact_id: "", event_name: "", due_date: "", notes: "", line_items: [{ ...BLANK_LINE_ITEM }] });
+  const [savingInvoice, setSavingInvoice] = useState(false);
+
+  // ── Inbox state (brands inbox)
+  const [brandMessages, setBrandMessages] = useState<ContactSubmission[]>([]);
+  const [loadingInbox, setLoadingInbox] = useState(false);
+  const [selectedMsg, setSelectedMsg] = useState<ContactSubmission | null>(null);
+  const [reply, setReply] = useState("");
+  const [sending, setSending] = useState(false);
+
+  const fetchContacts = useCallback(async () => {
+    setLoadingContacts(true);
+    const res = await fetch("/api/admin/brands", { headers });
+    if (res.ok) setContacts((await res.json()).contacts || []);
+    setLoadingContacts(false);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const fetchInvoices = useCallback(async () => {
+    setLoadingInvoices(true);
+    const res = await fetch("/api/admin/brands/invoices", { headers });
+    if (res.ok) setInvoices((await res.json()).invoices || []);
+    setLoadingInvoices(false);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const fetchInbox = useCallback(async () => {
+    setLoadingInbox(true);
+    const res = await fetch("/api/admin/contact", { headers });
+    if (res.ok) {
+      const data = await res.json();
+      setBrandMessages((data.submissions || []).filter((s: ContactSubmission) => s.inbox === "Brands"));
+    }
+    setLoadingInbox(false);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => { fetchContacts(); }, [fetchContacts]);
+  useEffect(() => { if (view === "invoices") fetchInvoices(); }, [view, fetchInvoices]);
+  useEffect(() => { if (view === "inbox") fetchInbox(); }, [view, fetchInbox]);
+
+  const openAdd = () => { setContactForm({ ...BLANK_CONTACT, brands: [{ ...BLANK_BRAND }] }); setEditContact(null); setShowAddContact(true); };
+  const openEdit = (c: BrandContact) => { setEditContact(c); setContactForm({ contact_name: c.contact_name, contact_email: c.contact_email, contact_phone: c.contact_phone || "", contact_type: c.contact_type as typeof BLANK_CONTACT.contact_type, brands: c.brands.length ? c.brands : [{ ...BLANK_BRAND }], distributor: c.distributor || "", supplier: c.supplier || "", notes: c.notes || "" }); setShowAddContact(true); };
+
+  const saveContact = async () => {
+    setSavingContact(true);
+    const payload = { ...contactForm, brands: contactForm.brands.filter(b => b.name.trim()) };
+    const url = editContact ? `/api/admin/brands` : `/api/admin/brands`;
+    const method = editContact ? "PATCH" : "POST";
+    const body = editContact ? { id: editContact.id, ...payload } : payload;
+    const res = await fetch(url, { method, headers: { ...headers, "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    if (res.ok) { await fetchContacts(); setShowAddContact(false); }
+    setSavingContact(false);
+  };
+
+  const deleteContact = async (id: string) => {
+    if (!confirm("Delete this brand contact?")) return;
+    await fetch("/api/admin/brands", { method: "DELETE", headers: { ...headers, "Content-Type": "application/json" }, body: JSON.stringify({ id }) });
+    fetchContacts();
+  };
+
+  const addBrandRow = () => setContactForm(f => ({ ...f, brands: [...f.brands, { ...BLANK_BRAND }] }));
+  const removeBrandRow = (i: number) => setContactForm(f => ({ ...f, brands: f.brands.filter((_, idx) => idx !== i) }));
+  const updateBrand = (i: number, field: keyof BrandEntry, val: string) => setContactForm(f => ({ ...f, brands: f.brands.map((b, idx) => idx === i ? { ...b, [field]: val } : b) }));
+
+  const addLineItem = () => setInvoiceForm(f => ({ ...f, line_items: [...f.line_items, { ...BLANK_LINE_ITEM }] }));
+  const removeLineItem = (i: number) => setInvoiceForm(f => ({ ...f, line_items: f.line_items.filter((_, idx) => idx !== i) }));
+  const updateLineItem = (i: number, field: string, val: string | number) => {
+    setInvoiceForm(f => {
+      const items = f.line_items.map((item, idx) => {
+        if (idx !== i) return item;
+        const updated = { ...item, [field]: val };
+        updated.total = updated.quantity * updated.unit_price;
+        return updated;
+      });
+      return { ...f, line_items: items };
+    });
+  };
+
+  const saveInvoice = async () => {
+    setSavingInvoice(true);
+    const res = await fetch("/api/admin/brands/invoices", { method: "POST", headers: { ...headers, "Content-Type": "application/json" }, body: JSON.stringify(invoiceForm) });
+    if (res.ok) { await fetchInvoices(); setShowNewInvoice(false); setInvoiceForm({ brand_contact_id: "", event_name: "", due_date: "", notes: "", line_items: [{ ...BLANK_LINE_ITEM }] }); }
+    setSavingInvoice(false);
+  };
+
+  const sendReply = async () => {
+    if (!selectedMsg || !reply.trim()) return;
+    setSending(true);
+    await fetch("/api/admin/contact", { method: "POST", headers: { ...headers, "Content-Type": "application/json" }, body: JSON.stringify({ id: selectedMsg.id, reply, from: "brands@mail.tequilafestusa.com" }) });
+    setReply("");
+    setSending(false);
+    fetchInbox();
+  };
+
+  const invoiceTotal = invoiceForm.line_items.reduce((s, i) => s + i.total, 0);
+  const filteredContacts = contacts.filter(c => !contactSearch || c.contact_name.toLowerCase().includes(contactSearch.toLowerCase()) || c.contact_email.toLowerCase().includes(contactSearch.toLowerCase()) || c.brands.some(b => b.name.toLowerCase().includes(contactSearch.toLowerCase())));
+
+  const inputCls = "w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-yellow-500/50";
+  const labelCls = "block text-xs text-white/40 uppercase tracking-wider mb-1";
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-display text-white">Brands</h2>
+          <p className="text-white/40 text-sm mt-0.5">Tequila brand contacts, invoicing & inbox</p>
+        </div>
+        <div className="flex gap-2">
+          {(["contacts", "invoices", "inbox"] as const).map(v => (
+            <button key={v} onClick={() => setView(v)}
+              className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all cursor-pointer capitalize ${view === v ? "bg-yellow-500 text-black" : "text-white/40 hover:text-white border border-white/10"}`}>
+              {v}
+              {v === "inbox" && brandMessages.length > 0 && <span className="ml-2 bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5">{brandMessages.filter(m => m.status === "new").length || ""}</span>}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── CONTACTS ── */}
+      {view === "contacts" && (
+        <div className="space-y-4">
+          <div className="flex gap-3">
+            <div className="relative flex-1">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+              <input value={contactSearch} onChange={e => setContactSearch(e.target.value)} placeholder="Search brands or contacts…" className="w-full pl-9 pr-3 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder-white/30 focus:outline-none focus:border-yellow-500/40" />
+            </div>
+            <button onClick={openAdd} className="flex items-center gap-2 px-4 py-2 bg-yellow-500 hover:bg-yellow-400 text-black text-sm font-semibold rounded-xl transition-all cursor-pointer">
+              <Plus size={15} /> Add Brand
+            </button>
+          </div>
+
+          {loadingContacts ? (
+            <div className="text-white/30 text-sm py-10 text-center">Loading…</div>
+          ) : filteredContacts.length === 0 ? (
+            <div className="text-white/30 text-sm py-10 text-center">No brand contacts yet.</div>
+          ) : (
+            <div className="grid gap-3">
+              {filteredContacts.map(c => (
+                <div key={c.id} className="bg-white/[0.03] border border-white/10 rounded-2xl p-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <p className="font-semibold text-white">{c.contact_name}</p>
+                        <span className="text-xs bg-yellow-500/15 text-yellow-400 border border-yellow-500/20 rounded-full px-2 py-0.5 capitalize">{CONTACT_TYPES.find(t => t.value === c.contact_type)?.label}</span>
+                      </div>
+                      <p className="text-white/50 text-sm mt-0.5">{c.contact_email}{c.contact_phone ? ` · ${c.contact_phone}` : ""}</p>
+                      {(c.distributor || c.supplier) && (
+                        <p className="text-white/30 text-xs mt-1">{c.distributor ? `Distributor: ${c.distributor}` : ""}{c.distributor && c.supplier ? " · " : ""}{c.supplier ? `Supplier: ${c.supplier}` : ""}</p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <button onClick={() => { setShowNewInvoice(true); setView("invoices"); setInvoiceForm(f => ({ ...f, brand_contact_id: c.id })); }}
+                        className="text-xs border border-white/10 text-white/50 hover:text-yellow-400 hover:border-yellow-500/30 px-3 py-1.5 rounded-lg transition-all cursor-pointer">
+                        + Invoice
+                      </button>
+                      <button onClick={() => openEdit(c)} className="p-1.5 text-white/30 hover:text-yellow-400 transition-colors cursor-pointer"><Edit2 size={14} /></button>
+                      <button onClick={() => deleteContact(c.id)} className="p-1.5 text-white/30 hover:text-red-400 transition-colors cursor-pointer"><Trash2 size={14} /></button>
+                    </div>
+                  </div>
+                  {c.brands.length > 0 && (
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {c.brands.map((b, i) => (
+                        <div key={i} className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm">
+                          <span className="text-white/80 font-medium">{b.name}</span>
+                          {b.price_per_bottle && <span className="text-white/40 ml-2">${b.price_per_bottle}/btl</span>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── INVOICES ── */}
+      {view === "invoices" && (
+        <div className="space-y-4">
+          <div className="flex justify-end">
+            <button onClick={() => setShowNewInvoice(true)} className="flex items-center gap-2 px-4 py-2 bg-yellow-500 hover:bg-yellow-400 text-black text-sm font-semibold rounded-xl transition-all cursor-pointer">
+              <Plus size={15} /> New Invoice
+            </button>
+          </div>
+          {loadingInvoices ? <div className="text-white/30 text-sm py-10 text-center">Loading…</div> : invoices.length === 0 ? (
+            <div className="text-white/30 text-sm py-10 text-center">No invoices yet.</div>
+          ) : (
+            <div className="grid gap-3">
+              {invoices.map(inv => (
+                <div key={inv.id} className="bg-white/[0.03] border border-white/10 rounded-2xl p-5 flex items-center justify-between gap-4 flex-wrap">
+                  <div>
+                    <div className="flex items-center gap-3">
+                      <p className="font-mono text-yellow-400 text-sm">{inv.invoice_number}</p>
+                      <span className={`text-xs rounded-full px-2 py-0.5 border ${inv.status === "paid" ? "bg-green-500/15 text-green-400 border-green-500/20" : inv.status === "sent" ? "bg-blue-500/15 text-blue-400 border-blue-500/20" : inv.status === "cancelled" ? "bg-red-500/15 text-red-400 border-red-500/20" : "bg-white/5 text-white/40 border-white/10"} capitalize`}>{inv.status}</span>
+                    </div>
+                    <p className="text-white/80 text-sm mt-0.5">{inv.brand_contacts?.contact_name || "—"}{inv.event_name ? ` · ${inv.event_name}` : ""}</p>
+                    {inv.due_date && <p className="text-white/30 text-xs mt-0.5">Due {inv.due_date}</p>}
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <p className="text-xl font-bold text-white">${inv.total.toFixed(2)}</p>
+                    {inv.stripe_payment_link_url && (
+                      <a href={inv.stripe_payment_link_url} target="_blank" rel="noopener noreferrer" className="text-xs border border-yellow-500/30 text-yellow-400 px-3 py-1.5 rounded-lg hover:bg-yellow-500/10 transition-all">Payment Link ↗</a>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── INBOX ── */}
+      {view === "inbox" && (
+        <div className="grid grid-cols-1 lg:grid-cols-[300px,1fr] gap-5">
+          <div className="space-y-2">
+            <p className="text-white/40 text-xs uppercase tracking-wider mb-3">brands@mail.tequilafestusa.com</p>
+            {loadingInbox ? <div className="text-white/30 text-sm py-6 text-center">Loading…</div> : brandMessages.length === 0 ? (
+              <div className="text-white/30 text-sm py-6 text-center">No messages yet.</div>
+            ) : brandMessages.map(msg => (
+              <button key={msg.id} onClick={() => { setSelectedMsg(msg); setReply(""); }}
+                className={`w-full text-left p-4 rounded-xl border transition-all cursor-pointer ${selectedMsg?.id === msg.id ? "border-yellow-500/40 bg-yellow-500/5" : "border-white/10 bg-white/[0.02] hover:border-white/20"}`}>
+                <p className="font-semibold text-sm text-white truncate">{msg.name}</p>
+                <p className="text-white/40 text-xs truncate">{msg.subject}</p>
+                <p className="text-white/25 text-xs mt-1">{new Date(msg.created_at).toLocaleDateString()}</p>
+              </button>
+            ))}
+          </div>
+          <div>
+            {selectedMsg ? (
+              <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-6 space-y-4">
+                <div>
+                  <p className="font-semibold text-white text-lg">{selectedMsg.subject}</p>
+                  <p className="text-white/40 text-sm">{selectedMsg.name} · {selectedMsg.email}</p>
+                </div>
+                <p className="text-white/70 text-sm whitespace-pre-wrap">{selectedMsg.message}</p>
+                <div className="border-t border-white/10 pt-4 space-y-3">
+                  <textarea value={reply} onChange={e => setReply(e.target.value)} placeholder="Write a reply…" rows={4}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-white placeholder-white/30 focus:outline-none focus:border-yellow-500/50 resize-none" />
+                  <button onClick={sendReply} disabled={sending || !reply.trim()} className="flex items-center gap-2 px-4 py-2 bg-yellow-500 hover:bg-yellow-400 text-black text-sm font-semibold rounded-xl transition-all cursor-pointer disabled:opacity-40">
+                    <Send size={14} /> {sending ? "Sending…" : "Send Reply"}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center h-full text-white/20 text-sm py-20">Select a message to read</div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── ADD/EDIT CONTACT MODAL ── */}
+      <AnimatePresence>
+        {showAddContact && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+            onClick={e => { if (e.target === e.currentTarget) setShowAddContact(false); }}>
+            <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }}
+              className="bg-[#0d0500] border border-white/10 rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-semibold text-white">{editContact ? "Edit Brand Contact" : "Add Brand Contact"}</h3>
+                <button onClick={() => setShowAddContact(false)} className="text-white/40 hover:text-white cursor-pointer"><X size={18} /></button>
+              </div>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className={labelCls}>Contact Name *</label>
+                    <input value={contactForm.contact_name} onChange={e => setContactForm(f => ({ ...f, contact_name: e.target.value }))} className={inputCls} placeholder="Jane Smith" />
+                  </div>
+                  <div>
+                    <label className={labelCls}>Type *</label>
+                    <select value={contactForm.contact_type} onChange={e => setContactForm(f => ({ ...f, contact_type: e.target.value as typeof f.contact_type }))} className={inputCls}>
+                      {CONTACT_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className={labelCls}>Contact Email *</label>
+                    <input value={contactForm.contact_email} onChange={e => setContactForm(f => ({ ...f, contact_email: e.target.value }))} className={inputCls} placeholder="jane@brand.com" type="email" />
+                  </div>
+                  <div>
+                    <label className={labelCls}>Contact Phone</label>
+                    <input value={contactForm.contact_phone} onChange={e => setContactForm(f => ({ ...f, contact_phone: e.target.value }))} className={inputCls} placeholder="(555) 000-0000" type="tel" />
+                  </div>
+                  <div>
+                    <label className={labelCls}>Distributor</label>
+                    <input value={contactForm.distributor} onChange={e => setContactForm(f => ({ ...f, distributor: e.target.value }))} className={inputCls} placeholder="Southern Glazer's, etc." />
+                  </div>
+                  <div>
+                    <label className={labelCls}>Supplier</label>
+                    <input value={contactForm.supplier} onChange={e => setContactForm(f => ({ ...f, supplier: e.target.value }))} className={inputCls} placeholder="Supplier name" />
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className={labelCls} style={{ margin: 0 }}>Brand Names &amp; Bottle Pricing</label>
+                    <button onClick={addBrandRow} className="text-xs text-yellow-400 hover:text-yellow-300 flex items-center gap-1 cursor-pointer"><Plus size={12} /> Add Brand</button>
+                  </div>
+                  <div className="space-y-2">
+                    {contactForm.brands.map((b, i) => (
+                      <div key={i} className="flex gap-2">
+                        <input value={b.name} onChange={e => updateBrand(i, "name", e.target.value)} className={inputCls} placeholder="Brand name" />
+                        <input value={b.price_per_bottle} onChange={e => updateBrand(i, "price_per_bottle", e.target.value)} className="w-36 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-yellow-500/50 flex-shrink-0" placeholder="$/bottle" />
+                        {contactForm.brands.length > 1 && (
+                          <button onClick={() => removeBrandRow(i)} className="text-white/30 hover:text-red-400 cursor-pointer flex-shrink-0"><Trash2 size={14} /></button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className={labelCls}>Notes</label>
+                  <textarea value={contactForm.notes} onChange={e => setContactForm(f => ({ ...f, notes: e.target.value }))} className={inputCls} rows={2} placeholder="Internal notes…" />
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button onClick={() => setShowAddContact(false)} className="flex-1 py-2.5 border border-white/10 text-white/50 rounded-xl text-sm hover:text-white transition-all cursor-pointer">Cancel</button>
+                  <button onClick={saveContact} disabled={savingContact || !contactForm.contact_name || !contactForm.contact_email}
+                    className="flex-1 py-2.5 bg-yellow-500 hover:bg-yellow-400 text-black font-semibold rounded-xl text-sm transition-all cursor-pointer disabled:opacity-40">
+                    {savingContact ? "Saving…" : editContact ? "Save Changes" : "Add Contact"}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── NEW INVOICE MODAL ── */}
+      <AnimatePresence>
+        {showNewInvoice && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+            onClick={e => { if (e.target === e.currentTarget) setShowNewInvoice(false); }}>
+            <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }}
+              className="bg-[#0d0500] border border-white/10 rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-semibold text-white">New Brand Invoice</h3>
+                <button onClick={() => setShowNewInvoice(false)} className="text-white/40 hover:text-white cursor-pointer"><X size={18} /></button>
+              </div>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className={labelCls}>Brand Contact *</label>
+                    <select value={invoiceForm.brand_contact_id} onChange={e => setInvoiceForm(f => ({ ...f, brand_contact_id: e.target.value }))} className={inputCls}>
+                      <option value="">Select a contact…</option>
+                      {contacts.map(c => <option key={c.id} value={c.id}>{c.contact_name}{c.brands.length ? ` (${c.brands.map(b => b.name).join(", ")})` : ""}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className={labelCls}>Event</label>
+                    <input value={invoiceForm.event_name} onChange={e => setInvoiceForm(f => ({ ...f, event_name: e.target.value }))} className={inputCls} placeholder="e.g. Cincinnati 2026" />
+                  </div>
+                  <div>
+                    <label className={labelCls}>Due Date</label>
+                    <input type="date" value={invoiceForm.due_date} onChange={e => setInvoiceForm(f => ({ ...f, due_date: e.target.value }))} className={inputCls} />
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className={labelCls} style={{ margin: 0 }}>Line Items</label>
+                    <button onClick={addLineItem} className="text-xs text-yellow-400 hover:text-yellow-300 flex items-center gap-1 cursor-pointer"><Plus size={12} /> Add Line</button>
+                  </div>
+                  <div className="space-y-2">
+                    {invoiceForm.line_items.map((item, i) => (
+                      <div key={i} className="grid grid-cols-[1fr,80px,100px,80px,auto] gap-2 items-center">
+                        <input value={item.description} onChange={e => updateLineItem(i, "description", e.target.value)} className={inputCls} placeholder="Description" />
+                        <input type="number" min={1} value={item.quantity} onChange={e => updateLineItem(i, "quantity", Number(e.target.value))} className={inputCls} placeholder="Qty" />
+                        <input type="number" min={0} value={item.unit_price || ""} onChange={e => updateLineItem(i, "unit_price", Number(e.target.value))} className={inputCls} placeholder="Unit $" />
+                        <div className="text-right text-yellow-400 text-sm font-semibold">${item.total.toFixed(2)}</div>
+                        {invoiceForm.line_items.length > 1 && (
+                          <button onClick={() => removeLineItem(i)} className="text-white/30 hover:text-red-400 cursor-pointer"><Trash2 size={14} /></button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="text-right mt-3 text-lg font-bold text-white">Total: <span className="text-yellow-400">${invoiceTotal.toFixed(2)}</span></div>
+                </div>
+
+                <div>
+                  <label className={labelCls}>Notes</label>
+                  <textarea value={invoiceForm.notes} onChange={e => setInvoiceForm(f => ({ ...f, notes: e.target.value }))} className={inputCls} rows={2} placeholder="Invoice notes…" />
+                </div>
+                <p className="text-white/30 text-xs">A Stripe payment link will be generated and emailed to the brand contact automatically.</p>
+
+                <div className="flex gap-3 pt-2">
+                  <button onClick={() => setShowNewInvoice(false)} className="flex-1 py-2.5 border border-white/10 text-white/50 rounded-xl text-sm hover:text-white transition-all cursor-pointer">Cancel</button>
+                  <button onClick={saveInvoice} disabled={savingInvoice || !invoiceForm.brand_contact_id || invoiceTotal === 0}
+                    className="flex-1 py-2.5 bg-yellow-500 hover:bg-yellow-400 text-black font-semibold rounded-xl text-sm transition-all cursor-pointer disabled:opacity-40">
+                    {savingInvoice ? "Creating…" : "Create & Send Invoice"}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -2753,6 +3210,7 @@ const NAV_ITEMS = [
   { id: "orders",     label: "Orders",      icon: <Ticket size={17} /> },
   { id: "events",     label: "Events",      icon: <CalendarDays size={17} /> },
   { id: "customers",  label: "Users",       icon: <Users size={17} /> },
+  { id: "brands",     label: "Brands",      icon: <Star size={17} /> },
   { id: "coupons",    label: "Coupons",     icon: <Tag size={17} /> },
   { id: "checkin",    label: "Check-In",    icon: <QrCode size={17} /> },
   { id: "contacts",   label: "Inbox",       icon: <MessageSquare size={17} /> },
@@ -2857,6 +3315,7 @@ export default function AdminDashboard() {
     orders:    <OrdersSection orders={orders} loading={loading} adminToken={adminToken} onRefetch={refetch} />,
     events:    <EventsSection adminToken={adminToken} stats={stats} editingId={editingEventId} setEditingId={setEditingEventId} />,
     customers: <UsersSection adminToken={adminToken} />,
+    brands:    <BrandsSection adminToken={adminToken} />,
     coupons:   <CouponsSection />,
     checkin:   <CheckInSection />,
     contacts:  <ContactSection adminToken={adminToken} />,

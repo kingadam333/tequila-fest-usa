@@ -90,6 +90,8 @@ Event data is defined in `src/lib/events.ts`. VIP ticket available at all events
 | `affiliates` | Affiliate accounts + commission tracking |
 | `blog_posts` | Blog content |
 | `coupons` | Discount codes |
+| `brand_contacts` | Tequila brand contacts — contact_name, contact_email, contact_phone, contact_type (distributor/supplier/self_distributed), brands (JSONB: [{name, price_per_bottle}]), distributor, supplier, notes |
+| `brand_invoices` | Brand invoices — linked to brand_contacts, line_items JSONB, total, status (draft/sent/paid/cancelled), stripe_payment_link_id/url |
 
 ---
 
@@ -233,7 +235,8 @@ URL: `/admin` (requires admin password — sent as `x-admin-token` header)
 - **Orders** — all ticket purchases, Stripe receipt link, **Send icon resends ticket email**, refund button. Save now shows error alert if it fails.
 - **Events** — manage event listings and ticket types. Status options: `on_sale`, `coming_soon`, `sold_out`, `draft`, `cancelled`
 - **Users** — customer accounts
-- **Inbox** — contact form submissions by type (Support / Sponsors / Affiliates). Reads from `contact_submissions` via `/api/admin/contact` GET. Supports AI-generated replies.
+- **Brands** — tequila brand contacts, invoicing, and inbox (brands@mail.tequilafestusa.com). Sub-tabs: Contacts / Invoices / Inbox. Contacts stored in `brand_contacts`. Invoices in `brand_invoices` with auto-generated Stripe payment links emailed on creation.
+- **Inbox** — contact form submissions by type (Support / Sponsors / Affiliates / Brands). Reads from `contact_submissions` via `/api/admin/contact` GET. Supports AI-generated replies.
 - **Staff** — staff management
 - **Analytics** — site stats
 
@@ -247,6 +250,8 @@ URL: `/admin` (requires admin password — sent as `x-admin-token` header)
 | `/api/admin/refund` | POST | Issue Stripe refund |
 | `/api/admin/events` | GET | List all events with ticket types + live sold counts |
 | `/api/admin/events/[id]` | PATCH | Update event fields including status |
+| `/api/admin/brands` | GET/POST/PATCH/DELETE | Brand contacts CRUD |
+| `/api/admin/brands/invoices` | GET/POST/PATCH | Brand invoices — POST creates invoice + Stripe payment link + emails brand contact |
 
 All admin endpoints require `x-admin-token` header matching `ADMIN_PASSWORD` env var.
 
@@ -435,18 +440,13 @@ Original Replit project archived at: `/Users/adambossin/Sites/tequila-fest-usa-o
 
 **Working Reference:** `mail.tastecleveland.net` (sister project) has a working setup where the Resend webhook payload DOES include the body. The Taste Cleveland Supabase edge function (`process-inbound-email`) successfully reads the body. The exact configuration difference between the two domains was not identified in this session.
 
-**What was tried (Sonnet 4.6 session):**
-1. Tried `GET /emails/{uuid_email_id}` → 404
-2. Tried `GET /emails/{msg_prefixed_id}` → returned list of sent emails (wrong endpoint)
-3. Added 3s delay before API call → still 404 (not a timing issue)
-4. Checked API key permissions → Full Access, All Domains (not the issue)
-5. Compared DNS: both domains use `inbound-smtp.us-east-1.amazonaws.com` MX (not the issue)
-6. Compared Resend domain config: Tequila Fest uses `send.mail` for sending + `mail` for receiving (two different subdomains); Taste Cleveland uses `mail` for both (same subdomain) — this difference was never tested as a fix
-7. Cloudflare Email Workers was suggested but not implemented (Opus successfully configured it in a separate session)
+**Root Cause (solved by Opus):** Resend's `email.received` webhook payload is metadata-only by design. Body must be fetched separately. Two different endpoints exist:
+- `GET /emails/{id}` — for **sent** emails only → always 404 for inbound
+- `GET /emails/receiving/{id}` — for **inbound** emails → returns `{ text, html, headers, attachments, raw }`
 
-**What Opus figured out:** Start a new Claude session with Opus to set up Cloudflare Email Workers for `help@mail.tequilafestusa.com`. Opus was able to configure this where Sonnet 4.6 could not.
+Sonnet 4.6 kept retrying `/emails/{id}` with workarounds (delays, different ID formats) instead of checking the docs for the correct endpoint. Opus found it immediately.
 
-**Current fallback behavior** (`src/app/api/webhooks/email-inbound/route.ts`):
+**Current behavior** (`src/app/api/webhooks/email-inbound/route.ts`):
 - Email arrives → saved to `contact_submissions` with subject as message placeholder
 - Escalated to `adam@tequilafestusa.com` with `needs-review` status
 - Customer does NOT receive auto-reply

@@ -5,20 +5,25 @@ export const resend = new Resend(process.env.RESEND_API_KEY || "re_placeholder")
 // ─── Email addresses per inbox ────────────────────────────────────────────────
 export const FROM_EMAIL = "Tequila Fest USA <help@mail.tequilafestusa.com>";
 export const FROM_SUPPORT    = "Tequila Fest USA <help@mail.tequilafestusa.com>";
-export const FROM_AFFILIATES = "Tequila Fest USA Affiliates <affiliate@mail.tequilafestusa.com>";
-export const FROM_PARTNERS   = "Tequila Fest USA Partners <partners@mail.tequilafestusa.com>";
+export const FROM_AFFILIATES = "Tequila Fest USA Affiliates <affiliates@mail.tequilafestusa.com>";
+export const FROM_SPONSORS   = "Tequila Fest USA Sponsors <sponsors@mail.tequilafestusa.com>";
+export const FROM_VENDORS    = "Tequila Fest USA Vendors <vendors@mail.tequilafestusa.com>";
+export const FROM_BRANDS     = "Tequila Fest USA Brands <brands@mail.tequilafestusa.com>";
 
 export const INBOX_ROUTING: Record<string, { from: string; to: string; label: string }> = {
-  // Support inbox
+  // Support inbox — help@
   "General Inquiry":        { from: FROM_SUPPORT,    to: "help@mail.tequilafestusa.com",       label: "Support" },
   "Ticket Support":         { from: FROM_SUPPORT,    to: "help@mail.tequilafestusa.com",       label: "Support" },
+  "Press / Media":          { from: FROM_SUPPORT,    to: "help@mail.tequilafestusa.com",       label: "Support" },
   "Other":                  { from: FROM_SUPPORT,    to: "help@mail.tequilafestusa.com",       label: "Support" },
-  // Partners/Sponsors inbox
-  "Sponsorship Opportunity":{ from: FROM_PARTNERS,   to: "partners@mail.tequilafestusa.com",   label: "Sponsors" },
-  "Vendor Application":     { from: FROM_PARTNERS,   to: "partners@mail.tequilafestusa.com",   label: "Sponsors" },
-  // Affiliates inbox
-  "Press / Media":          { from: FROM_AFFILIATES, to: "affiliate@mail.tequilafestusa.com",  label: "Affiliates" },
-  "Affiliate Program":      { from: FROM_AFFILIATES, to: "affiliate@mail.tequilafestusa.com",  label: "Affiliates" },
+  // Vendors inbox — vendors@
+  "Vendor Application":     { from: FROM_VENDORS,    to: "vendors@mail.tequilafestusa.com",    label: "Vendors" },
+  // Sponsors inbox — sponsors@
+  "Sponsorship Opportunity":{ from: FROM_SPONSORS,   to: "sponsors@mail.tequilafestusa.com",   label: "Sponsors" },
+  // Affiliates inbox — affiliates@
+  "Affiliate Program":      { from: FROM_AFFILIATES, to: "affiliates@mail.tequilafestusa.com", label: "Affiliates" },
+  // Brands inbox — brands@
+  "Brand Inquiry":          { from: FROM_BRANDS,     to: "brands@mail.tequilafestusa.com",     label: "Brands" },
 };
 
 // ─── Ticket Confirmation Email ────────────────────────────────────────────────
