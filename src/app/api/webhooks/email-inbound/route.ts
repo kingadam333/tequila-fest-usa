@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
-import { generateAIReply } from "@/lib/aiInbox";
-import { buildReplyHtml, buildEscalationHtml, ADMIN_EMAIL } from "@/lib/aiInboxEmail";
+import { buildEscalationHtml, ADMIN_EMAIL } from "@/lib/aiInboxEmail";
 import { resend, FROM_SUPPORT } from "@/lib/resend";
 
 export async function POST(req: NextRequest) {
@@ -12,74 +11,43 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
   }
 
-  console.log("Inbound webhook payload type:", payload.type, "keys:", Object.keys(payload));
-
-  // Resend inbound webhook: type is "email.received"
   if (payload.type !== "email.received") {
-    console.log("Skipping non email.received event:", payload.type);
     return NextResponse.json({ skipped: true });
   }
 
   const data = payload.data;
-  const emailIdUuid: string = data?.email_id || data?.id;
-  const emailIdMsg: string = payload.id || "";  // top-level msg_ prefixed ID
-  const emailId: string = emailIdUuid;
   const fromRaw: string = data?.from || "";
   const subject: string = data?.subject || "(no subject)";
   const to: string = Array.isArray(data?.to) ? data.to[0] : (data?.to || "");
 
-  console.log("Inbound email — from:", fromRaw, "to:", to, "subject:", subject, "emailId:", emailId);
-
-  // Only handle emails sent to help@ — ignore other addresses on the domain
+  // Only handle emails sent to help@
   if (!to.toLowerCase().includes("help@")) {
-    console.log("Skipping — not a help@ email, to:", to);
     return NextResponse.json({ skipped: "not a help@ email" });
   }
 
-  // Wait 3s for Resend to finish indexing the inbound email before fetching body
-  await new Promise((r) => setTimeout(r, 3000));
+  // Try to get body from payload (data.text / data.html)
+  // Resend inbound webhooks may or may not include body depending on domain config
+  const rawBody = data?.text || data?.html?.replace(/<[^>]+>/g, " ") || "";
+  const bodyFromPayload = rawBody
+    .replace(/On .+wrote:[\s\S]*/i, "")
+    .replace(/_{3,}[\s\S]*/g, "")
+    .replace(/From:[\s\S]*/m, "")
+    .trim();
 
-  let message = "";
-  let debugUuid: any = null;
-  let debugMsg: any = null;
-  try {
-    // Try UUID-format email_id
-    const r1 = await fetch(`https://api.resend.com/emails/${emailIdUuid}`, {
-      headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}` },
-    });
-    debugUuid = await r1.json();
-
-    // Try msg_-prefixed top-level id
-    const r2 = await fetch(`https://api.resend.com/emails/${emailIdMsg}`, {
-      headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}` },
-    });
-    debugMsg = await r2.json();
-
-    const best = debugUuid.text ? debugUuid : debugMsg;
-    const raw = best.text || best.html?.replace(/<[^>]+>/g, " ") || "";
-    message = raw
-      .replace(/On .+wrote:[\s\S]*/i, "")
-      .replace(/_{3,}[\s\S]*/g, "")
-      .replace(/From:[\s\S]*/m, "")
-      .trim();
-  } catch (err) {
-    console.error("Failed to fetch email body:", err);
-  }
-
-  if (!message) {
-    return NextResponse.json({ skipped: "empty body", emailIdUuid, emailIdMsg, debugUuid, debugMsg });
-  }
-
-  // Parse "Name <email>" from address
+  // Parse sender info
   const emailMatch = fromRaw.match(/<(.+?)>/);
   const email = emailMatch ? emailMatch[1] : fromRaw.trim();
   const name = fromRaw.includes("<")
     ? fromRaw.split("<")[0].trim().replace(/^"|"$/g, "")
     : email;
 
+  // Use body if available, otherwise fall back to subject as the message
+  // so the email still shows up in the inbox for manual review
+  const message = bodyFromPayload || `[Email received — body not available]\nSubject: ${subject}`;
+  const hasBody = !!bodyFromPayload;
+
   const db = supabaseAdmin as any;
 
-  // Save to contact_submissions
   const { data: inserted } = await db.from("contact_submissions").insert({
     name,
     email,
@@ -95,8 +63,27 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "DB insert failed" }, { status: 500 });
   }
 
-  // Run AI
+  if (!hasBody) {
+    // No body — escalate directly so Adam can follow up
+    try {
+      await resend.emails.send({
+        from: FROM_SUPPORT,
+        to: ADMIN_EMAIL,
+        subject: `Open Ticket in Tequila Fest Inbox — ${subject}`,
+        html: buildEscalationHtml(name, email, subject, `[Email body not captured by Resend — customer sent email with subject: "${subject}"]`, null),
+      });
+      await db.from("contact_submissions").update({ status: "needs-review", ai_handled: false }).eq("id", inserted.id);
+    } catch (err) {
+      console.error("Failed to send escalation for bodyless email:", err);
+    }
+    return NextResponse.json({ received: true, note: "no body — escalated" });
+  }
+
+  // Has body — run AI
   try {
+    const { generateAIReply } = await import("@/lib/aiInbox");
+    const { buildReplyHtml } = await import("@/lib/aiInboxEmail");
+
     const { data: orders } = await db
       .from("ticket_orders")
       .select("order_number, event_city, ticket_type, quantity, total, status, created_at")
@@ -132,10 +119,7 @@ export async function POST(req: NextRequest) {
         subject: `Open Ticket in Tequila Fest Inbox — ${subject}`,
         html: buildEscalationHtml(name, email, subject, message, orderInfo),
       });
-      await db.from("contact_submissions").update({
-        status: "needs-review",
-        ai_handled: false,
-      }).eq("id", inserted.id);
+      await db.from("contact_submissions").update({ status: "needs-review", ai_handled: false }).eq("id", inserted.id);
     }
   } catch (err) {
     console.error("AI inbox error on inbound email:", err);
