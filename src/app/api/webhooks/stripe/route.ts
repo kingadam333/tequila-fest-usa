@@ -230,7 +230,7 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
       const event = eventSlug ? getEvent(eventSlug) : null;
       const ticketLabel = TICKET_LABELS[ticketType as keyof typeof TICKET_LABELS] || ticketType || "All Inclusive";
 
-      await resend.emails.send({
+      const emailResult = await resend.emails.send({
         from: FROM_EMAIL,
         to: customerEmail,
         subject: `🥃 You're in! Tequila Fest ${eventCity || ""} — Order Confirmed`,
@@ -245,9 +245,9 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
           orderNumber,
         }),
       });
-      console.log("✉️ Confirmation email sent to", customerEmail);
-    } catch (emailErr) {
-      console.error("Failed to send confirmation email:", emailErr);
+      console.log("✉️ Confirmation email result:", JSON.stringify(emailResult));
+    } catch (emailErr: any) {
+      console.error("Failed to send confirmation email:", emailErr?.message || emailErr);
     }
   }
 }
