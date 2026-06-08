@@ -1554,6 +1554,33 @@ function ContactSection({ adminToken }: { adminToken: string }) {
     setAiLoading(false);
   };
 
+  const runAI = async () => {
+    if (!selected) return;
+    setAiLoading(true);
+    try {
+      const res = await fetch("/api/ai-inbox", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          submissionId: selected.id,
+          name: selected.name,
+          email: selected.email,
+          subject: selected.subject,
+          message: selected.message,
+        }),
+      });
+      const data = await res.json();
+      if (data.handled) {
+        setSubmissions(prev => prev.map(s => s.id === selected.id ? { ...s, status: "auto-replied", ai_handled: true } : s));
+        setSelected(s => s ? { ...s, status: "auto-replied", ai_handled: true } as any : s);
+      } else if (data.escalated) {
+        setSubmissions(prev => prev.map(s => s.id === selected.id ? { ...s, status: "needs-review" } : s));
+        setSelected(s => s ? { ...s, status: "needs-review" } as any : s);
+      }
+    } catch { /* ignore */ }
+    setAiLoading(false);
+  };
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -1679,6 +1706,15 @@ function ContactSection({ adminToken }: { adminToken: string }) {
                   ) : <span>✨</span>}
                   {aiLoading ? "Thinking..." : "AI Suggest"}
                 </button>
+                {(selected.status === "new" || selected.status === "needs-review") && (
+                  <button onClick={runAI} disabled={aiLoading}
+                    className="flex items-center gap-2 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 hover:border-blue-500/50 text-blue-400 text-sm px-4 py-2.5 rounded-xl transition-all cursor-pointer">
+                    {aiLoading ? (
+                      <svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>
+                    ) : <span>🤖</span>}
+                    {aiLoading ? "Processing..." : "Auto-Handle with AI"}
+                  </button>
+                )}
               </div>
             </>
           ) : (
