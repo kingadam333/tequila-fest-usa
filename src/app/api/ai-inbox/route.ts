@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
       ai_handled: true,
     }).eq("id", submissionId);
 
-    return NextResponse.json({ handled: true });
+    return NextResponse.json({ handled: true, reply: result.reply });
   } else {
     try {
       await resend.emails.send({

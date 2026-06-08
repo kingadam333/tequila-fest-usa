@@ -1571,8 +1571,8 @@ function ContactSection({ adminToken }: { adminToken: string }) {
       });
       const data = await res.json();
       if (data.handled) {
-        setSubmissions(prev => prev.map(s => s.id === selected.id ? { ...s, status: "auto-replied", ai_handled: true } : s));
-        setSelected(s => s ? { ...s, status: "auto-replied", ai_handled: true } as any : s);
+        setSubmissions(prev => prev.map(s => s.id === selected.id ? { ...s, status: "auto-replied", ai_handled: true, admin_reply: data.reply } : s));
+        setSelected(s => s ? { ...s, status: "auto-replied", ai_handled: true, admin_reply: data.reply } as any : s);
       } else if (data.escalated) {
         setSubmissions(prev => prev.map(s => s.id === selected.id ? { ...s, status: "needs-review" } : s));
         setSelected(s => s ? { ...s, status: "needs-review" } as any : s);
