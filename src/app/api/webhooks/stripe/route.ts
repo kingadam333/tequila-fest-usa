@@ -114,6 +114,36 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
         const { error: ticketError } = await db.from("ticket_instances").insert(tickets);
         if (ticketError) console.error("Ticket instances error:", ticketError);
 
+        // ── Award purchase points (5 per ticket) ───────────────────
+        if (customerEmail) {
+          try {
+            const purchasePoints = qty * 5;
+            const { data: buyer } = await db
+              .from("customer_accounts")
+              .select("id, loyalty_points")
+              .eq("email", customerEmail.toLowerCase())
+              .single();
+
+            if (buyer) {
+              await db.from("customer_accounts")
+                .update({ loyalty_points: (buyer.loyalty_points || 0) + purchasePoints })
+                .eq("id", buyer.id);
+
+              await db.from("loyalty_transactions").insert({
+                customer_id: buyer.id,
+                action_code: "ticket_purchase",
+                points: purchasePoints,
+                description: `Purchased ${qty} ticket${qty > 1 ? "s" : ""} to Tequila Fest ${eventCity}`,
+                source_id: order.id,
+                source_type: "order",
+              });
+              console.log(`⭐ Awarded ${purchasePoints} points to ${customerEmail}`);
+            }
+          } catch (pointsErr) {
+            console.error("Points award error:", pointsErr);
+          }
+        }
+
         // ── Auto-create Supabase Auth account ─────────────────────
         let newAccountPassword: string | null = null;
         if (customerEmail) {
