@@ -21,7 +21,9 @@ export async function POST(req: NextRequest) {
   }
 
   const data = payload.data;
-  const emailId: string = data?.email_id || data?.id;
+  const emailIdUuid: string = data?.email_id || data?.id;
+  const emailIdMsg: string = payload.id || "";  // top-level msg_ prefixed ID
+  const emailId: string = emailIdUuid;
   const fromRaw: string = data?.from || "";
   const subject: string = data?.subject || "(no subject)";
   const to: string = Array.isArray(data?.to) ? data.to[0] : (data?.to || "");
@@ -38,14 +40,23 @@ export async function POST(req: NextRequest) {
   await new Promise((r) => setTimeout(r, 3000));
 
   let message = "";
-  let debugApiResponse: any = null;
+  let debugUuid: any = null;
+  let debugMsg: any = null;
   try {
-    const emailRes = await fetch(`https://api.resend.com/emails/${emailId}`, {
+    // Try UUID-format email_id
+    const r1 = await fetch(`https://api.resend.com/emails/${emailIdUuid}`, {
       headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}` },
     });
-    debugApiResponse = await emailRes.json();
-    console.log("Resend API status:", emailRes.status, "keys:", Object.keys(debugApiResponse || {}));
-    const raw = debugApiResponse.text || debugApiResponse.html?.replace(/<[^>]+>/g, " ") || "";
+    debugUuid = await r1.json();
+
+    // Try msg_-prefixed top-level id
+    const r2 = await fetch(`https://api.resend.com/emails/${emailIdMsg}`, {
+      headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}` },
+    });
+    debugMsg = await r2.json();
+
+    const best = debugUuid.text ? debugUuid : debugMsg;
+    const raw = best.text || best.html?.replace(/<[^>]+>/g, " ") || "";
     message = raw
       .replace(/On .+wrote:[\s\S]*/i, "")
       .replace(/_{3,}[\s\S]*/g, "")
@@ -55,9 +66,8 @@ export async function POST(req: NextRequest) {
     console.error("Failed to fetch email body:", err);
   }
 
-  // Return debug info so we can see the API response in Resend webhook logs
   if (!message) {
-    return NextResponse.json({ skipped: "empty body", emailId, debugApiResponse });
+    return NextResponse.json({ skipped: "empty body", emailIdUuid, emailIdMsg, debugUuid, debugMsg });
   }
 
   // Parse "Name <email>" from address
