@@ -1,8 +1,8 @@
-import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
 import { supabaseAdmin } from "@/lib/supabase";
 
-export const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY || "",
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY || "",
 });
 
 // ─── Knowledge Base ────────────────────────────────────────────────────────────
@@ -164,13 +164,13 @@ Respond with ONLY:
 - The reply text addressed to the customer, OR
 - The single word ESCALATE if you genuinely cannot answer anything`;
 
-  const response = await anthropic.messages.create({
-    model: "claude-haiku-4-5-20251001",
+  const response = await openai.chat.completions.create({
+    model: "gpt-4o-mini",
     max_tokens: 600,
     messages: [{ role: "user", content: prompt }],
   });
 
-  const text = (response.content[0] as { text: string }).text.trim();
+  const text = (response.choices[0].message.content || "").trim();
   console.log("AI response (first 200 chars):", text.slice(0, 200));
 
   if (text.startsWith("ESCALATE")) {
