@@ -214,6 +214,7 @@ function OrdersSection({ orders, loading, adminToken, onRefetch }: { orders: Ord
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
   const [refunding, setRefunding] = useState<string | null>(null);
+  const [resending, setResending] = useState<string | null>(null);
 
   const filtered = orders.filter(o => {
     const matchSearch = o.customer.toLowerCase().includes(search.toLowerCase()) ||
@@ -244,6 +245,28 @@ function OrdersSection({ orders, loading, adminToken, onRefetch }: { orders: Ord
       alert("Network error. Please try again.");
     } finally {
       setRefunding(null);
+    }
+  };
+
+  const handleResendTicket = async (order: Order) => {
+    if (!confirm(`Resend ticket email to ${order.email}?`)) return;
+    setResending(order.id);
+    try {
+      const res = await fetch("/api/admin/resend-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-token": adminToken },
+        body: JSON.stringify({ order_number: order.id }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(`✅ Ticket email sent to ${order.email}`);
+      } else {
+        alert(`Failed: ${data.error}`);
+      }
+    } catch {
+      alert("Network error. Please try again.");
+    } finally {
+      setResending(null);
     }
   };
 
@@ -295,8 +318,12 @@ function OrdersSection({ orders, loading, adminToken, onRefetch }: { orders: Ord
                     <Eye size={13} />
                   </a>
                 )}
-                <button className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-white/40 hover:text-white transition-all cursor-pointer" title="Resend ticket email">
-                  <Send size={13} />
+                <button
+                  onClick={() => handleResendTicket(order)}
+                  disabled={resending === order.id}
+                  className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-white/40 hover:text-white transition-all cursor-pointer disabled:opacity-50"
+                  title="Resend ticket email">
+                  <Send size={13} className={resending === order.id ? "animate-pulse" : ""} />
                 </button>
                 {order.status === "paid" || order.status === "confirmed" ? (
                   <button
