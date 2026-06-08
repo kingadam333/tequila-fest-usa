@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { verifyTurnstile } from "@/lib/turnstile";
 import { resend, INBOX_ROUTING, FROM_SUPPORT } from "@/lib/resend";
+import { generateAIReply } from "@/lib/aiInbox";
+import { buildReplyHtml, buildEscalationHtml, ADMIN_EMAIL } from "@/lib/aiInboxEmail";
 
 export async function POST(req: NextRequest) {
   const { name, email, phone, subject, message, captchaToken } = await req.json();
@@ -16,27 +18,75 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "CAPTCHA verification failed. Please try again." }, { status: 400 });
   }
 
-  // Determine inbox routing based on subject
   const routing = INBOX_ROUTING[subject] || { from: FROM_SUPPORT, to: "help@mail.tequilafestusa.com", label: "Support" };
 
-  // Save to Supabase with inbox label
   const db = supabaseAdmin as any;
   const { data: inserted } = await db.from("contact_submissions").insert({
     name, email, phone: phone || null, subject, message, status: "new",
     inbox: routing.label,
   }).select("id").single();
 
-  // Only auto-handle Support tickets — let Sponsors/Affiliates go to human inboxes
   if (routing.label === "Support" && inserted?.id) {
-    // Fire-and-forget AI processing (don't block the response)
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.tequilafestusa.com";
-    fetch(`${appUrl}/api/ai-inbox`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ submissionId: inserted.id, name, email, subject, message }),
-    }).catch(err => console.error("AI inbox trigger failed:", err));
+    // Run AI inline so Vercel doesn't kill it before it finishes
+    try {
+      // Look up order history for context
+      const { data: orders } = await db
+        .from("ticket_orders")
+        .select("order_number, event_city, ticket_type, quantity, total, status, created_at")
+        .ilike("customer_email", email)
+        .eq("status", "paid")
+        .limit(5);
+
+      const orderInfo = orders?.length
+        ? orders.map((o: any) =>
+            `Order #${o.order_number}: ${o.event_city} – ${o.ticket_type} x${o.quantity} ($${o.total}) on ${o.created_at?.slice(0, 10)}`
+          ).join("\n")
+        : null;
+
+      const result = await generateAIReply(name, email, subject, message, orderInfo);
+
+      if (result.confident) {
+        await resend.emails.send({
+          from: FROM_SUPPORT,
+          to: email,
+          subject: `Re: ${subject}`,
+          html: buildReplyHtml(name, result.reply),
+        });
+
+        await db.from("contact_submissions").update({
+          status: "auto-replied",
+          admin_reply: result.reply,
+          replied_at: new Date().toISOString(),
+          ai_handled: true,
+        }).eq("id", inserted.id);
+      } else {
+        await resend.emails.send({
+          from: FROM_SUPPORT,
+          to: ADMIN_EMAIL,
+          subject: `Open Ticket in Tequila Fest Inbox — ${subject}`,
+          html: buildEscalationHtml(name, email, subject, message, orderInfo),
+        });
+
+        await db.from("contact_submissions").update({
+          status: "needs-review",
+          ai_handled: false,
+        }).eq("id", inserted.id);
+      }
+    } catch (err) {
+      console.error("AI inbox error:", err);
+      // Fallback: notify admin so nothing gets silently dropped
+      try {
+        await resend.emails.send({
+          from: FROM_SUPPORT,
+          to: ADMIN_EMAIL,
+          subject: `Open Ticket in Tequila Fest Inbox — ${subject}`,
+          html: buildEscalationHtml(name, email, subject, message, null),
+        });
+        await db.from("contact_submissions").update({ status: "needs-review", ai_handled: false }).eq("id", inserted.id);
+      } catch {}
+    }
   } else {
-    // Non-support tickets: notify the correct inbox as before
+    // Sponsors / Affiliates — notify the correct inbox directly
     try {
       await resend.emails.send({
         from: routing.from,

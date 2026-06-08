@@ -1479,6 +1479,7 @@ function ContactSection({ adminToken }: { adminToken: string }) {
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -1492,6 +1493,21 @@ function ContactSection({ adminToken }: { adminToken: string }) {
     };
     if (adminToken) load();
   }, [adminToken]);
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Delete this message?")) return;
+    setDeleting(true);
+    try {
+      await fetch("/api/admin/contact", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json", "x-admin-token": adminToken },
+        body: JSON.stringify({ id }),
+      });
+      setSubmissions(prev => prev.filter(s => s.id !== id));
+      if (selected?.id === id) setSelected(null);
+    } catch { /* ignore */ }
+    setDeleting(false);
+  };
 
   const inbox = INBOXES.find(i => i.id === activeInbox) || INBOXES[0];
   const filtered = submissions.filter(s => (s.inbox || "Support") === activeInbox);
@@ -1597,6 +1613,14 @@ function ContactSection({ adminToken }: { adminToken: string }) {
                     <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-blue-500/20 border border-blue-500/30 text-blue-400">✨ AI</span>
                   )}
                   <StatusBadge status={s.status} />
+                  <button
+                    onClick={e => { e.stopPropagation(); handleDelete(s.id); }}
+                    disabled={deleting}
+                    className="p-1 rounded-lg bg-red-500/10 hover:bg-red-500/25 border border-red-500/20 text-red-400 transition-all cursor-pointer"
+                    title="Delete"
+                  >
+                    <Trash2 size={11} />
+                  </button>
                 </div>
               </div>
               <p className="text-white/50 text-xs">{s.subject}</p>
@@ -1610,7 +1634,13 @@ function ContactSection({ adminToken }: { adminToken: string }) {
           {selected ? (
             <>
               <div className="mb-4 pb-4 border-b border-white/10">
-                <p className="text-white font-bold">{selected.name}</p>
+                <div className="flex items-start justify-between">
+                  <p className="text-white font-bold">{selected.name}</p>
+                  <button onClick={() => handleDelete(selected.id)} disabled={deleting}
+                    className="flex items-center gap-1 text-xs text-red-400/60 hover:text-red-400 transition-all cursor-pointer">
+                    <Trash2 size={12} /> Delete
+                  </button>
+                </div>
                 <p className="text-white/40 text-xs">{selected.email} · {new Date(selected.created_at).toLocaleDateString()}</p>
                 <p className="text-sm font-semibold mt-2" style={{ color: inbox.color }}>{selected.subject}</p>
                 <p className="text-white/60 text-sm mt-2 leading-relaxed">{selected.message}</p>
