@@ -21,30 +21,41 @@ export async function POST(req: NextRequest) {
 
   // Save to Supabase with inbox label
   const db = supabaseAdmin as any;
-  await db.from("contact_submissions").insert({
+  const { data: inserted } = await db.from("contact_submissions").insert({
     name, email, phone: phone || null, subject, message, status: "new",
     inbox: routing.label,
-  });
+  }).select("id").single();
 
-  // Notify the correct inbox
-  try {
-    await resend.emails.send({
-      from: routing.from,
-      to: routing.to,
-      replyTo: email,
-      subject: `[${routing.label}] ${subject} — ${name}`,
-      html: `
-        <p><strong>From:</strong> ${name} &lt;${email}&gt;</p>
-        ${phone ? `<p><strong>Phone:</strong> ${phone}</p>` : ""}
-        <p><strong>Subject:</strong> ${subject}</p>
-        <hr>
-        <p>${message.replace(/\n/g, "<br>")}</p>
-        <hr>
-        <p style="color:#888;font-size:12px">Reply directly to this email to respond to ${name}.</p>
-      `,
-    });
-  } catch (err) {
-    console.error("Failed to send contact notification:", err);
+  // Only auto-handle Support tickets — let Sponsors/Affiliates go to human inboxes
+  if (routing.label === "Support" && inserted?.id) {
+    // Fire-and-forget AI processing (don't block the response)
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.tequilafestusa.com";
+    fetch(`${appUrl}/api/ai-inbox`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ submissionId: inserted.id, name, email, subject, message }),
+    }).catch(err => console.error("AI inbox trigger failed:", err));
+  } else {
+    // Non-support tickets: notify the correct inbox as before
+    try {
+      await resend.emails.send({
+        from: routing.from,
+        to: routing.to,
+        replyTo: email,
+        subject: `[${routing.label}] ${subject} — ${name}`,
+        html: `
+          <p><strong>From:</strong> ${name} &lt;${email}&gt;</p>
+          ${phone ? `<p><strong>Phone:</strong> ${phone}</p>` : ""}
+          <p><strong>Subject:</strong> ${subject}</p>
+          <hr>
+          <p>${message.replace(/\n/g, "<br>")}</p>
+          <hr>
+          <p style="color:#888;font-size:12px">Reply directly to this email to respond to ${name}.</p>
+        `,
+      });
+    } catch (err) {
+      console.error("Failed to send contact notification:", err);
+    }
   }
 
   return NextResponse.json({ success: true });

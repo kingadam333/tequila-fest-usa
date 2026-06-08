@@ -128,11 +128,13 @@ function StatusBadge({ status }: { status: string }) {
     new: "bg-blue-500/15 text-blue-400 border-blue-500/30",
     read: "bg-white/10 text-white/50 border-white/20",
     replied: "bg-green-500/15 text-green-400 border-green-500/30",
-    on_sale:     "bg-green-500/15 text-green-400 border-green-500/30",
-    coming_soon: "bg-yellow-500/15 text-yellow-400 border-yellow-500/30",
-    sold_out:    "bg-red-500/15 text-red-400 border-red-500/30",
-    cancelled:   "bg-red-900/20 text-red-500/70 border-red-900/30",
-    draft:       "bg-white/5 text-white/30 border-white/10",
+    on_sale:        "bg-green-500/15 text-green-400 border-green-500/30",
+    coming_soon:    "bg-yellow-500/15 text-yellow-400 border-yellow-500/30",
+    sold_out:       "bg-red-500/15 text-red-400 border-red-500/30",
+    cancelled:      "bg-red-900/20 text-red-500/70 border-red-900/30",
+    draft:          "bg-white/5 text-white/30 border-white/10",
+    "auto-replied": "bg-blue-500/15 text-blue-400 border-blue-500/30",
+    "needs-review": "bg-orange-500/15 text-orange-400 border-orange-500/30",
   };
   return (
     <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full border uppercase tracking-wide ${styles[status as keyof typeof styles] || "bg-white/10 text-white/50 border-white/20"}`}>
@@ -1493,7 +1495,7 @@ function ContactSection({ adminToken }: { adminToken: string }) {
 
   const inbox = INBOXES.find(i => i.id === activeInbox) || INBOXES[0];
   const filtered = submissions.filter(s => (s.inbox || "Support") === activeInbox);
-  const unread = (id: string) => submissions.filter(s => (s.inbox || "Support") === id && s.status === "new").length;
+  const unread = (id: string) => submissions.filter(s => (s.inbox || "Support") === id && (s.status === "new" || s.status === "needs-review")).length;
 
   const handleSendReply = async () => {
     if (!selected || !reply.trim()) return;
@@ -1587,10 +1589,15 @@ function ContactSection({ adminToken }: { adminToken: string }) {
             </div>
           ) : filtered.map(s => (
             <button key={s.id} onClick={() => { setSelected(s); setReply(""); setSent(false); }}
-              className={`w-full text-left bg-white/[0.03] border rounded-2xl px-4 py-3.5 transition-all cursor-pointer ${selected?.id === s.id ? "border-yellow-500/40 bg-yellow-500/5" : "border-white/10 hover:border-white/20"}`}>
+              className={`w-full text-left bg-white/[0.03] border rounded-2xl px-4 py-3.5 transition-all cursor-pointer ${selected?.id === s.id ? "border-yellow-500/40 bg-yellow-500/5" : s.status === "needs-review" ? "border-orange-500/30 bg-orange-500/5 hover:border-orange-500/50" : "border-white/10 hover:border-white/20"}`}>
               <div className="flex items-center justify-between mb-1">
                 <p className="text-white font-semibold text-sm">{s.name}</p>
-                <StatusBadge status={s.status} />
+                <div className="flex items-center gap-1.5">
+                  {(s as any).ai_handled === true && s.status === "auto-replied" && (
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-blue-500/20 border border-blue-500/30 text-blue-400">✨ AI</span>
+                  )}
+                  <StatusBadge status={s.status} />
+                </div>
               </div>
               <p className="text-white/50 text-xs">{s.subject}</p>
               <p className="text-white/30 text-xs mt-0.5 truncate">{s.message}</p>
@@ -1608,9 +1615,16 @@ function ContactSection({ adminToken }: { adminToken: string }) {
                 <p className="text-sm font-semibold mt-2" style={{ color: inbox.color }}>{selected.subject}</p>
                 <p className="text-white/60 text-sm mt-2 leading-relaxed">{selected.message}</p>
                 {selected.admin_reply && (
-                  <div className="mt-3 p-3 bg-green-900/20 border border-green-500/20 rounded-xl">
-                    <p className="text-green-400 text-xs font-semibold mb-1">Previous reply sent:</p>
+                  <div className={`mt-3 p-3 rounded-xl border ${(selected as any).ai_handled ? "bg-blue-900/20 border-blue-500/20" : "bg-green-900/20 border-green-500/20"}`}>
+                    <p className={`text-xs font-semibold mb-1 ${(selected as any).ai_handled ? "text-blue-400" : "text-green-400"}`}>
+                      {(selected as any).ai_handled ? "✨ Auto-replied by AI:" : "Previous reply sent:"}
+                    </p>
                     <p className="text-white/50 text-xs">{selected.admin_reply}</p>
+                  </div>
+                )}
+                {selected.status === "needs-review" && (
+                  <div className="mt-3 p-3 bg-orange-900/20 border border-orange-500/30 rounded-xl">
+                    <p className="text-orange-400 text-xs font-semibold">⚠️ AI could not answer — needs your reply</p>
                   </div>
                 )}
               </div>
