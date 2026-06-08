@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
-import { Upload, Camera, Video, Share2, Ticket, Star, ChevronDown, Check, X } from "lucide-react";
+import { Upload, Camera, Video, Share2, Ticket, Star, ChevronDown, Check, X, Trophy } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import OfficialBanner from "@/components/OfficialBanner";
 import Footer from "@/components/Footer";
@@ -29,6 +29,8 @@ const SOCIAL_PLATFORMS = [
   { id: "facebook", label: "Facebook", icon: "FB" },
 ];
 
+interface LeaderboardEntry { rank: number; name: string; points: number; }
+
 export default function EarnPointsPage() {
   const [activeTab, setActiveTab] = useState<"upload" | "social">("upload");
   const [mediaType, setMediaType] = useState<"photo" | "video">("photo");
@@ -48,7 +50,14 @@ export default function EarnPointsPage() {
   const [socialUrl, setSocialUrl] = useState("");
   const [socialEvent, setSocialEvent] = useState("");
   const [socialSubmitting, setSocialSubmitting] = useState(false);
-  const [socialResult, setSocialResult] = useState<{ points: number } | null>(null);
+  const [socialResult, setSocialResult] = useState<{ pending: boolean } | null>(null);
+  const [socialError, setSocialError] = useState("");
+
+  // Leaderboard
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  useEffect(() => {
+    fetch("/api/leaderboard").then(r => r.json()).then(d => setLeaderboard(d.leaderboard || []));
+  }, []);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -99,10 +108,25 @@ export default function EarnPointsPage() {
     e.preventDefault();
     if (!socialUrl || !socialEvent) return;
     setSocialSubmitting(true);
-    // Simulate submission (real API call when backend is live)
-    await new Promise(r => setTimeout(r, 1000));
-    setSocialResult({ points: 75 });
-    setSocialSubmitting(false);
+    setSocialError("");
+    try {
+      const res = await fetch("/api/social-claim", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ platform: socialPlatform, postUrl: socialUrl, eventId: socialEvent }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setSocialResult({ pending: true });
+        setSocialUrl(""); setSocialEvent("");
+      } else {
+        setSocialError(data.error || "Submission failed. Please try again.");
+      }
+    } catch {
+      setSocialError("Network error. Please try again.");
+    } finally {
+      setSocialSubmitting(false);
+    }
   };
 
   return (
@@ -294,9 +318,9 @@ export default function EarnPointsPage() {
                   <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
                     className="bg-purple-500/10 border border-purple-500/30 rounded-2xl p-10 text-center max-w-lg mx-auto">
                     <p className="text-5xl mb-4">📱</p>
-                    <p className="font-display text-purple-400 text-3xl mb-2">+{socialResult.points} POINTS</p>
-                    <p className="text-white/60 mb-2">Thanks for sharing! Your claim is being reviewed.</p>
-                    <p className="text-white/30 text-sm mb-6">Points are awarded after verification (usually within 24 hours).</p>
+                    <p className="font-display text-purple-400 text-3xl mb-2">SUBMITTED!</p>
+                    <p className="text-white/60 mb-2">Thanks for sharing! Your claim is under review.</p>
+                    <p className="text-white/30 text-sm mb-6">75 points will be awarded after verification (usually within 24 hours).</p>
                     <button onClick={() => setSocialResult(null)}
                       className="bg-yellow-500 hover:bg-yellow-400 text-black font-bold px-6 py-3 rounded-xl transition-all cursor-pointer">
                       Submit Another
@@ -348,6 +372,7 @@ export default function EarnPointsPage() {
                           className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-3 text-white placeholder-white/30 text-sm outline-none" />
                       </div>
 
+                      {socialError && <p className="text-red-400 text-sm">{socialError}</p>}
                       <button type="submit" disabled={socialSubmitting}
                         className="w-full bg-yellow-500 hover:bg-yellow-400 disabled:opacity-60 text-black font-bold text-base py-4 rounded-xl transition-all cursor-pointer">
                         {socialSubmitting ? "Submitting..." : "CLAIM 75 POINTS"}
@@ -358,6 +383,54 @@ export default function EarnPointsPage() {
               </motion.div>
             )}
           </AnimatePresence>
+
+          {/* Leaderboard */}
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="mt-16">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <p className="text-white/30 text-xs font-bold tracking-[0.3em] uppercase mb-1">Top Fans</p>
+                <h2 className="font-display text-white text-3xl flex items-center gap-3">
+                  <Trophy size={28} className="text-yellow-400" /> LEADERBOARD
+                </h2>
+              </div>
+              <Link href="/account" className="text-yellow-400 text-sm hover:text-yellow-300 transition-colors font-semibold">
+                My Points →
+              </Link>
+            </div>
+            {leaderboard.length === 0 ? (
+              <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-10 text-center">
+                <p className="text-white/30 text-sm">Be the first on the leaderboard — buy a ticket and earn points!</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {leaderboard.slice(0, 10).map((entry, i) => {
+                  const medals = ["🥇", "🥈", "🥉"];
+                  const isTop3 = i < 3;
+                  return (
+                    <motion.div key={i}
+                      initial={{ opacity: 0, x: -20 }} whileInView={{ opacity: 1, x: 0 }}
+                      transition={{ delay: i * 0.04 }} viewport={{ once: true }}
+                      className={`flex items-center gap-4 px-5 py-4 rounded-2xl border transition-all ${
+                        isTop3
+                          ? "bg-yellow-500/5 border-yellow-500/20"
+                          : "bg-white/[0.02] border-white/8"
+                      }`}>
+                      <span className="w-8 text-center font-display text-xl flex-shrink-0">
+                        {medals[i] || <span className="text-white/30 text-sm font-bold">#{entry.rank}</span>}
+                      </span>
+                      <span className={`flex-1 font-semibold ${isTop3 ? "text-white" : "text-white/70"}`}>
+                        {entry.name}
+                      </span>
+                      <span className="font-display text-xl" style={{ color: isTop3 ? "#F5A623" : "rgba(255,255,255,0.4)" }}>
+                        {entry.points.toLocaleString()}
+                      </span>
+                      <span className="text-white/30 text-xs">pts</span>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            )}
+          </motion.div>
 
           {/* Rewards preview */}
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="mt-16">

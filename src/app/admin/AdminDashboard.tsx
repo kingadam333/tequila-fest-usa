@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Ticket, CalendarDays, Users, Tag, QrCode,
   MessageSquare, FileText, LogOut, Menu, X, TrendingUp, DollarSign,
   RefreshCw, Download, Send, CheckCircle, Search, Plus,
-  Trash2, Edit2, Eye, AlertCircle, BarChart2, Mail, Utensils,
+  Trash2, Edit2, Eye, AlertCircle, BarChart2, Mail, Utensils, Share2,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -2252,6 +2252,100 @@ function VendorsSection({ adminToken }: { adminToken: string }) {
 }
 
 // ─── Tools Section ─────────────────────────────────────────────────────────────
+function SocialClaimsSection({ adminToken }: { adminToken: string }) {
+  const [claims, setClaims] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [acting, setActing] = useState<string | null>(null);
+  const headers = { "x-admin-token": adminToken };
+
+  const fetchClaims = async () => {
+    const res = await fetch("/api/admin/social-claims", { headers });
+    const data = await res.json();
+    setClaims(data.claims || []);
+    setLoading(false);
+  };
+
+  useEffect(() => { fetchClaims(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const act = async (claim_id: string, action: "approve" | "reject") => {
+    setActing(claim_id + action);
+    await fetch("/api/admin/social-claims", {
+      method: "POST",
+      headers: { ...headers, "Content-Type": "application/json" },
+      body: JSON.stringify({ claim_id, action }),
+    });
+    await fetchClaims();
+    setActing(null);
+  };
+
+  const pending = claims.filter(c => c.status === "pending");
+  const reviewed = claims.filter(c => c.status !== "pending");
+
+  return (
+    <div>
+      <h2 className="font-display text-white text-3xl mb-6">SOCIAL SHARE CLAIMS</h2>
+
+      <div className="space-y-8">
+        {/* Pending */}
+        <div>
+          <p className="text-white/50 text-xs uppercase tracking-wider mb-3">Pending Review ({pending.length})</p>
+          {loading ? (
+            <div className="h-20 bg-white/5 rounded-2xl animate-pulse" />
+          ) : pending.length === 0 ? (
+            <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-8 text-center text-white/30 text-sm">No pending claims</div>
+          ) : (
+            <div className="space-y-3">
+              {pending.map(c => (
+                <div key={c.id} className="bg-white/[0.03] border border-white/10 rounded-2xl p-4 flex items-start gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-purple-500/20 border border-purple-500/30 text-purple-400 uppercase">{c.platform}</span>
+                      <span className="text-white/30 text-xs">{c.event_id}</span>
+                      <span className="text-white/20 text-xs ml-auto">{new Date(c.created_at).toLocaleDateString()}</span>
+                    </div>
+                    <a href={c.post_url} target="_blank" rel="noopener noreferrer"
+                      className="text-yellow-400 text-sm hover:underline break-all truncate block">{c.post_url}</a>
+                    {c.customer_email && <p className="text-white/40 text-xs mt-1">{c.customer_email}</p>}
+                  </div>
+                  <div className="flex gap-2 flex-shrink-0">
+                    <button onClick={() => act(c.id, "approve")} disabled={!!acting}
+                      className="px-3 py-1.5 bg-green-500/20 hover:bg-green-500/30 border border-green-500/30 text-green-400 text-xs font-bold rounded-lg transition-all cursor-pointer disabled:opacity-50">
+                      {acting === c.id + "approve" ? "..." : "✓ Approve (+75 pts)"}
+                    </button>
+                    <button onClick={() => act(c.id, "reject")} disabled={!!acting}
+                      className="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 text-xs font-bold rounded-lg transition-all cursor-pointer disabled:opacity-50">
+                      {acting === c.id + "reject" ? "..." : "✗ Reject"}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Reviewed */}
+        {reviewed.length > 0 && (
+          <div>
+            <p className="text-white/50 text-xs uppercase tracking-wider mb-3">Reviewed ({reviewed.length})</p>
+            <div className="space-y-2">
+              {reviewed.slice(0, 20).map(c => (
+                <div key={c.id} className="bg-white/[0.02] border border-white/8 rounded-xl px-4 py-3 flex items-center gap-3">
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${c.status === "approved" ? "bg-green-500/15 border-green-500/30 text-green-400" : "bg-red-500/10 border-red-500/20 text-red-400"}`}>
+                    {c.status}
+                  </span>
+                  <span className="text-white/30 text-xs uppercase">{c.platform}</span>
+                  <a href={c.post_url} target="_blank" rel="noopener noreferrer" className="text-white/40 text-xs hover:text-yellow-400 truncate flex-1">{c.post_url}</a>
+                  {c.points_awarded > 0 && <span className="text-green-400 text-xs font-bold">+{c.points_awarded} pts</span>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function ToolsSection({ adminToken }: { adminToken: string }) {
   const [syncLog, setSyncLog] = useState<string[]>([]);
   const [syncing, setSyncing] = useState(false);
@@ -2347,6 +2441,7 @@ const NAV_ITEMS = [
   { id: "coupons",    label: "Coupons",     icon: <Tag size={17} /> },
   { id: "checkin",    label: "Check-In",    icon: <QrCode size={17} /> },
   { id: "contacts",   label: "Inbox",       icon: <MessageSquare size={17} /> },
+  { id: "social",     label: "Social Claims", icon: <Share2 size={17} /> },
   { id: "staff",      label: "Staff",       icon: <Users size={17} /> },
   { id: "vendors",    label: "Vendors",     icon: <Utensils size={17} /> },
   { id: "newsletter", label: "Newsletter",  icon: <Mail size={17} /> },
@@ -2430,6 +2525,7 @@ export default function AdminDashboard() {
     coupons:   <CouponsSection />,
     checkin:   <CheckInSection />,
     contacts:  <ContactSection adminToken={adminToken} />,
+    social:    <SocialClaimsSection adminToken={adminToken} />,
     staff:     <StaffSection adminToken={adminToken} />,
     vendors:    <VendorsSection adminToken={adminToken} />,
     newsletter: <NewsletterSection adminToken={adminToken} />,
