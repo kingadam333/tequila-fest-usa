@@ -30,7 +30,7 @@ You are the friendly AI support assistant for Tequila Fest USA, a premium tequil
 
 ## Policies
 - Must be 21+ to attend; valid ID required at door
-- Tickets are non-transferable and non-refundable
+- Tickets are non-refundable
 - Tickets are digital QR codes — no physical tickets are mailed
 - One QR scan per entry
 - Each ticket includes unlimited tasting samples during the festival
@@ -65,7 +65,7 @@ A: Go to tequilafestusa.com/forgot-password. If you bought tickets but never cre
 A: All sales are final. We do not offer refunds. If you cannot attend, we recommend gifting your ticket to a friend (though tickets are non-transferable by policy).
 
 **Q: Can I transfer my ticket to someone else?**
-A: Tickets are non-transferable. The name on the order is for reference — entry is via QR code scan.
+A: Please refer to the Admin Knowledge Base for the current transfer policy.
 
 **Q: Is parking available?**
 A: Parking availability varies by venue. We recommend rideshare services like Uber or Lyft.
@@ -100,6 +100,25 @@ export interface AIInboxResult {
   actionEmail?: string;
 }
 
+async function fetchDBKnowledge(): Promise<string> {
+  try {
+    const { supabaseAdmin } = await import("@/lib/supabase");
+    const db = supabaseAdmin as any;
+    const { data } = await db.from("knowledge_base").select("title, content, category").order("category").order("title");
+    if (!data?.length) return "";
+    const grouped: Record<string, string[]> = {};
+    for (const row of data) {
+      const cat = row.category || "General";
+      if (!grouped[cat]) grouped[cat] = [];
+      grouped[cat].push(`**${row.title}**\n${row.content}`);
+    }
+    return "\n\n## Admin Knowledge Base (overrides defaults above if conflicting)\n" +
+      Object.entries(grouped).map(([cat, items]) => `### ${cat}\n${items.join("\n\n")}`).join("\n\n");
+  } catch {
+    return "";
+  }
+}
+
 export async function generateAIReply(
   customerName: string,
   customerEmail: string,
@@ -107,7 +126,9 @@ export async function generateAIReply(
   message: string,
   orderInfo?: string | null,
 ): Promise<AIInboxResult> {
-  const prompt = `${KNOWLEDGE_BASE}
+  const dbKnowledge = await fetchDBKnowledge();
+
+  const prompt = `${KNOWLEDGE_BASE}${dbKnowledge}
 
 ---
 
@@ -125,7 +146,7 @@ Instructions:
 1. Write a warm, helpful reply as the Tequila Fest USA support team.
 2. If this is a password reset request, mention they can reset at https://tequilafestusa.com/forgot-password — and if they never set a password, go to https://tequilafestusa.com/signup instead.
 3. If they can't find their tickets or don't see a digital ticket, tell them tickets live in their account at https://tequilafestusa.com/account. If they never created an account, they should sign up at https://tequilafestusa.com/signup using the same email they used to purchase — their tickets will appear automatically.
-4. If they ask about transferring a ticket, clearly explain that tickets are non-transferable per our policy, but entry is via QR code scan so the name on the order is just for reference. Be empathetic but firm.
+4. If they ask about transferring a ticket, follow the transfer policy in the Admin Knowledge Base exactly.
 5. If they ask about refunds, clearly explain that all sales are final and we do not offer refunds. Be empathetic but firm.
 6. Sign off as "The Tequila Fest USA Team".
 7. Keep the reply concise and friendly — 2-5 sentences. Don't over-explain.
