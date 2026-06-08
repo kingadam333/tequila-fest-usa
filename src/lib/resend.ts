@@ -238,6 +238,10 @@ export function qrTicketHtml({
   orderNumber,
   tickets,
   appUrl,
+  total,
+  ticketType,
+  quantity,
+  newPassword,
 }: {
   firstName: string;
   eventCity: string;
@@ -247,6 +251,10 @@ export function qrTicketHtml({
   orderNumber: string;
   tickets: TicketInstance[];
   appUrl: string;
+  total?: number;
+  ticketType?: string;
+  quantity?: number;
+  newPassword?: string;
 }) {
   const ticketCards = tickets.map(t => {
     const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=10&data=${encodeURIComponent(t.qrCode)}`;
@@ -303,13 +311,39 @@ export function qrTicketHtml({
 
         <tr><td style="text-align:center;padding-bottom:28px">
           <p style="font-size:36px;margin:0 0 8px">🎟️</p>
-          <p style="font-family:Arial;font-size:22px;font-weight:900;letter-spacing:2px;color:#fff8f0;margin:0">YOUR TICKETS ARE HERE</p>
-          <p style="color:rgba(255,248,240,0.5);margin:6px 0 0">Hi ${firstName}! Here are your tickets for Tequila Fest ${eventCity}. Save this email and show your QR code at the door.</p>
+          <p style="font-family:Arial;font-size:22px;font-weight:900;letter-spacing:2px;color:#fff8f0;margin:0">YOU'RE IN, ${firstName.toUpperCase()}!</p>
+          <p style="color:rgba(255,248,240,0.5);margin:6px 0 0">Your order is confirmed. Save this email — show your QR code at the door.</p>
         </td></tr>
+
+        ${total !== undefined ? `
+        <tr><td style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:18px 20px;margin-bottom:20px">
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr>
+              <td><p style="margin:0;color:rgba(255,248,240,0.4);font-size:11px;text-transform:uppercase;letter-spacing:1px">Order #${orderNumber}</p></td>
+              <td style="text-align:right"><p style="margin:0;color:#F5A623;font-weight:700;font-size:15px">$${total.toFixed(2)}</p></td>
+            </tr>
+            ${ticketType ? `<tr><td colspan="2"><p style="margin:6px 0 0;color:rgba(255,248,240,0.6);font-size:13px">${quantity}× ${ticketType} — Tequila Fest ${eventCity}</p></td></tr>` : ""}
+          </table>
+        </td></tr>
+        <tr><td style="height:16px"></td></tr>` : ""}
 
         <tr><td>${ticketCards}</td></tr>
 
-        <tr><td style="background:rgba(245,166,35,0.08);border:1px solid rgba(245,166,35,0.2);border-radius:16px;padding:20px;margin-top:8px">
+        ${newPassword ? `
+        <tr><td style="height:16px"></td></tr>
+        <tr><td style="background:rgba(245,166,35,0.06);border:1px solid rgba(245,166,35,0.25);border-radius:16px;padding:20px">
+          <p style="color:#F5A623;font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 10px">🔑 Your Account Was Created</p>
+          <p style="color:rgba(255,248,240,0.65);font-size:13px;margin:0 0 12px">We created a Tequila Fest USA account for you so you can access your tickets anytime.</p>
+          <table cellpadding="0" cellspacing="0" border="0" style="background:rgba(0,0,0,0.3);border-radius:10px;padding:12px 16px;width:100%">
+            <tr><td><p style="margin:0;color:rgba(255,248,240,0.4);font-size:11px;text-transform:uppercase;letter-spacing:1px">Login URL</p><p style="margin:2px 0 8px;color:#fff8f0;font-size:13px">${appUrl}/login</p></td></tr>
+            <tr><td><p style="margin:0;color:rgba(255,248,240,0.4);font-size:11px;text-transform:uppercase;letter-spacing:1px">Temporary Password</p><p style="margin:2px 0 0;color:#F5A623;font-family:monospace;font-size:15px;font-weight:700;letter-spacing:2px">${newPassword}</p></td></tr>
+          </table>
+          <p style="color:rgba(255,248,240,0.35);font-size:11px;margin:10px 0 0">Change your password after first login under Account Settings.</p>
+        </td></tr>` : ""}
+
+        <tr><td style="height:20px"></td></tr>
+
+        <tr><td style="background:rgba(245,166,35,0.08);border:1px solid rgba(245,166,35,0.2);border-radius:16px;padding:20px">
           <p style="color:#F5A623;font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 10px">Important Reminders</p>
           <ul style="margin:0;padding:0 0 0 16px">
             ${["Doors open at 3:00 PM — arrive early for shorter lines", "Valid government-issued ID required — must be 21+", "One scan per ticket — do not share your QR code", "Tickets are non-transferable and non-refundable"].map(r => `<li style="color:rgba(255,248,240,0.6);font-size:13px;margin-bottom:6px">${r}</li>`).join("")}
@@ -319,7 +353,7 @@ export function qrTicketHtml({
         <tr><td style="height:24px"></td></tr>
 
         <tr><td style="text-align:center">
-          <a href="${appUrl}/account" style="display:inline-block;background:#F5A623;color:#0d0500;font-weight:900;font-size:14px;letter-spacing:2px;text-transform:uppercase;text-decoration:none;padding:14px 36px;border-radius:50px">VIEW IN MY ACCOUNT</a>
+          <a href="${appUrl}/account" style="display:inline-block;background:#F5A623;color:#0d0500;font-weight:900;font-size:14px;letter-spacing:2px;text-transform:uppercase;text-decoration:none;padding:14px 36px;border-radius:50px">VIEW MY TICKETS</a>
         </td></tr>
 
         <tr><td style="height:32px"></td></tr>

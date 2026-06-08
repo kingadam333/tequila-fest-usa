@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
-import { resend, FROM_EMAIL, ticketConfirmationHtml, welcomeAccountHtml, generatePassword, qrTicketHtml } from "@/lib/resend";
+import { resend, FROM_EMAIL, generatePassword, qrTicketHtml } from "@/lib/resend";
 import { getEvent } from "@/lib/events";
 import { TICKET_LABELS } from "@/lib/stripe";
 import type Stripe from "stripe";
@@ -114,8 +114,8 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
         const { error: ticketError } = await db.from("ticket_instances").insert(tickets);
         if (ticketError) console.error("Ticket instances error:", ticketError);
 
-        // Award loyalty points (100 per ticket)
         // ── Auto-create Supabase Auth account ─────────────────────
+        let newAccountPassword: string | null = null;
         if (customerEmail) {
           try {
             const { createClient } = await import("@supabase/supabase-js");
@@ -125,12 +125,16 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
               { auth: { autoRefreshToken: false, persistSession: false } }
             );
 
-            // Check if auth user already exists
-            const { data: existingUsers } = await adminAuth.auth.admin.listUsers();
-            const alreadyExists = existingUsers?.users?.some(u => u.email === customerEmail);
+            // Check if auth user already exists by email lookup (not listUsers which is paginated/slow)
+            const { data: existingAccount } = await db
+              .from("customer_accounts")
+              .select("id")
+              .eq("email", customerEmail)
+              .maybeSingle();
 
-            if (!alreadyExists) {
+            if (!existingAccount) {
               const password = generatePassword();
+              newAccountPassword = password;
               const nameParts = customerName.split(" ");
               const { data: authUser, error: authErr } = await adminAuth.auth.admin.createUser({
                 email: customerEmail,
@@ -144,7 +148,6 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
               });
 
               if (!authErr && authUser?.user) {
-                // Update customer_accounts with auth user id
                 await db.from("customer_accounts").upsert({
                   id: authUser.user.id,
                   email: customerEmail,
@@ -152,42 +155,23 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
                   last_name: nameParts.slice(1).join(" ") || null,
                   phone: customerPhone || null,
                 }, { onConflict: "email" });
-
-                // Send welcome email with password
-                const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://tequila-fest-usa.vercel.app";
-                await resend.emails.send({
-                  from: FROM_EMAIL,
-                  to: customerEmail,
-                  subject: `Your Tequila Fest USA account is ready 🥃`,
-                  html: welcomeAccountHtml({
-                    firstName: nameParts[0] || firstName,
-                    email: customerEmail,
-                    password,
-                    orderNumber,
-                    eventCity: eventCity || event?.city || "",
-                    accountUrl: `${appUrl}/account`,
-                  }),
-                });
-                console.log(`🔑 Account created and welcome email sent to ${customerEmail}`);
+                console.log(`🔑 Account created for ${customerEmail}`);
+              } else if (authErr) {
+                console.error("Auth createUser error:", authErr);
+                newAccountPassword = null;
               }
             } else {
               console.log(`👤 Account already exists for ${customerEmail}`);
-              // Update customer_accounts with latest order data
-              await db.from("customer_accounts").upsert({
-                email: customerEmail,
-                first_name: customerName.split(" ")[0] || firstName,
-                phone: customerPhone || null,
-              }, { onConflict: "email", ignoreDuplicates: true });
             }
           } catch (authErr) {
             console.error("Auth account creation error:", authErr);
           }
         }
 
-        // Send QR ticket email
-        if (customerEmail && order) {
+        // ── Send single ticket email with QR codes ─────────────────
+        if (customerEmail) {
           try {
-            const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://tequila-fest-usa.vercel.app";
+            const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.tequilafestusa.com";
             const ticketInstances = tickets.map((t: { qr_code: string; ticket_number: number; holder_name: string }, i: number) => ({
               qrCode: t.qr_code,
               ticketNumber: t.ticket_number || i + 1,
@@ -195,8 +179,9 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
               holderName: t.holder_name || customerName,
               ticketType: ticketType ? (TICKET_LABELS[ticketType as keyof typeof TICKET_LABELS] || ticketType) : "All Inclusive",
             }));
+            const ticketLabel = TICKET_LABELS[ticketType as keyof typeof TICKET_LABELS] || ticketType || "All Inclusive";
 
-            await resend.emails.send({
+            const emailResult = await resend.emails.send({
               from: FROM_EMAIL,
               to: customerEmail,
               subject: `🎟️ Your Tequila Fest ${eventCity || event?.city} Tickets — ${orderNumber}`,
@@ -209,11 +194,15 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
                 orderNumber,
                 tickets: ticketInstances,
                 appUrl,
+                total: amountTotal,
+                ticketType: ticketLabel,
+                quantity: qty,
+                newPassword: newAccountPassword || undefined,
               }),
             });
-            console.log(`🎟️ QR ticket email sent to ${customerEmail}`);
-          } catch (ticketEmailErr) {
-            console.error("Failed to send QR ticket email:", ticketEmailErr);
+            console.log("🎟️ Ticket email sent:", JSON.stringify(emailResult));
+          } catch (emailErr: any) {
+            console.error("Failed to send ticket email:", emailErr?.message || emailErr);
           }
         }
 
@@ -221,33 +210,6 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
       }
     } catch (dbErr) {
       console.error("Supabase write error:", dbErr);
-    }
-  }
-
-  // 2. Send confirmation email via Resend
-  if (customerEmail) {
-    try {
-      const event = eventSlug ? getEvent(eventSlug) : null;
-      const ticketLabel = TICKET_LABELS[ticketType as keyof typeof TICKET_LABELS] || ticketType || "All Inclusive";
-
-      const emailResult = await resend.emails.send({
-        from: FROM_EMAIL,
-        to: customerEmail,
-        subject: `🥃 You're in! Tequila Fest ${eventCity || ""} — Order Confirmed`,
-        html: ticketConfirmationHtml({
-          firstName,
-          eventCity: eventCity || "USA",
-          eventDate: event?.date || "2026",
-          eventVenue: event ? `${event.venue}, ${event.venueDetail}` : "",
-          ticketType: ticketLabel,
-          quantity: qty,
-          total: amountTotal,
-          orderNumber,
-        }),
-      });
-      console.log("✉️ Confirmation email result:", JSON.stringify(emailResult));
-    } catch (emailErr: any) {
-      console.error("Failed to send confirmation email:", emailErr?.message || emailErr);
     }
   }
 }
