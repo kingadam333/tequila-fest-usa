@@ -12,29 +12,37 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
   }
 
+  console.log("Inbound webhook payload type:", payload.type, "keys:", Object.keys(payload));
+
   // Resend inbound webhook: type is "email.received"
   if (payload.type !== "email.received") {
+    console.log("Skipping non email.received event:", payload.type);
     return NextResponse.json({ skipped: true });
   }
 
   const data = payload.data;
-  const emailId: string = data?.email_id;
+  const emailId: string = data?.email_id || data?.id;
   const fromRaw: string = data?.from || "";
   const subject: string = data?.subject || "(no subject)";
-  const to: string = data?.to?.[0] || "";
+  const to: string = Array.isArray(data?.to) ? data.to[0] : (data?.to || "");
+
+  console.log("Inbound email — from:", fromRaw, "to:", to, "subject:", subject, "emailId:", emailId);
 
   // Only handle emails sent to help@ — ignore other addresses on the domain
-  if (!to.startsWith("help@")) {
+  if (!to.toLowerCase().includes("help@")) {
+    console.log("Skipping — not a help@ email, to:", to);
     return NextResponse.json({ skipped: "not a help@ email" });
   }
 
   // Fetch the full email content from Resend API (body not included in webhook)
   let message = "";
   try {
+    console.log("Fetching email body for id:", emailId);
     const emailRes = await fetch(`https://api.resend.com/emails/${emailId}`, {
       headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}` },
     });
     const emailData = await emailRes.json();
+    console.log("Email fetch status:", emailRes.status, "has text:", !!emailData.text, "has html:", !!emailData.html);
     const raw = emailData.text || emailData.html?.replace(/<[^>]+>/g, " ") || "";
 
     // Strip quoted reply history
