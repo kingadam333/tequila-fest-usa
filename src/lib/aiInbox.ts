@@ -158,6 +158,8 @@ Instructions:
 
 Examples of what should NOT escalate: "can I transfer my ticket", "where are my tickets", "I can't log in", "can I get a refund", "what's included", "when is the event". These all have answers above.
 
+Note: customers sometimes say "please see attached" but this system does not support attachments — ignore any mention of attachments and answer based on what they wrote in the message text alone.
+
 Respond with ONLY:
 - The reply text addressed to the customer, OR
 - The single word ESCALATE if you genuinely cannot answer anything`;
@@ -169,6 +171,7 @@ Respond with ONLY:
   });
 
   const text = (response.content[0] as { text: string }).text.trim();
+  console.log("AI response (first 200 chars):", text.slice(0, 200));
 
   if (text.startsWith("ESCALATE")) {
     return { confident: false, reply: text };
