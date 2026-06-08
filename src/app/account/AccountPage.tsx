@@ -36,7 +36,7 @@ interface RealOrder {
   ticket_instances: { id: string; qr_code: string; ticket_number: number; status: string; holder_name: string; ticket_type: string }[];
 }
 
-type Tab = "dashboard" | "profile" | "orders" | "tickets" | "refer";
+type Tab = "dashboard" | "profile" | "orders" | "tickets" | "refer" | "rewards";
 
 // Simple QR placeholder using SVG pattern
 function QRPlaceholder({ value }: { value: string }) {
@@ -630,6 +630,103 @@ function ReferTab({ orders, userName }: { orders: RealOrder[]; userName: string 
   );
 }
 
+const REWARDS_LIST = [
+  { name: "Tequila Fest Tee", points: 250, emoji: "👕", desc: "Official event tee shipped to you" },
+  { name: "VIP Upgrade", points: 500, emoji: "⭐", desc: "Upgrade your ticket to VIP Experience" },
+  { name: "Free Ticket", points: 1000, emoji: "🎟️", desc: "One free ticket to any 2026 event" },
+  { name: "Meet & Greet", points: 1500, emoji: "🤝", desc: "Exclusive meet & greet at your event" },
+];
+
+function RewardsTab({ loyaltyPoints, onPointsUpdate }: { loyaltyPoints: number; onPointsUpdate: (pts: number) => void }) {
+  const [redeeming, setRedeeming] = useState<string | null>(null);
+  const [success, setSuccess] = useState("");
+  const [error, setError] = useState("");
+
+  const handleRedeem = async (reward: typeof REWARDS_LIST[0]) => {
+    if (loyaltyPoints < reward.points) return;
+    if (!confirm(`Redeem ${reward.points} points for ${reward.name}?`)) return;
+    setRedeeming(reward.name);
+    setError("");
+    setSuccess("");
+    try {
+      const res = await fetch("/api/redeem", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rewardName: reward.name }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setSuccess(`🎉 ${reward.name} redeemed! We'll be in touch shortly.`);
+        onPointsUpdate(data.pointsRemaining);
+      } else {
+        setError(data.error || "Redemption failed. Please try again.");
+      }
+    } catch {
+      setError("Network error. Please try again.");
+    } finally {
+      setRedeeming(null);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <p className="text-white/30 text-xs font-bold tracking-[0.3em] uppercase mb-1">Redeem Your Points</p>
+        <h2 className="font-display text-white text-3xl">REWARDS</h2>
+      </div>
+
+      <div className="bg-gradient-to-r from-yellow-900/30 to-orange-950/20 border border-yellow-500/20 rounded-2xl p-5 flex items-center justify-between">
+        <p className="text-white/60 text-sm">Your current balance</p>
+        <div className="text-right">
+          <p className="font-display text-yellow-400 text-3xl leading-none">{loyaltyPoints.toLocaleString()}</p>
+          <p className="text-yellow-500/60 text-xs font-bold uppercase tracking-wider">points</p>
+        </div>
+      </div>
+
+      {success && (
+        <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
+          className="bg-green-900/30 border border-green-500/40 text-green-400 text-sm rounded-xl px-4 py-3">
+          {success}
+        </motion.div>
+      )}
+      {error && (
+        <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
+          className="bg-red-900/30 border border-red-500/40 text-red-400 text-sm rounded-xl px-4 py-3">
+          {error}
+        </motion.div>
+      )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {REWARDS_LIST.map(reward => {
+          const canAfford = loyaltyPoints >= reward.points;
+          return (
+            <motion.div key={reward.name} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+              className={`bg-white/[0.03] border rounded-2xl p-5 flex flex-col transition-all ${canAfford ? "border-yellow-500/20 hover:border-yellow-500/40" : "border-white/8 opacity-60"}`}>
+              <p className="text-3xl mb-3">{reward.emoji}</p>
+              <p className="text-white font-bold text-base mb-1">{reward.name}</p>
+              <p className="text-white/40 text-xs mb-4 flex-1">{reward.desc}</p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-display text-yellow-400 text-xl leading-none">{reward.points.toLocaleString()}</p>
+                  <p className="text-white/30 text-xs">points</p>
+                </div>
+                <button
+                  onClick={() => handleRedeem(reward)}
+                  disabled={!canAfford || redeeming === reward.name}
+                  className="px-4 py-2 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-40 disabled:cursor-not-allowed text-black font-bold text-xs rounded-xl transition-all cursor-pointer">
+                  {redeeming === reward.name ? "Redeeming..." : canAfford ? "Redeem" : "Not enough pts"}
+                </button>
+              </div>
+            </motion.div>
+          );
+        })}
+      </div>
+
+      <p className="text-white/20 text-xs text-center">After redeeming, our team will contact you within 48 hours to fulfill your reward.</p>
+    </div>
+  );
+}
+
 export default function AccountPage() {
   const [tab, setTab] = useState<Tab>("dashboard");
   const [highlightOrder, setHighlightOrder] = useState<string | undefined>();
@@ -676,6 +773,7 @@ export default function AccountPage() {
     { id: "orders" as Tab, label: "Orders", icon: <ShoppingBag size={16} /> },
     { id: "tickets" as Tab, label: "My Tickets", icon: <QrCode size={16} /> },
     { id: "refer" as Tab, label: "Refer a Friend", icon: <Gift size={16} /> },
+    { id: "rewards" as Tab, label: "Rewards", icon: <Trophy size={16} /> },
     { id: "profile" as Tab, label: "Profile", icon: <User size={16} /> },
   ];
 
@@ -748,6 +846,7 @@ export default function AccountPage() {
               {tab === "orders" && <OrdersTab onViewTickets={handleViewTickets} orders={orders} />}
               {tab === "tickets" && <TicketsTab highlightOrderId={highlightOrder} orders={orders} />}
               {tab === "refer" && <ReferTab orders={orders} userName={user.firstName} />}
+              {tab === "rewards" && <RewardsTab loyaltyPoints={user.loyaltyPoints} onPointsUpdate={(pts) => setUser(u => u ? { ...u, loyaltyPoints: pts } : u)} />}
             </motion.div>
           </AnimatePresence>
         </div>

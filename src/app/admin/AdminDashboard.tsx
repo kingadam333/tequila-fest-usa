@@ -9,6 +9,7 @@ import {
   MessageSquare, FileText, LogOut, Menu, X, TrendingUp, DollarSign,
   RefreshCw, Download, Send, CheckCircle, Search, Plus,
   Trash2, Edit2, Eye, AlertCircle, BarChart2, Mail, Utensils, Share2,
+  Star, Gift, UserCheck, ChevronRight,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -829,6 +830,158 @@ interface UserRecord {
   orders: Array<{ order_number: string; ticket_type: string; quantity: number; total: number; event_city: string; created_at: string; status: string }>;
 }
 
+// ─── Loyalty Modal ────────────────────────────────────────────────────────────
+function LoyaltyModal({ userId, userName, adminToken, onClose }: { userId: string; userName: string; adminToken: string; onClose: () => void }) {
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<"transactions" | "referrals" | "redemptions">("transactions");
+
+  useEffect(() => {
+    fetch(`/api/admin/users/${userId}/loyalty`, { headers: { "x-admin-token": adminToken } })
+      .then(r => r.json())
+      .then(d => { setData(d); setLoading(false); });
+  }, [userId, adminToken]);
+
+  const ACTION_LABELS: Record<string, string> = {
+    ticket_purchase: "Ticket Purchase",
+    photo_upload: "Photo Upload",
+    video_upload: "Video Upload",
+    social_share: "Social Share",
+    referral: "Referral",
+    redemption: "Redemption",
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+        className="bg-[#0d0500] border border-white/15 rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col"
+        onClick={e => e.stopPropagation()}>
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 flex-shrink-0">
+          <div>
+            <p className="text-white font-bold text-lg">{userName}</p>
+            <p className="text-white/40 text-sm">Loyalty & Rewards</p>
+          </div>
+          <div className="flex items-center gap-4">
+            {data?.account && (
+              <div className="text-right">
+                <p className="font-display text-yellow-400 text-2xl leading-none">{(data.account.loyalty_points || 0).toLocaleString()}</p>
+                <p className="text-white/30 text-xs">points</p>
+              </div>
+            )}
+            <button onClick={onClose} className="p-2 text-white/30 hover:text-white transition-colors cursor-pointer"><X size={18} /></button>
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex gap-1 px-6 pt-4 flex-shrink-0">
+          {([
+            ["transactions", "Point History", <Star size={13} key="s" />],
+            ["referrals", "Referrals", <UserCheck size={13} key="u" />],
+            ["redemptions", "Redemptions", <Gift size={13} key="g" />],
+          ] as const).map(([id, label, icon]) => (
+            <button key={id} onClick={() => setActiveTab(id)}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${activeTab === id ? "bg-yellow-500 text-black" : "text-white/40 hover:text-white"}`}>
+              {icon}{label}
+              {id === "referrals" && data?.referrals?.length > 0 && (
+                <span className="bg-black/20 rounded-full px-1.5 py-0.5 text-xs">{data.referrals.length}</span>
+              )}
+              {id === "redemptions" && data?.redemptions?.length > 0 && (
+                <span className="bg-black/20 rounded-full px-1.5 py-0.5 text-xs">{data.redemptions.length}</span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto px-6 py-4">
+          {loading ? (
+            <p className="text-white/30 text-sm text-center py-8">Loading...</p>
+          ) : (
+            <>
+              {/* Point History */}
+              {activeTab === "transactions" && (
+                <div className="space-y-2">
+                  {data.transactions.length === 0 ? (
+                    <p className="text-white/30 text-sm text-center py-8">No transactions yet</p>
+                  ) : data.transactions.map((t: any) => (
+                    <div key={t.id} className="flex items-center justify-between bg-white/[0.03] border border-white/8 rounded-xl px-4 py-3">
+                      <div>
+                        <p className="text-white/80 text-sm font-medium">{ACTION_LABELS[t.action_code] || t.action_code}</p>
+                        <p className="text-white/30 text-xs mt-0.5">{t.description}</p>
+                        <p className="text-white/20 text-xs">{new Date(t.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</p>
+                      </div>
+                      <span className={`font-display text-lg font-bold ${t.points >= 0 ? "text-green-400" : "text-red-400"}`}>
+                        {t.points >= 0 ? "+" : ""}{t.points}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Referrals */}
+              {activeTab === "referrals" && (
+                <div className="space-y-3">
+                  {data.referralCodes.length > 0 && (
+                    <div className="bg-white/[0.03] border border-white/8 rounded-xl px-4 py-3 mb-4">
+                      <p className="text-white/40 text-xs uppercase tracking-wider mb-2">Referral Codes</p>
+                      {data.referralCodes.map((c: any) => (
+                        <p key={c.code} className="font-mono text-yellow-400 text-sm">{c.code} <span className="text-white/30">— {c.event_slug}</span></p>
+                      ))}
+                    </div>
+                  )}
+                  {data.referrals.length === 0 ? (
+                    <p className="text-white/30 text-sm text-center py-8">No referrals yet</p>
+                  ) : data.referrals.map((r: any) => (
+                    <div key={r.id} className="flex items-center justify-between bg-white/[0.03] border border-white/8 rounded-xl px-4 py-3">
+                      <div>
+                        <p className="text-white/80 text-sm font-medium">{r.referred_email || "Unknown"}</p>
+                        <p className="text-white/30 text-xs mt-0.5">Order {r.referred_order_id?.slice(0, 8)}…</p>
+                        <p className="text-white/20 text-xs">{new Date(r.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</p>
+                      </div>
+                      <div className="text-right">
+                        <span className={`text-xs font-bold px-2 py-1 rounded-full ${r.status === "converted" ? "bg-green-500/15 text-green-400" : "bg-white/8 text-white/30"}`}>
+                          {r.status}
+                        </span>
+                        {r.points_awarded > 0 && <p className="text-green-400 text-xs mt-1">+{r.points_awarded} pts</p>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Redemptions */}
+              {activeTab === "redemptions" && (
+                <div className="space-y-2">
+                  {data.redemptions.length === 0 ? (
+                    <p className="text-white/30 text-sm text-center py-8">No redemptions yet</p>
+                  ) : data.redemptions.map((r: any) => (
+                    <div key={r.id} className="flex items-center justify-between bg-white/[0.03] border border-white/8 rounded-xl px-4 py-3">
+                      <div>
+                        <p className="text-white/80 text-sm font-medium">{r.reward_name}</p>
+                        <p className="text-white/30 text-xs mt-0.5">{r.points_cost} pts · {new Date(r.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</p>
+                        {r.notes && <p className="text-white/20 text-xs mt-0.5">{r.notes}</p>}
+                      </div>
+                      <span className={`text-xs font-bold px-2 py-1 rounded-full ${
+                        r.status === "fulfilled" ? "bg-green-500/15 text-green-400" :
+                        r.status === "pending" ? "bg-yellow-500/15 text-yellow-400" :
+                        "bg-white/8 text-white/30"
+                      }`}>
+                        {r.status}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
 function UsersSection({ adminToken }: { adminToken: string }) {
   const [tab, setTab] = useState<"tickets" | "free">("tickets");
   const [users, setUsers] = useState<UserRecord[]>([]);
@@ -837,6 +990,7 @@ function UsersSection({ adminToken }: { adminToken: string }) {
   const [showAdd, setShowAdd] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [compUserId, setCompUserId] = useState<string | null>(null);
+  const [loyaltyUser, setLoyaltyUser] = useState<{ id: string; name: string } | null>(null);
 
   // Add user form
   const [addForm, setAddForm] = useState({ firstName: "", lastName: "", email: "", phone: "", sendWelcome: true });
@@ -994,6 +1148,18 @@ function UsersSection({ adminToken }: { adminToken: string }) {
           className="w-full bg-white/5 border border-white/15 rounded-xl pl-9 pr-4 py-2.5 text-white placeholder-white/30 text-sm outline-none focus:border-yellow-500/40" />
       </div>
 
+      {/* Loyalty modal */}
+      <AnimatePresence>
+        {loyaltyUser && (
+          <LoyaltyModal
+            userId={loyaltyUser.id}
+            userName={loyaltyUser.name}
+            adminToken={adminToken}
+            onClose={() => setLoyaltyUser(null)}
+          />
+        )}
+      </AnimatePresence>
+
       {/* Comp ticket modal */}
       <AnimatePresence>
         {compUserId && (
@@ -1071,6 +1237,13 @@ function UsersSection({ adminToken }: { adminToken: string }) {
                       <button onClick={() => { const key = u.id || u.email; setExpandedId(expandedId === key ? null : key); }}
                         className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-lg text-white/40 hover:text-white transition-all cursor-pointer" title="View orders & tickets">
                         <Eye size={13} />
+                      </button>
+                    )}
+                    {u.id && (
+                      <button onClick={() => setLoyaltyUser({ id: u.id!, name: u.name })}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-green-500/10 hover:bg-green-500/20 border border-green-500/20 hover:border-green-500/40 text-green-400 text-xs font-semibold rounded-lg transition-all cursor-pointer"
+                        title={`${u.loyalty_points || 0} pts`}>
+                        <Star size={11} /> {u.loyalty_points || 0} pts
                       </button>
                     )}
                     <button onClick={() => { setCompUserId(u.id || u.email); setCompSuccess(""); }}
