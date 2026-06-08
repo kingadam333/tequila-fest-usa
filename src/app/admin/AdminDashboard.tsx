@@ -255,7 +255,7 @@ function OrdersSection({ orders, loading, adminToken, onRefetch }: { orders: Ord
       const res = await fetch("/api/admin/resend-email", {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-admin-token": adminToken },
-        body: JSON.stringify({ order_number: order.id }),
+        body: JSON.stringify({ order_number: order.orderNumber }),
       });
       const data = await res.json();
       if (data.success) {
