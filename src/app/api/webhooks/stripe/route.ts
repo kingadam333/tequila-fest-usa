@@ -119,7 +119,7 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
         if (customerEmail) {
           try {
             const isGA = ticketType === "ga";
-            const pointsPerTicket = isGA ? 20 : 100;
+            const pointsPerTicket = isGA ? 10 : 100;
             const purchasePoints = qty * pointsPerTicket;
 
             const { data: buyer } = await db
