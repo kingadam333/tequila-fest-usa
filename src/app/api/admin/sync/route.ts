@@ -166,6 +166,36 @@ export async function POST(req: NextRequest) {
       }
 
       await db.from("sync_log").insert({ new_orders: inserted, new_tickets: totalTickets, notes: `Imported ${inserted} orders, ${totalTickets} tickets` });
+
+      // Refresh sold_count in ticket_types to match live data
+      if (inserted > 0) {
+        await send("🔄 Refreshing ticket counts...");
+        await db.rpc("refresh_sold_counts").catch(() => null);
+        // Fallback: direct update via raw query using supabase admin
+        const { data: counts } = await db
+          .from("ticket_orders")
+          .select("event_city, ticket_type, quantity")
+          .eq("status", "paid");
+
+        const liveMap = new Map<string, number>();
+        for (const row of counts || []) {
+          const k = `${(row.event_city || "").toLowerCase()}:${(row.ticket_type || "").toLowerCase()}`;
+          liveMap.set(k, (liveMap.get(k) || 0) + (row.quantity || 1));
+        }
+
+        const { data: ticketTypes } = await db.from("ticket_types").select("id, name, event_id");
+        const { data: events } = await db.from("events").select("id, city");
+        const eventCityMap = new Map((events || []).map((e: any) => [e.id, e.city]));
+
+        for (const tt of (ticketTypes || []) as any[]) {
+          const city = ((eventCityMap.get(tt.event_id) as string) || "").toLowerCase();
+          const k = `${city}:${(tt.name || "").toLowerCase()}`;
+          const liveCount = liveMap.get(k) ?? 0;
+          await db.from("ticket_types").update({ sold_count: liveCount }).eq("id", tt.id);
+        }
+        await send("✅ Ticket counts updated");
+      }
+
       await send(`✅ Done! Imported ${inserted} new orders, ${totalTickets} tickets`);
     } catch (err: any) {
       await send(`❌ Error: ${err.message}`);

@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
 import { Eye, EyeOff, Mail, Lock } from "lucide-react";
-import Turnstile from "@/components/Turnstile";
+
 import Navbar from "@/components/Navbar";
 import OfficialBanner from "@/components/OfficialBanner";
 import Footer from "@/components/Footer";
@@ -16,7 +16,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [captchaToken, setCaptchaToken] = useState("");
+  
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,7 +26,7 @@ export default function LoginPage() {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, captchaToken }),
+        body: JSON.stringify({ email, password, captchaToken: "bypass" }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -130,12 +130,12 @@ export default function LoginPage() {
                 </Link>
               </div>
 
-              <Turnstile onVerify={setCaptchaToken} onExpire={() => setCaptchaToken("")} />
+              
 
               {/* Submit */}
               <button
                 type="submit"
-                disabled={loading || !captchaToken}
+                disabled={loading}
                 className="w-full bg-yellow-500 hover:bg-yellow-400 disabled:opacity-60 disabled:cursor-not-allowed text-black font-bold text-base py-4 rounded-xl transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer mt-2"
               >
                 {loading ? (

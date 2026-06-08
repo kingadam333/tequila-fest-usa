@@ -7,12 +7,37 @@ export default function EmailSignup() {
   const [firstName, setFirstName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [cities, setCities] = useState<string[]>([]);
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const CITIES = ["Cincinnati", "Cleveland", "Columbus", "Phoenix"];
+
+  const toggleCity = (city: string) => {
+    setCities(prev =>
+      prev.includes(city) ? prev.filter(c => c !== city) : [...prev, city]
+    );
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!firstName || !email) return;
-    setSubmitted(true);
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/newsletter", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ firstName, email, phone: phone || undefined, cities }),
+      });
+      if (!res.ok) throw new Error("Subscribe failed");
+      setSubmitted(true);
+    } catch {
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -84,11 +109,40 @@ export default function EmailSignup() {
                 ⚡ Add Your Phone to Get Flash Deals
               </p>
 
+              {/* City selector */}
+              <div className="pt-1">
+                <p className="text-white/40 text-xs font-semibold tracking-widest uppercase mb-2.5 text-left">
+                  Which city are you interested in?
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {CITIES.map(city => (
+                    <button
+                      key={city}
+                      type="button"
+                      onClick={() => toggleCity(city)}
+                      className={`px-4 py-2.5 rounded-full border text-sm font-semibold transition-all duration-150 cursor-pointer ${
+                        cities.includes(city)
+                          ? "bg-yellow-500 border-yellow-500 text-black"
+                          : "bg-white/5 border-white/15 text-white/60 hover:border-yellow-500/40 hover:text-white/80"
+                      }`}
+                    >
+                      {city}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-white/20 text-xs mt-2 text-left">Select all that apply — or leave blank for everything</p>
+              </div>
+
+              {error && (
+                <p className="text-red-400 text-sm text-center">{error}</p>
+              )}
+
               <button
                 type="submit"
-                className="bg-yellow-500 hover:bg-yellow-400 text-black font-bold text-lg px-8 py-4 rounded-full transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer mt-1 animate-pulse-glow"
+                disabled={loading}
+                className="bg-yellow-500 hover:bg-yellow-400 disabled:opacity-60 text-black font-bold text-lg px-8 py-4 rounded-full transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer mt-1 animate-pulse-glow"
               >
-                SUBSCRIBE
+                {loading ? "SUBSCRIBING..." : "SUBSCRIBE"}
               </button>
             </form>
           )}

@@ -64,11 +64,11 @@ export default function Navbar() {
           {/* Logo */}
           <Link href="/" className="flex-shrink-0">
             <Image
-              src="/tequilafest_usa.png"
+              src="/logo-long.png"
               alt="Tequila Fest USA"
-              width={120}
-              height={120}
-              className="w-10 h-10 object-contain drop-shadow-lg"
+              width={240}
+              height={60}
+              className="h-10 w-auto object-contain drop-shadow-lg"
             />
           </Link>
 

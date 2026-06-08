@@ -118,7 +118,7 @@ export function ticketConfirmationHtml({
 
         <!-- CTA -->
         <tr><td style="text-align:center">
-          <a href="https://tequila-fest-usa.vercel.app/account" style="display:inline-block;background:#F5A623;color:#0d0500;font-weight:900;font-size:16px;letter-spacing:2px;text-transform:uppercase;text-decoration:none;padding:16px 40px;border-radius:50px">VIEW MY TICKETS</a>
+          <a href="https://www.tequilafestusa.com/account" style="display:inline-block;background:#F5A623;color:#0d0500;font-weight:900;font-size:16px;letter-spacing:2px;text-transform:uppercase;text-decoration:none;padding:16px 40px;border-radius:50px">VIEW MY TICKETS</a>
         </td></tr>
 
         <tr><td style="height:40px"></td></tr>

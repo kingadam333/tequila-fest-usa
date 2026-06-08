@@ -45,15 +45,17 @@ export default function VendorsPage() {
     setError("");
     setLoading(true);
     try {
-      const res = await fetch("/api/contact", {
+      const res = await fetch("/api/vendor-apply", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: form.name,
+          business: form.business,
           email: form.email,
           phone: form.phone,
-          subject: "Vendor Application",
-          message: `Business: ${form.business}\nVendor Type: ${form.type}\nCities Interested: ${form.cities}\n\n${form.description}`,
+          type: form.type,
+          cities: form.cities ? [form.cities] : [],
+          description: form.description,
           captchaToken,
         }),
       });

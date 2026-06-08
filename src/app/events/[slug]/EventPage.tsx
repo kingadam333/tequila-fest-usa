@@ -35,7 +35,7 @@ function Countdown({ dateISO }: { dateISO: string }) {
   }, [dateISO]);
 
   return (
-    <div className="flex gap-3 justify-center mt-8">
+    <div className="flex gap-3 justify-center mt-4">
       {[
         { label: "Days", value: timeLeft.days },
         { label: "Hours", value: timeLeft.hours },
@@ -53,14 +53,16 @@ function Countdown({ dateISO }: { dateISO: string }) {
   );
 }
 
-const INCLUDED = [
-  { icon: "🥃", label: "12 Tasting Tickets", desc: "Sample from 50+ premium tequilas" },
-  { icon: "🎵", label: "Live Entertainment", desc: "Bands & DJs all night" },
-  { icon: "🌮", label: "Authentic Food", desc: "Tacos, street food & more" },
-  { icon: "🎁", label: "Souvenir Item", desc: "Exclusive Tequila Fest keepsake" },
-  { icon: "🛍️", label: "Vendor Market", desc: "Artisans & tequila accessories" },
-  { icon: "🎉", label: "Full Festival Access", desc: "All areas, all night" },
-];
+function getIncluded(event: EventData) {
+  return [
+    { icon: "🥃", label: "12 Tasting Tickets", desc: "Sample from 50+ premium tequilas" },
+    { icon: "🎵", label: "Live Entertainment", desc: "Bands & DJs all night" },
+    { icon: "🌮", label: event.foodVendor?.name ?? "Authentic Food", desc: event.foodVendor?.ticketNote ?? "Tacos, street food & more" },
+    { icon: "🎁", label: "Souvenir Item", desc: "Exclusive Tequila Fest keepsake" },
+    { icon: "🛍️", label: "Vendor Market", desc: "Artisans & tequila accessories" },
+    { icon: "🎉", label: "Full Festival Access", desc: "All areas, all night" },
+  ];
+}
 
 const VIP_PERKS = [
   "Private VIP lounge",
@@ -135,9 +137,10 @@ function useLiveTicketTypes(eventSlug: string) {
   return types;
 }
 
-export default function EventPage({ event }: { event: EventData }) {
+export default function EventPage({ event, ogImage, dbStatus }: { event: EventData; ogImage?: string | null; dbStatus?: string | null }) {
   const liveTypes = useLiveTicketTypes(event.slug);
   const { openCart, modal } = useCartModal(event, liveTypes);
+  const isComingSoon = dbStatus === "coming_soon";
   return (
     <>
       <div className="sticky top-0 z-50">
@@ -150,28 +153,69 @@ export default function EventPage({ event }: { event: EventData }) {
 
         {/* Hero */}
         <section className="relative min-h-[80vh] flex flex-col items-center justify-center overflow-hidden">
-          <div className="absolute inset-0 z-0"
-            style={{ background: `radial-gradient(ellipse at 50% 40%, ${event.color}22 0%, ${event.color}08 40%, #0d0500 70%)` }}
-          />
-          <div className="absolute inset-0 z-0 opacity-20"
-            style={{
-              backgroundImage: "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23F5A623' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")",
-            }}
-          />
+          {/* City header image (if uploaded) */}
+          {ogImage && (
+            <div className="absolute inset-0 z-0">
+              <img src={ogImage} alt={event.city} className="w-full h-full object-cover object-center" />
+              <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, rgba(13,5,0,0.45) 0%, rgba(13,5,0,0.35) 40%, rgba(13,5,0,0.75) 80%, #0d0500 100%)" }} />
+            </div>
+          )}
+          {/* Fallback gradient when no image */}
+          {!ogImage && (
+            <div className="absolute inset-0 z-0"
+              style={{ background: `radial-gradient(ellipse at 50% 40%, ${event.color}22 0%, ${event.color}08 40%, #0d0500 70%)` }}
+            />
+          )}
+          {!ogImage && (
+            <div className="absolute inset-0 z-0 opacity-20"
+              style={{
+                backgroundImage: "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23F5A623' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")",
+              }}
+            />
+          )}
           <Confetti />
 
-          <div className="relative z-20 text-center px-4 max-w-4xl mx-auto w-full pt-8 pb-24">
+          <div className="relative z-20 text-center px-4 max-w-4xl mx-auto w-full pt-8 pb-10">
+
+            {/* Scroll nudge */}
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 1, duration: 0.6 }}
+              className="flex flex-col items-center gap-1 mb-5"
+            >
+              <motion.p
+                animate={{ opacity: [0.7, 1, 0.7] }}
+                transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
+                className="text-base font-black tracking-[0.2em] uppercase drop-shadow-lg"
+                style={{ color: event.color, textShadow: `0 0 20px ${event.color}80` }}
+              >
+                🎟 Scroll Down to Select Tickets
+              </motion.p>
+              <motion.div
+                animate={{ y: [0, 7, 0] }}
+                transition={{ duration: 1, repeat: Infinity, ease: "easeInOut" }}
+              >
+                <svg width="22" height="26" viewBox="0 0 22 26" fill="none">
+                  <motion.path
+                    d="M11 2 L11 18 M4 13 L11 20 L18 13"
+                    stroke={event.color}
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    animate={{ opacity: [0.6, 1, 0.6] }}
+                    transition={{ duration: 1, repeat: Infinity, ease: "easeInOut" }}
+                  />
+                </svg>
+              </motion.div>
+            </motion.div>
+
             {/* Back link */}
             <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.4 }}>
-              <Link href="/#events" className="inline-flex items-center gap-2 text-white/40 hover:text-white/70 text-sm mb-8 transition-colors duration-200">
+              <Link href="/#events" className="inline-flex items-center gap-2 text-white/80 hover:text-white text-sm mb-8 transition-colors duration-200">
                 <ArrowLeft size={14} />
                 All Events
               </Link>
-            </motion.div>
-
-            {/* Logo */}
-            <motion.div initial={{ opacity: 0, scale: 0.85 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.6 }}>
-              <Image src="/tequilafest_usa.png" alt="Tequila Fest USA" width={200} height={200} priority className="mx-auto w-28 md:w-40 drop-shadow-2xl mb-6" />
             </motion.div>
 
             {/* City badge */}
@@ -202,6 +246,14 @@ export default function EventPage({ event }: { event: EventData }) {
               <span className="flex items-center gap-1.5"><MapPin size={14} style={{ color: event.color }} />{event.venue}, {event.venueDetail}</span>
             </motion.div>
 
+            {/* Sampling Hours */}
+            {event.samplingHours && (
+              <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.45 }}
+                className="text-white/50 text-sm mt-2">
+                🥃 Sampling Hours: <span className="text-white/70 font-medium">{event.samplingHours}</span>
+              </motion.p>
+            )}
+
             {/* Countdown */}
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
               <Countdown dateISO={event.dateISO} />
@@ -209,12 +261,7 @@ export default function EventPage({ event }: { event: EventData }) {
 
             {/* CTAs */}
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.65 }}
-              className="mt-10 flex flex-col sm:flex-row gap-4 justify-center items-center flex-wrap">
-              <button onClick={() => openCart()}
-                className="animate-pulse-glow cursor-pointer inline-flex items-center gap-3 bg-yellow-500 hover:bg-yellow-400 text-black font-bold text-xl px-10 py-5 rounded-full transition-all duration-200 hover:scale-105 active:scale-95">
-                <Ticket size={20} />
-                GET TICKETS — From ${PRICING.earlyBird.price}
-              </button>
+              className="mt-4 flex flex-col sm:flex-row gap-4 justify-center items-center flex-wrap">
               {event.gaTicket && (
                 <button onClick={() => openCart("ga")}
                   className="cursor-pointer inline-flex items-center gap-2 border border-white/25 hover:border-white/50 text-white/70 hover:text-white text-base px-7 py-4 rounded-full transition-all duration-200">
@@ -273,7 +320,9 @@ export default function EventPage({ event }: { event: EventData }) {
                       <p className="text-white/40 text-xs mb-6">
                         {soldOut ? "This tier is sold out" : live ? `${live.sold_count} of ${live.capacity} sold` : note}
                       </p>
-                      {soldOut ? (
+                      {isComingSoon ? (
+                        <div className="mt-auto block text-center text-yellow-400 font-bold text-base py-3 rounded-full border border-yellow-500/30 bg-yellow-500/10">COMING SOON</div>
+                      ) : soldOut ? (
                         <div className="mt-auto block text-center text-red-400 font-bold text-base py-3 rounded-full border border-red-500/30 bg-red-500/10">SOLD OUT</div>
                       ) : unavailableNote ? (
                         <div className="mt-auto block text-center text-white/30 text-sm py-3 rounded-full border border-white/10">{unavailableNote}</div>
@@ -326,11 +375,15 @@ export default function EventPage({ event }: { event: EventData }) {
                       ))}
                     </ul>
                   </div>
-                  <button onClick={() => openCart("vip")}
-                    className="mt-auto w-full font-bold text-lg py-4 rounded-full transition-all duration-200 hover:scale-105 cursor-pointer"
-                    style={{ background: "linear-gradient(135deg, #888, #d4d4d4, #fff, #c0c0c0)", color: "#0d0500" }}>
-                    Get VIP — ${PRICING.vip.price}
-                  </button>
+                  {isComingSoon ? (
+                    <div className="mt-auto block text-center text-yellow-400 font-bold text-base py-4 rounded-full border border-yellow-500/30 bg-yellow-500/10">COMING SOON</div>
+                  ) : (
+                    <button onClick={() => openCart("vip")}
+                      className="mt-auto w-full font-bold text-lg py-4 rounded-full transition-all duration-200 hover:scale-105 cursor-pointer"
+                      style={{ background: "linear-gradient(135deg, #888, #d4d4d4, #fff, #c0c0c0)", color: "#0d0500" }}>
+                      Get VIP — ${PRICING.vip.price}
+                    </button>
+                  )}
                 </div>
               </motion.div>
 
@@ -363,10 +416,14 @@ export default function EventPage({ event }: { event: EventData }) {
                       ))}
                       <li className="text-white/30 text-xs pt-1">* Tasting tickets not included</li>
                     </ul>
-                    <button onClick={() => openCart("ga")}
-                      className="w-full font-bold text-base py-3 rounded-full border border-white/20 hover:border-white/40 text-white/70 hover:text-white transition-all duration-200 cursor-pointer">
-                      Get GA Entry — $5
-                    </button>
+                    {isComingSoon ? (
+                      <div className="block text-center text-yellow-400 font-bold text-base py-3 rounded-full border border-yellow-500/30 bg-yellow-500/10">COMING SOON</div>
+                    ) : (
+                      <button onClick={() => openCart("ga")}
+                        className="w-full font-bold text-base py-3 rounded-full border border-white/20 hover:border-white/40 text-white/70 hover:text-white transition-all duration-200 cursor-pointer">
+                        Get GA Entry — $5
+                      </button>
+                    )}
                   </div>
                 </motion.div>
               )}
@@ -411,7 +468,7 @@ export default function EventPage({ event }: { event: EventData }) {
               <p className="text-yellow-500 text-xs font-bold tracking-[0.3em] uppercase mb-3">All Inclusive Ticket</p>
               <h2 className="font-display text-white mb-6" style={{ fontSize: "clamp(1.8rem, 4vw, 3rem)" }}>WHAT&apos;S INCLUDED</h2>
               <div className="grid grid-cols-2 gap-3">
-                {INCLUDED.map((item) => (
+                {getIncluded(event).map((item) => (
                   <div key={item.label} className="bg-white/[0.03] border border-white/10 rounded-xl p-4">
                     <span className="text-2xl">{item.icon}</span>
                     <p className="font-semibold text-white text-sm mt-2">{item.label}</p>

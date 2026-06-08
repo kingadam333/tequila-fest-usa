@@ -34,7 +34,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       password_hash: null,
     }).eq("id", id);
 
-    const inviteUrl = `${process.env.NEXT_PUBLIC_SITE_URL || "https://tequila-fest-usa.vercel.app"}/staff/invite/${inviteToken}`;
+    const inviteUrl = `${process.env.NEXT_PUBLIC_SITE_URL || "https://www.tequilafestusa.com"}/staff/invite/${inviteToken}`;
     await resend.emails.send({
       from: FROM_SUPPORT,
       to: staff.email,

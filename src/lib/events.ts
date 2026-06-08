@@ -24,6 +24,8 @@ export interface EventData {
   tag: string;
   emoji: string;
   description: string;
+  foodVendor?: { name: string; ticketNote: string };
+  samplingHours?: string;
 }
 
 export const EVENTS: EventData[] = [
@@ -47,6 +49,8 @@ export const EVENTS: EventData[] = [
     emoji: "🏙️",
     description:
       "Tequila Fest kicks off its 2026 national tour at the iconic Fountain Square in the heart of downtown Cincinnati. Sample 50+ premium tequilas, enjoy authentic tacos, and dance to live music in one of the city's most beloved public spaces.",
+    foodVendor: { name: "Mazunte Tacos", ticketNote: "Ticket includes 2 tacos" },
+    samplingHours: "4:00pm – 8:00pm",
   },
   {
     slug: "cleveland",
@@ -68,6 +72,7 @@ export const EVENTS: EventData[] = [
     emoji: "🌊",
     description:
       "The Lake Erie Edition brings Tequila Fest to the Cuyahoga County Fairgrounds with massive outdoor space, free parking, and a $5 GA entry option. Explore 50+ tequilas, live entertainment, and incredible food in a festival setting built for a crowd.",
+    samplingHours: "4:00pm – 8:00pm",
   },
   {
     slug: "columbus",
@@ -89,6 +94,8 @@ export const EVENTS: EventData[] = [
     emoji: "🌿",
     description:
       "The Capital City stop takes over Gravity at the Greater Columbus Convention Center for an unforgettable evening. Only 100 $5 GA tickets available — grab yours fast. All Inclusive ticket holders enjoy 12 tasting pours, food, live music, and a souvenir.",
+    foodVendor: { name: "Condado", ticketNote: "Ticket includes 2 tacos" },
+    samplingHours: "4:00pm – 8:00pm",
   },
   {
     slug: "phoenix",
@@ -110,6 +117,7 @@ export const EVENTS: EventData[] = [
     emoji: "🌵",
     description:
       "The Desert Edition closes out the 2026 tour at the Phoenix Convention Center with free parking and an incredible lineup of premium tequilas. End the year right with 50+ pours, authentic cuisine, live music, and the warm Arizona November evenings.",
+    samplingHours: "4:00pm – 8:00pm",
   },
 ];
 

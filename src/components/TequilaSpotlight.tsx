@@ -3,16 +3,11 @@
 import { motion } from "framer-motion";
 
 const brands = [
-  "Patrón", "Don Julio", "Casamigos", "Clase Azul", "Herradura",
-  "1800 Tequila", "Espolòn", "El Jimador", "Milagro", "Tres Generaciones",
-  "Avión", "Casa Noble", "Fortaleza", "Cincoro", "Gran Centenario",
-  "Código 1530", "Suavecito", "Gran Coramino", "Tequila Ocho", "Siete Leguas",
-  "Olmeca Altos", "Volcán De Mi Tierra", "Maestro Dobel", "DeLeón", "Tequila 512",
-  "Hornitos", "Sauza", "Jose Cuervo", "Montezuma", "Corazón",
-  "El Tesoro", "Tapatio", "Arette", "ArteNOM", "Calle 23",
-  "Cascahuín", "G4", "Lalo", "El Tequileño", "Tequila Partida",
-  "Tanteo", "Azuñia", "Lunazul", "Teremana", "Cazcabel",
-  "Leyenda del Milagro", "Sombra Mezcal", "Rey Sol", "Pueblo Viejo", "Campo Azul",
+  "Camerena", "Avión", "Gran Coramino", "1800", "Jose Cuervo",
+  "Gran Centenario", "Dobel", "Milagro", "Del Maguey", "Olmeca Altos",
+  "Codigo 1530", "El Jimador", "Hornitos", "El Tesoro", "Sauza",
+  "Ghost", "G4", "Los Linderos", "Suavecito", "Teremana",
+  "Viva Agave", "Dolce Vida", "Corazon", "Authentico",
 ];
 
 export default function TequilaSpotlight() {

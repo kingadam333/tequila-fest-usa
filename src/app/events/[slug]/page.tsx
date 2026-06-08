@@ -1,10 +1,9 @@
 import { notFound } from "next/navigation";
 import { getEvent, EVENTS } from "@/lib/events";
+import { supabaseAdmin } from "@/lib/supabase";
 import EventPage from "./EventPage";
 
-export async function generateStaticParams() {
-  return EVENTS.map((e) => ({ slug: e.slug }));
-}
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -20,5 +19,17 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
   const { slug } = await params;
   const event = getEvent(slug);
   if (!event) notFound();
-  return <EventPage event={event} />;
+
+  // Fetch og_image from DB (may be null if not uploaded yet)
+  const db = supabaseAdmin as any;
+  const { data } = await db
+    .from("events")
+    .select("og_image, status")
+    .eq("slug", slug)
+    .single();
+
+  const ogImage: string | null = data?.og_image || null;
+  const dbStatus: string | null = data?.status || null;
+
+  return <EventPage event={event} ogImage={ogImage} dbStatus={dbStatus} />;
 }

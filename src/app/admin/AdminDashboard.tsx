@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import Image from "next/image";
@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Ticket, CalendarDays, Users, Tag, QrCode,
   MessageSquare, FileText, LogOut, Menu, X, TrendingUp, DollarSign,
   RefreshCw, Download, Send, CheckCircle, Search, Plus,
-  Trash2, Edit2, Eye, AlertCircle, BarChart2,
+  Trash2, Edit2, Eye, AlertCircle, BarChart2, Mail, Utensils,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -116,11 +116,15 @@ function StatusBadge({ status }: { status: string }) {
     new: "bg-blue-500/15 text-blue-400 border-blue-500/30",
     read: "bg-white/10 text-white/50 border-white/20",
     replied: "bg-green-500/15 text-green-400 border-green-500/30",
-    on_sale: "bg-green-500/15 text-green-400 border-green-500/30",
+    on_sale:     "bg-green-500/15 text-green-400 border-green-500/30",
+    coming_soon: "bg-yellow-500/15 text-yellow-400 border-yellow-500/30",
+    sold_out:    "bg-red-500/15 text-red-400 border-red-500/30",
+    cancelled:   "bg-red-900/20 text-red-500/70 border-red-900/30",
+    draft:       "bg-white/5 text-white/30 border-white/10",
   };
   return (
-    <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full border uppercase tracking-wide ${styles[status] || "bg-white/10 text-white/50 border-white/20"}`}>
-      {status.replace("_", " ")}
+    <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full border uppercase tracking-wide ${styles[status as keyof typeof styles] || "bg-white/10 text-white/50 border-white/20"}`}>
+      {status.replace(/_/g, " ")}
     </span>
   );
 }
@@ -359,6 +363,66 @@ function EventEditor({ event, adminToken, onSaved }: { event: EventRow; adminTok
   const [newTypePrice, setNewTypePrice] = useState("");
   const [newTypeCapacity, setNewTypeCapacity] = useState("");
   const [addingType, setAddingType] = useState(false);
+  const [imageUploading, setImageUploading] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string | null>((event as any).og_image || null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImageUpload = async (file: File) => {
+    if (!file) return;
+    setImageUploading(true);
+    try {
+      // Resize + compress client-side via Canvas before uploading
+      const resizedBlob = await new Promise<Blob>((resolve, reject) => {
+        const img = new window.Image();
+        const url = URL.createObjectURL(file);
+        img.onload = () => {
+          URL.revokeObjectURL(url);
+          // Target: max 1600px wide, maintain aspect ratio
+          const MAX_W = 1600;
+          const scale = img.width > MAX_W ? MAX_W / img.width : 1;
+          const w = Math.round(img.width * scale);
+          const h = Math.round(img.height * scale);
+          const canvas = document.createElement("canvas");
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext("2d")!;
+          ctx.drawImage(img, 0, 0, w, h);
+          canvas.toBlob(
+            (blob) => blob ? resolve(blob) : reject(new Error("Canvas toBlob failed")),
+            "image/webp",
+            0.88 // quality
+          );
+        };
+        img.onerror = reject;
+        img.src = url;
+      });
+
+      // Show local preview immediately
+      setImagePreview(URL.createObjectURL(resizedBlob));
+
+      // Upload as multipart form data
+      const form = new FormData();
+      form.append("eventId", ev.id);
+      form.append("file", resizedBlob, `${ev.id}.webp`);
+
+      const res = await fetch("/api/admin/events/upload-image", {
+        method: "POST",
+        headers: { "x-admin-token": adminToken },
+        body: form,
+      });
+      const data = await res.json();
+      if (data.url) {
+        setImagePreview(data.url);
+        setEv(p => ({ ...p, og_image: data.url } as any));
+      } else {
+        alert(data.error || "Upload failed");
+      }
+    } catch (err: any) {
+      alert("Upload error: " + err.message);
+    } finally {
+      setImageUploading(false);
+    }
+  };
 
   const field = (k: keyof EventRow) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
     setEv(prev => ({ ...prev, [k]: e.target.value }));
@@ -450,7 +514,7 @@ function EventEditor({ event, adminToken, onSaved }: { event: EventRow; adminTok
             <label className="text-white/40 text-xs uppercase tracking-wider block mb-1">Status</label>
             <select value={ev.status} onChange={field("status")}
               className="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2.5 text-white text-sm outline-none cursor-pointer appearance-none">
-              {["on_sale","sold_out","draft","cancelled"].map(s => <option key={s} value={s} className="bg-[#0d0500]">{s.replace("_"," ")}</option>)}
+              {["on_sale","coming_soon","sold_out","draft","cancelled"].map(s => <option key={s} value={s} className="bg-[#0d0500]">{s.replace(/_/g," ")}</option>)}
             </select>
           </div>
           <div>
@@ -469,6 +533,43 @@ function EventEditor({ event, adminToken, onSaved }: { event: EventRow; adminTok
         <button onClick={saveEvent} disabled={saving}
           className="mt-4 flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-60 text-black font-bold text-sm px-6 py-2.5 rounded-xl transition-all cursor-pointer">
           {saving ? "Saving..." : saved ? "✓ Saved!" : "Save Event Details"}
+        </button>
+      </div>
+
+      {/* OG / Header Image */}
+      <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-5">
+        <h3 className="text-white font-bold mb-1 flex items-center gap-2">
+          <span className="text-yellow-400">🖼</span> City Header Image
+        </h3>
+        <p className="text-white/30 text-xs mb-4">Used as the hero background on the city event page. Recommended: 1600×900px or wider, JPG/PNG/WebP.</p>
+
+        {/* Preview */}
+        {imagePreview && (
+          <div className="relative mb-4 rounded-xl overflow-hidden border border-white/10" style={{ aspectRatio: "16/6" }}>
+            <img src={imagePreview} alt="OG header" className="w-full h-full object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+            <span className="absolute bottom-2 right-3 text-white/40 text-xs">Current image</span>
+          </div>
+        )}
+
+        {/* Upload area */}
+        <input
+          ref={imageInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          className="hidden"
+          onChange={e => { const f = e.target.files?.[0]; if (f) handleImageUpload(f); }}
+        />
+        <button
+          onClick={() => imageInputRef.current?.click()}
+          disabled={imageUploading}
+          className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/15 hover:border-yellow-500/40 disabled:opacity-50 text-white/70 hover:text-white px-4 py-2.5 rounded-xl text-sm transition-all cursor-pointer"
+        >
+          {imageUploading ? (
+            <><RefreshCw size={14} className="animate-spin" /> Uploading...</>
+          ) : (
+            <><Download size={14} className="rotate-180" /> {imagePreview ? "Replace Image" : "Upload Image"}</>
+          )}
         </button>
       </div>
 
@@ -1754,6 +1855,356 @@ function KnowledgeBaseSection({ adminToken }: { adminToken: string }) {
   );
 }
 
+// ─── Newsletter Section ────────────────────────────────────────────────────────
+const NEWSLETTER_CITIES = ["All", "Cincinnati", "Cleveland", "Columbus", "Phoenix"];
+
+function NewsletterSection({ adminToken }: { adminToken: string }) {
+  const [subscribers, setSubscribers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [cityTab, setCityTab] = useState("All");
+
+  useEffect(() => {
+    fetch("/api/admin/newsletter", { headers: { "x-admin-token": adminToken } })
+      .then(r => r.json())
+      .then(d => { setSubscribers(d.subscribers || []); setLoading(false); });
+  }, [adminToken]);
+
+  // Count per city (subscribers with no cities selected count toward all)
+  const cityCount = (city: string) => {
+    if (city === "All") return subscribers.length;
+    return subscribers.filter(s =>
+      !s.cities?.length || s.cities.includes(city)
+    ).length;
+  };
+
+  const filtered = subscribers.filter(s => {
+    const matchesCity = cityTab === "All" || !s.cities?.length || s.cities.includes(cityTab);
+    const matchesSearch = `${s.first_name} ${s.email} ${s.phone || ""}`.toLowerCase().includes(search.toLowerCase());
+    return matchesCity && matchesSearch;
+  });
+
+  const exportCSV = () => {
+    const source = cityTab === "All" ? subscribers : filtered;
+    const rows = [["First Name", "Email", "Phone", "Cities", "Signed Up"]];
+    for (const s of source) {
+      rows.push([
+        s.first_name,
+        s.email,
+        s.phone || "",
+        (s.cities?.join(", ")) || "All Cities",
+        new Date(s.created_at).toLocaleDateString(),
+      ]);
+    }
+    const csv = rows.map(r => r.map(v => `"${v}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `newsletter_${cityTab.toLowerCase().replace(" ", "_")}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-start justify-between">
+        <div>
+          <h2 className="font-display text-white text-3xl mb-1">NEWSLETTER</h2>
+          <p className="text-white/30 text-sm">{subscribers.length} total subscriber{subscribers.length !== 1 ? "s" : ""}</p>
+        </div>
+        <button onClick={exportCSV}
+          className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/15 text-white/70 hover:text-white px-4 py-2 rounded-xl text-sm transition-all cursor-pointer">
+          <Download size={14} /> Export {cityTab !== "All" ? cityTab : "All"} CSV
+        </button>
+      </div>
+
+      {/* City stat cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {NEWSLETTER_CITIES.filter(c => c !== "All").map(city => (
+          <button key={city} onClick={() => setCityTab(city)}
+            className={`rounded-xl p-4 border text-left transition-all cursor-pointer ${
+              cityTab === city
+                ? "bg-yellow-500/10 border-yellow-500/40"
+                : "bg-white/[0.03] border-white/10 hover:border-white/20"
+            }`}>
+            <p className={`text-2xl font-bold ${cityTab === city ? "text-yellow-400" : "text-white"}`}>
+              {cityCount(city)}
+            </p>
+            <p className="text-white/40 text-xs mt-0.5">{city}</p>
+          </button>
+        ))}
+      </div>
+
+      {/* City tabs */}
+      <div className="flex gap-1 bg-white/[0.03] border border-white/10 rounded-xl p-1 w-fit">
+        {NEWSLETTER_CITIES.map(city => (
+          <button key={city} onClick={() => setCityTab(city)}
+            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all cursor-pointer ${
+              cityTab === city
+                ? "bg-yellow-500 text-black"
+                : "text-white/50 hover:text-white"
+            }`}>
+            {city} {city !== "All" && <span className="opacity-60 text-xs">({cityCount(city)})</span>}
+          </button>
+        ))}
+      </div>
+
+      {/* Search */}
+      <div className="relative">
+        <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30" />
+        <input value={search} onChange={e => setSearch(e.target.value)}
+          placeholder={`Search ${cityTab === "All" ? "all subscribers" : cityTab + " subscribers"}...`}
+          className="w-full bg-white/[0.04] border border-white/10 rounded-xl pl-9 pr-4 py-2.5 text-sm text-white placeholder-white/25 outline-none focus:border-yellow-500/40" />
+      </div>
+
+      {/* Table */}
+      <div className="bg-white/[0.03] border border-white/10 rounded-2xl overflow-hidden">
+        {loading ? (
+          <div className="flex items-center justify-center py-16 text-white/30 text-sm">Loading...</div>
+        ) : filtered.length === 0 ? (
+          <div className="flex items-center justify-center py-16 text-white/30 text-sm">
+            {search ? "No matches found" : `No ${cityTab === "All" ? "" : cityTab + " "}subscribers yet`}
+          </div>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-white/10">
+                <th className="text-left px-5 py-3 text-white/40 font-medium">Name</th>
+                <th className="text-left px-5 py-3 text-white/40 font-medium">Email</th>
+                <th className="text-left px-5 py-3 text-white/40 font-medium hidden sm:table-cell">Phone</th>
+                <th className="text-left px-5 py-3 text-white/40 font-medium hidden md:table-cell">Cities</th>
+                <th className="text-left px-5 py-3 text-white/40 font-medium hidden lg:table-cell">Signed Up</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((s, i) => (
+                <tr key={s.id} className={`border-b border-white/5 hover:bg-white/[0.02] ${i === filtered.length - 1 ? "border-0" : ""}`}>
+                  <td className="px-5 py-3 text-white font-medium">{s.first_name}</td>
+                  <td className="px-5 py-3 text-white/60">{s.email}</td>
+                  <td className="px-5 py-3 text-white/40 hidden sm:table-cell">{s.phone || <span className="text-white/20">—</span>}</td>
+                  <td className="px-5 py-3 hidden md:table-cell">
+                    {s.cities?.length
+                      ? <div className="flex flex-wrap gap-1">
+                          {s.cities.map((c: string) => (
+                            <span key={c} className="bg-yellow-500/10 text-yellow-400 text-xs px-2 py-0.5 rounded-full">{c}</span>
+                          ))}
+                        </div>
+                      : <span className="text-white/20 text-xs">All Cities</span>
+                    }
+                  </td>
+                  <td className="px-5 py-3 text-white/40 hidden lg:table-cell">{new Date(s.created_at).toLocaleDateString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Vendors Section ───────────────────────────────────────────────────────────
+const VENDOR_STATUS_STYLES: Record<string, string> = {
+  pending:  "bg-yellow-500/10 text-yellow-400 border-yellow-500/30",
+  approved: "bg-green-500/10 text-green-400 border-green-500/30",
+  rejected: "bg-red-500/10 text-red-400 border-red-500/30",
+  paid:     "bg-blue-500/10 text-blue-400 border-blue-500/30",
+};
+
+function VendorsSection({ adminToken }: { adminToken: string }) {
+  const [apps, setApps] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selected, setSelected] = useState<any | null>(null);
+  const [notes, setNotes] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [filter, setFilter] = useState("all");
+
+  const fetchApps = () => {
+    fetch("/api/admin/vendors", { headers: { "x-admin-token": adminToken } })
+      .then(r => r.json())
+      .then(d => { setApps(d.applications || []); setLoading(false); });
+  };
+
+  useEffect(() => { fetchApps(); }, [adminToken]);
+
+  const counts = {
+    all:      apps.length,
+    pending:  apps.filter(a => a.status === "pending").length,
+    approved: apps.filter(a => a.status === "approved").length,
+    paid:     apps.filter(a => a.paid).length,
+    rejected: apps.filter(a => a.status === "rejected").length,
+  };
+
+  const filtered = filter === "all" ? apps : filter === "paid" ? apps.filter(a => a.paid) : apps.filter(a => a.status === filter);
+
+  const updateStatus = async (id: string, status: string) => {
+    setSaving(true);
+    const res = await fetch("/api/admin/vendors", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", "x-admin-token": adminToken },
+      body: JSON.stringify({ id, status, admin_notes: notes }),
+    });
+    const data = await res.json();
+    setSaving(false);
+    if (data.application) {
+      setApps(prev => prev.map(a => a.id === id ? data.application : a));
+      setSelected(data.application);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="font-display text-white text-3xl mb-1">VENDORS</h2>
+        <p className="text-white/30 text-sm">{apps.length} application{apps.length !== 1 ? "s" : ""}</p>
+      </div>
+
+      {/* Filter tabs */}
+      <div className="flex flex-wrap gap-2">
+        {(["all","pending","approved","paid","rejected"] as const).map(tab => (
+          <button key={tab} onClick={() => setFilter(tab)}
+            className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-all cursor-pointer ${
+              filter === tab ? "bg-yellow-500 border-yellow-500 text-black" : "bg-white/[0.03] border-white/10 text-white/50 hover:text-white"
+            }`}>
+            {tab.charAt(0).toUpperCase() + tab.slice(1)} <span className="opacity-60">({counts[tab]})</span>
+          </button>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+        {/* List */}
+        <div className="lg:col-span-2 space-y-2">
+          {loading ? (
+            <div className="text-white/30 text-sm py-8 text-center">Loading...</div>
+          ) : filtered.length === 0 ? (
+            <div className="text-white/30 text-sm py-8 text-center">No {filter === "all" ? "" : filter} applications</div>
+          ) : filtered.map(app => (
+            <button key={app.id} onClick={() => { setSelected(app); setNotes(app.admin_notes || ""); }}
+              className={`w-full text-left p-4 rounded-xl border transition-all cursor-pointer ${
+                selected?.id === app.id ? "bg-yellow-500/10 border-yellow-500/30" : "bg-white/[0.03] border-white/10 hover:border-white/20"
+              }`}>
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-white font-semibold text-sm truncate">{app.business_name}</p>
+                  <p className="text-white/40 text-xs mt-0.5">{app.name} · {app.vendor_type}</p>
+                  <p className="text-white/30 text-xs mt-0.5">{app.cities?.join(", ")}</p>
+                </div>
+                <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full border uppercase ${VENDOR_STATUS_STYLES[app.paid ? "paid" : app.status] || VENDOR_STATUS_STYLES.pending}`}>
+                    {app.paid ? "Paid" : app.status}
+                  </span>
+                  <span className="text-white/20 text-xs">{new Date(app.created_at).toLocaleDateString()}</span>
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+
+        {/* Detail panel */}
+        <div className="lg:col-span-3">
+          {!selected ? (
+            <div className="bg-white/[0.02] border border-white/10 rounded-2xl p-8 text-center text-white/20 text-sm h-full flex items-center justify-center">
+              Select an application to review
+            </div>
+          ) : (
+            <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-6 space-y-5">
+              {/* Header */}
+              <div className="flex items-start justify-between">
+                <div>
+                  <h3 className="text-white font-bold text-xl">{selected.business_name}</h3>
+                  <p className="text-white/40 text-sm">{selected.vendor_type}</p>
+                </div>
+                <span className={`text-xs font-bold px-3 py-1 rounded-full border uppercase ${VENDOR_STATUS_STYLES[selected.paid ? "paid" : selected.status] || VENDOR_STATUS_STYLES.pending}`}>
+                  {selected.paid ? "Paid" : selected.status}
+                </span>
+              </div>
+
+              {/* Info grid */}
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                {[
+                  ["Contact", selected.name],
+                  ["Email", selected.email],
+                  ["Phone", selected.phone || "—"],
+                  ["Cities", selected.cities?.join(", ") || "—"],
+                  ["Fee", `$${150 * (selected.cities?.length || 1)} (${selected.cities?.length || 1} city × $150)`],
+                  ["Applied", new Date(selected.created_at).toLocaleDateString()],
+                ].map(([label, value]) => (
+                  <div key={label} className="bg-white/[0.03] border border-white/8 rounded-xl px-4 py-3">
+                    <p className="text-white/35 text-xs uppercase tracking-wider mb-1">{label}</p>
+                    <p className="text-white/80 font-medium break-all">{value}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Description */}
+              {selected.description && (
+                <div className="bg-white/[0.03] border border-white/8 rounded-xl px-4 py-3">
+                  <p className="text-white/35 text-xs uppercase tracking-wider mb-1">Description</p>
+                  <p className="text-white/70 text-sm leading-relaxed">{selected.description}</p>
+                </div>
+              )}
+
+              {/* Payment link */}
+              {selected.payment_link && (
+                <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-blue-400 text-xs font-bold uppercase tracking-wider">Payment Link Sent</p>
+                    <p className="text-white/40 text-xs mt-0.5">Stripe checkout link was emailed to vendor</p>
+                  </div>
+                  <a href={selected.payment_link} target="_blank" rel="noopener noreferrer"
+                    className="text-blue-400 hover:text-blue-300 text-xs underline flex-shrink-0">View Link</a>
+                </div>
+              )}
+
+              {/* Admin notes */}
+              <div>
+                <label className="text-white/40 text-xs uppercase tracking-wider block mb-1.5">Admin Notes (included in rejection email)</label>
+                <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3}
+                  className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/40 rounded-xl px-3 py-2.5 text-white text-sm outline-none resize-none placeholder-white/20"
+                  placeholder="Optional notes for vendor..." />
+              </div>
+
+              {/* Actions */}
+              {selected.status === "pending" && (
+                <div className="flex gap-3">
+                  <button onClick={() => updateStatus(selected.id, "approved")} disabled={saving}
+                    className="flex-1 bg-green-500 hover:bg-green-400 disabled:opacity-60 text-black font-bold py-2.5 rounded-xl text-sm transition-all cursor-pointer">
+                    {saving ? "Processing..." : "✓ Approve & Send Payment Link"}
+                  </button>
+                  <button onClick={() => updateStatus(selected.id, "rejected")} disabled={saving}
+                    className="flex-1 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 disabled:opacity-60 text-red-400 font-bold py-2.5 rounded-xl text-sm transition-all cursor-pointer">
+                    ✗ Reject
+                  </button>
+                </div>
+              )}
+              {selected.status === "approved" && !selected.paid && (
+                <div className="flex gap-3">
+                  <button onClick={() => updateStatus(selected.id, "approved")} disabled={saving}
+                    className="bg-white/5 hover:bg-white/10 border border-white/15 text-white/60 font-bold py-2.5 px-4 rounded-xl text-sm transition-all cursor-pointer">
+                    {saving ? "Sending..." : "Resend Payment Link"}
+                  </button>
+                  <button onClick={() => updateStatus(selected.id, "rejected")} disabled={saving}
+                    className="bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-400 font-bold py-2.5 px-4 rounded-xl text-sm transition-all cursor-pointer">
+                    Reject
+                  </button>
+                </div>
+              )}
+              {selected.status === "rejected" && (
+                <button onClick={() => updateStatus(selected.id, "approved")} disabled={saving}
+                  className="w-full bg-green-500/20 hover:bg-green-500/30 border border-green-500/30 text-green-400 font-bold py-2.5 rounded-xl text-sm transition-all cursor-pointer">
+                  Re-approve & Send Payment Link
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Tools Section ─────────────────────────────────────────────────────────────
 function ToolsSection({ adminToken }: { adminToken: string }) {
   const [syncLog, setSyncLog] = useState<string[]>([]);
@@ -1851,6 +2302,8 @@ const NAV_ITEMS = [
   { id: "checkin",    label: "Check-In",    icon: <QrCode size={17} /> },
   { id: "contacts",   label: "Inbox",       icon: <MessageSquare size={17} /> },
   { id: "staff",      label: "Staff",       icon: <Users size={17} /> },
+  { id: "vendors",    label: "Vendors",     icon: <Utensils size={17} /> },
+  { id: "newsletter", label: "Newsletter",  icon: <Mail size={17} /> },
   { id: "tools",      label: "Tools",       icon: <RefreshCw size={17} /> },
   { id: "blog",       label: "Blog",        icon: <FileText size={17} /> },
 ];
@@ -1932,6 +2385,8 @@ export default function AdminDashboard() {
     checkin:   <CheckInSection />,
     contacts:  <ContactSection adminToken={adminToken} />,
     staff:     <StaffSection adminToken={adminToken} />,
+    vendors:    <VendorsSection adminToken={adminToken} />,
+    newsletter: <NewsletterSection adminToken={adminToken} />,
     tools:     <ToolsSection adminToken={adminToken} />,
     blog:      <BlogAdminSection />,
   };
