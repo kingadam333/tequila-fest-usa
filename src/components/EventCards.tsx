@@ -128,7 +128,7 @@ export default function EventCards() {
               className="h-full"
             >
               <a
-                href={`/events/${event.slug}`}
+                href={`/events/${event.slug}#tickets`}
                 className={`group flex flex-col h-full bg-gradient-to-br ${event.gradient} border ${event.border} rounded-2xl p-6 hover:scale-[1.02] transition-all duration-300 hover:shadow-2xl cursor-pointer`}
                 style={{ boxShadow: `0 4px 40px ${event.color}10` }}
               >
