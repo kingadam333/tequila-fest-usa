@@ -96,6 +96,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "DB insert failed" }, { status: 500 });
   }
 
+  // Brands: skip AI entirely. Just notify Adam and mark for manual review.
+  if (inboxLabel === "Brands") {
+    try {
+      await resend.emails.send({
+        from: FROM_SUPPORT,
+        to: ADMIN_EMAIL,
+        subject: `New brand email — ${subject}`,
+        text: `From: ${name} <${email}>\nSubject: ${subject}\n\n${hasBody ? bodyFromPayload : "[Body not captured by Resend]"}\n\n— Open in admin: https://www.tequilafestusa.com/admin`,
+      });
+      await db.from("contact_submissions").update({ status: "needs-review", ai_handled: false }).eq("id", inserted.id);
+    } catch (err) {
+      console.error("Failed to send brand notification:", err);
+    }
+    return NextResponse.json({ received: true, note: "brand — notified, no AI" });
+  }
+
   if (!hasBody) {
     // No body — escalate directly so Adam can follow up
     try {
