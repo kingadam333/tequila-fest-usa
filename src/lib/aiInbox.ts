@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { supabaseAdmin } from "@/lib/supabase";
 
 export const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY || "",
@@ -102,9 +103,9 @@ export interface AIInboxResult {
 
 async function fetchDBKnowledge(): Promise<string> {
   try {
-    const { supabaseAdmin } = await import("@/lib/supabase");
     const db = supabaseAdmin as any;
-    const { data } = await db.from("knowledge_base").select("title, content, category").order("category").order("title");
+    const { data, error } = await db.from("knowledge_base").select("title, content, category").order("category").order("title");
+    if (error) { console.error("KB fetch error:", error); return ""; }
     if (!data?.length) return "";
     const grouped: Record<string, string[]> = {};
     for (const row of data) {
@@ -112,9 +113,12 @@ async function fetchDBKnowledge(): Promise<string> {
       if (!grouped[cat]) grouped[cat] = [];
       grouped[cat].push(`**${row.title}**\n${row.content}`);
     }
-    return "\n\n## Admin Knowledge Base (overrides defaults above if conflicting)\n" +
+    const kb = "\n\n## Admin Knowledge Base (these override defaults above if conflicting)\n" +
       Object.entries(grouped).map(([cat, items]) => `### ${cat}\n${items.join("\n\n")}`).join("\n\n");
-  } catch {
+    console.log("KB loaded, entries:", data.length);
+    return kb;
+  } catch (err) {
+    console.error("KB fetch exception:", err);
     return "";
   }
 }
@@ -150,11 +154,13 @@ Instructions:
 5. If they ask about refunds, clearly explain that all sales are final and we do not offer refunds. Be empathetic but firm.
 6. Sign off as "The Tequila Fest USA Team".
 7. Keep the reply concise and friendly — 2-5 sentences. Don't over-explain.
-8. ONLY output ESCALATE (on its own line, nothing else) if the message truly cannot be answered from the knowledge base — e.g. a complaint requiring a judgment call, a special accommodation request, or something completely outside our FAQ. Do NOT escalate questions about policies, tickets, accounts, or anything covered above — answer those directly and confidently.
+8. ESCALATE threshold — ONLY output the single word ESCALATE (nothing else) if ALL of these are true: the question is not about tickets, accounts, passwords, event dates, venue, refunds, transfers, or any other topic in the knowledge base above; AND it requires a human judgment call you truly cannot make. If you can answer ANY part of the question from the knowledge base, answer the whole message — do not escalate.
 
-Respond with either:
-- Just the reply text (if you can answer from the knowledge base), OR
-- ESCALATE (alone on the first line) only if genuinely outside your knowledge`;
+Examples of what should NOT escalate: "can I transfer my ticket", "where are my tickets", "I can't log in", "can I get a refund", "what's included", "when is the event". These all have answers above.
+
+Respond with ONLY:
+- The reply text addressed to the customer, OR
+- The single word ESCALATE if you genuinely cannot answer anything`;
 
   const response = await anthropic.messages.create({
     model: "claude-haiku-4-5-20251001",
