@@ -34,7 +34,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ skipped: "not a help@ email" });
   }
 
-  // DEBUG: Fetch email body and return raw API response so we can inspect it
+  // Wait 3s for Resend to finish indexing the inbound email before fetching body
+  await new Promise((r) => setTimeout(r, 3000));
+
   let message = "";
   let debugApiResponse: any = null;
   try {
@@ -42,7 +44,8 @@ export async function POST(req: NextRequest) {
       headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}` },
     });
     debugApiResponse = await emailRes.json();
-    const raw = debugApiResponse.text || debugApiResponse.html?.replace(/<[^>]+>/g, " ") || debugApiResponse.body || "";
+    console.log("Resend API status:", emailRes.status, "keys:", Object.keys(debugApiResponse || {}));
+    const raw = debugApiResponse.text || debugApiResponse.html?.replace(/<[^>]+>/g, " ") || "";
     message = raw
       .replace(/On .+wrote:[\s\S]*/i, "")
       .replace(/_{3,}[\s\S]*/g, "")
@@ -52,13 +55,9 @@ export async function POST(req: NextRequest) {
     console.error("Failed to fetch email body:", err);
   }
 
-  // Temporarily return debug info so we can see the API response in Resend webhook logs
+  // Return debug info so we can see the API response in Resend webhook logs
   if (!message) {
     return NextResponse.json({ skipped: "empty body", emailId, debugApiResponse });
-  }
-
-  if (!message) {
-    return NextResponse.json({ skipped: "empty body" });
   }
 
   // Parse "Name <email>" from address
