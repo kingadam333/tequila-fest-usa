@@ -9,8 +9,9 @@ import {
   MessageSquare, FileText, LogOut, Menu, X, TrendingUp, DollarSign,
   RefreshCw, Download, Send, CheckCircle, Search, Plus,
   Trash2, Edit2, Eye, AlertCircle, BarChart2, Mail, Utensils, Share2,
-  Star, Gift, UserCheck, ChevronRight,
+  Star, Gift, UserCheck, ChevronRight, Megaphone,
 } from "lucide-react";
+import SocialShareSection from "./SocialShareSection";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Order {
@@ -3546,6 +3547,7 @@ const NAV_ITEMS = [
   { id: "checkin",    label: "Check-In",    icon: <QrCode size={17} /> },
   { id: "contacts",   label: "Inbox",       icon: <MessageSquare size={17} /> },
   { id: "social",     label: "Social Claims", icon: <Share2 size={17} /> },
+  { id: "social-share", label: "Social Share", icon: <Megaphone size={17} /> },
   { id: "staff",      label: "Staff",       icon: <Users size={17} /> },
   { id: "vendors",    label: "Vendors",     icon: <Utensils size={17} /> },
   { id: "newsletter", label: "Newsletter",  icon: <Mail size={17} /> },
@@ -3651,6 +3653,7 @@ export default function AdminDashboard() {
     checkin:   <CheckInSection />,
     contacts:  <ContactSection adminToken={adminToken} />,
     social:    <SocialClaimsSection adminToken={adminToken} />,
+    "social-share": <SocialShareSection adminToken={adminToken} />,
     staff:     <StaffSection adminToken={adminToken} />,
     vendors:    <VendorsSection adminToken={adminToken} />,
     newsletter: <NewsletterSection adminToken={adminToken} />,

@@ -332,11 +332,56 @@ async function handleBrandPackagePaid(session: Stripe.Checkout.Session) {
   const paymentIntentId = typeof session.payment_intent === "string" ? session.payment_intent : "";
 
   // Mark paid (idempotent — pending row was inserted at session creation)
+  // Also link or create a brand_contacts row by email so the order shows up
+  // under the matching contact in admin → Brands.
   if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
     try {
       const { supabaseAdmin } = await import("@/lib/supabase");
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const db = supabaseAdmin as any;
+
+      // ── Find or create brand_contacts entry by email ──
+      let brandContactId: string | null = null;
+      const emailLc = contactEmail.trim().toLowerCase();
+      if (emailLc) {
+        const { data: matched } = await db
+          .from("brand_contacts")
+          .select("id, brands, contact_phone")
+          .ilike("contact_email", emailLc)
+          .maybeSingle();
+        if (matched) {
+          brandContactId = matched.id;
+          // Append the purchased brand to brands[] if not already present, and
+          // backfill phone if the row didn't have one.
+          const existingBrands: { name: string; price_per_bottle?: string }[] = Array.isArray(matched.brands) ? matched.brands : [];
+          const hasBrand = !!existingBrands.find((b) => (b?.name || "").trim().toLowerCase() === brandName.trim().toLowerCase());
+          const updates: Record<string, unknown> = {};
+          if (!hasBrand && brandName.trim()) {
+            updates.brands = [...existingBrands, { name: brandName.trim(), price_per_bottle: "" }];
+          }
+          if (!matched.contact_phone && contactPhone) {
+            updates.contact_phone = contactPhone;
+          }
+          if (Object.keys(updates).length) {
+            await db.from("brand_contacts").update(updates).eq("id", matched.id);
+          }
+        } else {
+          const { data: created } = await db
+            .from("brand_contacts")
+            .insert({
+              contact_name: contactName,
+              contact_email: emailLc,
+              contact_phone: contactPhone || null,
+              contact_type: "self_distributed",
+              brands: brandName.trim() ? [{ name: brandName.trim(), price_per_bottle: "" }] : [],
+              notes: `Auto-created from brand package checkout (${orderNumber}).`,
+            })
+            .select("id")
+            .single();
+          brandContactId = created?.id || null;
+        }
+      }
+
       const { data: existing } = await db
         .from("brand_package_orders")
         .select("id, status")
@@ -348,6 +393,7 @@ async function handleBrandPackagePaid(session: Stripe.Checkout.Session) {
             status: "paid",
             stripe_payment_intent_id: paymentIntentId || null,
             paid_at: new Date().toISOString(),
+            ...(brandContactId ? { brand_contact_id: brandContactId } : {}),
           }).eq("id", existing.id);
         } else {
           return; // already processed
@@ -367,6 +413,7 @@ async function handleBrandPackagePaid(session: Stripe.Checkout.Session) {
           stripe_payment_intent_id: paymentIntentId || null,
           status: "paid",
           paid_at: new Date().toISOString(),
+          brand_contact_id: brandContactId,
         });
       }
     } catch (err) {
