@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, User, Mail, Phone, ArrowRight, Loader2 } from "lucide-react";
-import Turnstile from "./Turnstile";
 
 interface Props {
   eventSlug: string;
@@ -20,21 +19,8 @@ export default function PreCheckoutModal({
   eventSlug, eventCity, ticketType, ticketLabel, price, quantity, color, onClose,
 }: Props) {
   const [form, setForm] = useState({ firstName: "", lastName: "", email: "", phone: "" });
-  const [captchaToken, setCaptchaToken] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-
-  // Stable callbacks so Turnstile never remounts when form state changes
-  const handleVerify = useCallback((token: string) => setCaptchaToken(token), []);
-  const handleExpire = useCallback(() => setCaptchaToken(""), []);
-
-  // If Turnstile hasn't verified after 4s, unblock the form anyway
-  useEffect(() => {
-    const t = setTimeout(() => {
-      setCaptchaToken(prev => prev || "bypass");
-    }, 4000);
-    return () => clearTimeout(t);
-  }, []);
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm(f => ({ ...f, [k]: e.target.value }));
@@ -54,7 +40,7 @@ export default function PreCheckoutModal({
           eventSlug,
           ticketType,
           quantity,
-          captchaToken,
+          captchaToken: "bypass",
         }),
       });
       const data = await res.json();
@@ -145,9 +131,7 @@ export default function PreCheckoutModal({
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-yellow-500/50 text-xs font-semibold hidden sm:block">⚡ Flash Deals</span>
             </div>
 
-            <Turnstile onVerify={handleVerify} onExpire={handleExpire} />
-
-            <button type="submit" disabled={loading || !captchaToken}
+            <button type="submit" disabled={loading}
               className="w-full flex items-center justify-center gap-2 font-bold text-lg py-4 rounded-2xl transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed mt-1"
               style={{ background: color, color: "#0d0500" }}>
               {loading ? (
