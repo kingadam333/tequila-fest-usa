@@ -1833,6 +1833,61 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
   const [reply, setReply] = useState("");
   const [sending, setSending] = useState(false);
 
+  // ── Compose (broadcast) state
+  const [showCompose, setShowCompose] = useState(false);
+  const [composeSubject, setComposeSubject] = useState("");
+  const [composeMessage, setComposeMessage] = useState("");
+  const [composeSelected, setComposeSelected] = useState<Set<string>>(new Set());
+  const [composeSending, setComposeSending] = useState(false);
+  const [composeStatus, setComposeStatus] = useState<string>("");
+  const [composeSearch, setComposeSearch] = useState("");
+
+  const composeRecipients = contacts.filter(c => c.contact_email);
+  const composeFiltered = composeRecipients.filter(c =>
+    !composeSearch ||
+    c.contact_name.toLowerCase().includes(composeSearch.toLowerCase()) ||
+    c.contact_email.toLowerCase().includes(composeSearch.toLowerCase()) ||
+    c.brands.some(b => b.name.toLowerCase().includes(composeSearch.toLowerCase()))
+  );
+  const allSelected = composeRecipients.length > 0 && composeSelected.size === composeRecipients.length;
+  const toggleAllRecipients = () => {
+    if (allSelected) setComposeSelected(new Set());
+    else setComposeSelected(new Set(composeRecipients.map(c => c.id)));
+  };
+  const toggleRecipient = (id: string) => {
+    setComposeSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+  const openCompose = () => {
+    setComposeSubject(""); setComposeMessage(""); setComposeSelected(new Set()); setComposeStatus(""); setComposeSearch("");
+    setShowCompose(true);
+  };
+  const sendBroadcast = async () => {
+    const emails = composeRecipients.filter(c => composeSelected.has(c.id)).map(c => c.contact_email);
+    if (!emails.length || !composeSubject.trim() || !composeMessage.trim()) return;
+    setComposeSending(true); setComposeStatus("");
+    try {
+      const res = await fetch("/api/admin/brands/broadcast", {
+        method: "POST",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify({ recipients: emails, subject: composeSubject, message: composeMessage }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setComposeStatus(`Sent ${data.sent}${data.failed ? ` · ${data.failed} failed` : ""}`);
+        if (!data.failed) setTimeout(() => setShowCompose(false), 900);
+      } else {
+        setComposeStatus(`Error: ${data.error || "send failed"}`);
+      }
+    } catch (e: any) {
+      setComposeStatus(`Error: ${e?.message || "send failed"}`);
+    }
+    setComposeSending(false);
+  };
+
   const fetchContacts = useCallback(async () => {
     setLoadingContacts(true);
     const res = await fetch("/api/admin/brands", { headers });
@@ -2036,7 +2091,12 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
       {view === "inbox" && (
         <div className="grid grid-cols-1 lg:grid-cols-[300px,1fr] gap-5">
           <div className="space-y-2">
-            <p className="text-white/40 text-xs uppercase tracking-wider mb-3">brands@mail.tequilafestusa.com</p>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-white/40 text-xs uppercase tracking-wider">brands@mail.tequilafestusa.com</p>
+              <button onClick={openCompose} className="flex items-center gap-1.5 px-3 py-1.5 bg-yellow-500 hover:bg-yellow-400 text-black text-xs font-semibold rounded-lg transition-all cursor-pointer">
+                <Plus size={13} /> Compose
+              </button>
+            </div>
             {loadingInbox ? <div className="text-white/30 text-sm py-6 text-center">Loading…</div> : brandMessages.length === 0 ? (
               <div className="text-white/30 text-sm py-6 text-center">No messages yet.</div>
             ) : brandMessages.map(msg => (
@@ -2070,6 +2130,79 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
           </div>
         </div>
       )}
+
+      {/* ── COMPOSE BROADCAST MODAL ── */}
+      <AnimatePresence>
+        {showCompose && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+            onClick={e => { if (e.target === e.currentTarget) setShowCompose(false); }}>
+            <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }}
+              className="bg-[#0d0500] border border-white/10 rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-5">
+                <div>
+                  <h3 className="text-lg font-semibold text-white">New Email</h3>
+                  <p className="text-white/40 text-xs mt-0.5">From brands@mail.tequilafestusa.com</p>
+                </div>
+                <button onClick={() => setShowCompose(false)} className="text-white/40 hover:text-white cursor-pointer"><X size={18} /></button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className={labelCls} style={{ margin: 0 }}>Recipients · {composeSelected.size} selected</label>
+                    <button onClick={toggleAllRecipients} className="text-xs text-yellow-400 hover:text-yellow-300 cursor-pointer">
+                      {allSelected ? "Clear all" : "Select all"}
+                    </button>
+                  </div>
+                  <div className="relative mb-2">
+                    <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+                    <input value={composeSearch} onChange={e => setComposeSearch(e.target.value)} placeholder="Search contacts or brands…"
+                      className="w-full pl-8 pr-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder-white/30 focus:outline-none focus:border-yellow-500/40" />
+                  </div>
+                  <div className="border border-white/10 rounded-xl max-h-56 overflow-y-auto">
+                    {composeFiltered.length === 0 ? (
+                      <p className="text-white/30 text-sm py-6 text-center">No brand contacts.</p>
+                    ) : composeFiltered.map(c => {
+                      const checked = composeSelected.has(c.id);
+                      return (
+                        <label key={c.id} className={`flex items-center gap-3 px-3 py-2 border-b border-white/5 last:border-0 cursor-pointer hover:bg-white/[0.03] ${checked ? "bg-yellow-500/[0.06]" : ""}`}>
+                          <input type="checkbox" checked={checked} onChange={() => toggleRecipient(c.id)} className="accent-yellow-500" />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm text-white truncate">{c.contact_name} <span className="text-white/40">· {c.contact_email}</span></p>
+                            {c.brands.length > 0 && <p className="text-white/30 text-xs truncate">{c.brands.map(b => b.name).filter(Boolean).join(", ")}</p>}
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div>
+                  <label className={labelCls}>Subject</label>
+                  <input value={composeSubject} onChange={e => setComposeSubject(e.target.value)} className={inputCls} placeholder="Subject line" />
+                </div>
+                <div>
+                  <label className={labelCls}>Message</label>
+                  <textarea value={composeMessage} onChange={e => setComposeMessage(e.target.value)} rows={8}
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-yellow-500/50 resize-y" placeholder="Write your message…" />
+                </div>
+
+                {composeStatus && <p className="text-sm text-white/60">{composeStatus}</p>}
+
+                <div className="flex items-center justify-end gap-2 pt-2 border-t border-white/10">
+                  <button onClick={() => setShowCompose(false)} className="px-4 py-2 text-sm text-white/60 hover:text-white cursor-pointer">Cancel</button>
+                  <button onClick={sendBroadcast}
+                    disabled={composeSending || composeSelected.size === 0 || !composeSubject.trim() || !composeMessage.trim()}
+                    className="flex items-center gap-2 px-4 py-2 bg-yellow-500 hover:bg-yellow-400 text-black text-sm font-semibold rounded-xl transition-all cursor-pointer disabled:opacity-40">
+                    <Send size={14} /> {composeSending ? "Sending…" : `Send to ${composeSelected.size}`}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── ADD/EDIT CONTACT MODAL ── */}
       <AnimatePresence>
