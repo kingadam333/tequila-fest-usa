@@ -62,14 +62,18 @@ npx vercel env pull .env.local   # pulls to local (values will be empty strings 
 
 ## Events (4 Cities)
 
-| City | Slug | Date | Venue | Price |
-|---|---|---|---|---|
-| Cincinnati | `tequila-fest-cincinnati-2026` | June 13, 2026, 3–9 PM | Fountain Square, Downtown Cincinnati | $75 |
-| Cleveland | `tequila-fest-cleveland-2026` | July 25, 2026, 3–9 PM | Cuyahoga County Fairgrounds, Berea OH | $75 |
-| Columbus | `tequila-fest-columbus-2026` | Aug 8, 2026, 3–9 PM | Gravity/Greater Columbus Convention Center | $75 |
-| Phoenix | `tequila-fest-phoenix-2026` | Nov 14, 2026, 3–9 PM | Phoenix Convention Center | $85 |
+| City | Slug | Date | Venue | Price | Status |
+|---|---|---|---|---|---|
+| Cincinnati | `cincinnati` | June 13, 2026, 3–9 PM | Fountain Square, Downtown Cincinnati | $55 | on_sale |
+| Cleveland | `cleveland` | July 25, 2026, 3–9 PM | Cuyahoga County Fairgrounds, Berea OH | $55 | on_sale |
+| Columbus | `columbus` | Aug 8, 2026, 3–9 PM | Gravity/Greater Columbus Convention Center | $55 | on_sale |
+| Phoenix | `phoenix` | Nov 14, 2026, 3–9 PM | Phoenix Convention Center | $55 | coming_soon |
 
 Event data is defined in `src/lib/events.ts`. VIP ticket available at all events.
+
+**Phoenix is set to `coming_soon`** — homepage card shows "🔔 COMING SOON" (non-clickable), event page shows Coming Soon UI. Status is stored in the `events` DB table. The DB check constraint was updated to allow: `draft`, `on_sale`, `sold_out`, `cancelled`, `coming_soon`.
+
+**Homepage event cards** (`src/components/EventCards.tsx`) are **hardcoded** — they do not read from the DB. To change a city's status on the homepage, update the `status` field in that file directly. The individual event pages (`/events/[slug]`) DO read status from the DB.
 
 ---
 
@@ -81,7 +85,7 @@ Event data is defined in `src/lib/events.ts`. VIP ticket available at all events
 | `ticket_instances` | Individual QR-coded tickets — one row per ticket, linked to order_id |
 | `customer_accounts` | User profiles — linked to Supabase Auth by UUID |
 | `contact_submissions` | Contact form submissions — inbox, status, admin_reply |
-| `events` | Event rows managed in admin |
+| `events` | Event rows managed in admin — status check constraint: `draft`, `on_sale`, `sold_out`, `cancelled`, `coming_soon` |
 | `ticket_types` | Per-event ticket type config |
 | `affiliates` | Affiliate accounts + commission tracking |
 | `blog_posts` | Blog content |
@@ -100,11 +104,12 @@ Event data is defined in `src/lib/events.ts`. VIP ticket available at all events
 | `src/lib/turnstile.ts` | Cloudflare Turnstile server-side verification (enforced — see CAPTCHA section) |
 | `src/components/Turnstile.tsx` | Turnstile widget React component (renders once, no remount loop) |
 | `src/lib/adminAuth.ts` | Admin token verification |
-| `src/app/api/webhooks/stripe/route.ts` | Stripe webhook handler — creates order, QR tickets, auth account, sends email |
-| `src/app/api/admin/resend-email/route.ts` | Admin: resend ticket email for any order |
+| `src/app/api/webhooks/stripe/route.ts` | Stripe webhook handler — creates order, QR tickets, auth account, sends ONE combined email |
+| `src/app/api/admin/resend-email/route.ts` | Admin: resend ticket email for any order (uses qrTicketHtml) |
 | `src/app/api/admin/contact/route.ts` | Admin: GET submissions, POST reply |
 | `src/app/api/session-email/route.ts` | Fetches customer email from Stripe session (for post-purchase flow) |
 | `src/app/admin/AdminDashboard.tsx` | Full admin dashboard (orders, events, users, inbox, AI, staff) |
+| `src/components/EventCards.tsx` | Homepage city event cards — hardcoded data, includes status field per city |
 | `src/components/TicketCartModal.tsx` | Ticket purchase modal on city event pages |
 | `src/components/PreCheckoutModal.tsx` | Pre-checkout info collection modal |
 | `src/app/login/LoginPage.tsx` | Login page (supports ?email= and ?redirect= URL params) |
@@ -120,24 +125,46 @@ Turnstile protects every public form. It was looping/spinning in production earl
 The widget component had `onVerify/onError/onExpire` in its `useEffect` dependency array. Parents pass inline arrow functions, so every keystroke re-render created new function references → the effect tore down (`turnstile.remove()`) and re-rendered the widget → endless spin/reset. **Fix:** callbacks are held in refs so the effect depends only on `siteKey` and renders exactly once. Also sets `retry: "never"`.
 
 ### How it's wired
-- **Client:** [`src/components/Turnstile.tsx`](src/components/Turnstile.tsx) renders the widget. Each form holds `const [captchaToken, setCaptchaToken] = useState("")`, renders `<Turnstile onVerify={setCaptchaToken} onError/onExpire={() => setCaptchaToken("")} />` above the submit button, disables submit until a token exists, sends the token in the request body, and clears the token on any failure (tokens are single-use).
-- **Server:** [`src/lib/turnstile.ts`](src/lib/turnstile.ts) `verifyTurnstile()` is called by every form route. Rule: **no `TURNSTILE_SECRET_KEY` set = dev skip; secret set (production) = a real token is required** or the request is rejected. There is **no `"bypass"` escape hatch** anymore.
-- **Forms covered (9):** contact, signup, login, forgot-password, vendors, sponsors, affiliates, press, and the two checkout modals (`PreCheckoutModal`, `TicketCartModal`). Routes: `/api/contact` (contact/sponsors/affiliates/press), `/api/vendor-apply`, `/api/auth/*`, `/api/pre-checkout`.
+- **Client:** `src/components/Turnstile.tsx` renders the widget. Each form holds `const [captchaToken, setCaptchaToken] = useState("")`, renders `<Turnstile onVerify={setCaptchaToken} onError/onExpire={() => setCaptchaToken("")} />` above the submit button, disables submit until a token exists, sends the token in the request body, and clears the token on any failure (tokens are single-use).
+- **Server:** `src/lib/turnstile.ts` — `verifyTurnstile()` is called by every form route. Rule: **no `TURNSTILE_SECRET_KEY` set = dev skip; secret set (production) = a real token is required** or the request is rejected. There is **no `"bypass"` escape hatch**.
+- **Forms covered (9):** contact, signup, login, forgot-password, vendors, sponsors, affiliates, press, and the two checkout modals (`PreCheckoutModal`, `TicketCartModal`). Routes: `/api/contact`, `/api/vendor-apply`, `/api/auth/*`, `/api/pre-checkout`.
 
 ### Required config (all three must be correct or it loops)
 1. **Cloudflare → Turnstile widget → Hostnames:** must list `tequilafestusa.com`, `www.tequilafestusa.com`, AND `tequila-fest-usa.vercel.app`. A missing hostname is the #1 cause of an infinite spinner.
 2. **Widget Mode:** `Managed` (Recommended). Not Invisible.
-3. **No account-level WAF "Managed Challenge"** firing on form routes (would stack with Turnstile). N/A here — WAF add-on isn't purchased.
-4. **Vercel env vars** (production + preview + development), then redeploy:
+3. **Vercel env vars** (production + preview + development), then redeploy:
    - `NEXT_PUBLIC_TURNSTILE_SITE_KEY` (public)
    - `TURNSTILE_SECRET_KEY` (secret)
 
 ### Local dev / testing
-`vercel env pull` blanks all protected values, so local `.env.local` keys come up empty. Use Cloudflare's **always-pass test keys** in `.env.local` to exercise the real widget locally:
+`vercel env pull` blanks all protected values. Use Cloudflare's **always-pass test keys** in `.env.local`:
 - Site key: `1x00000000000000000000AA`
 - Secret key: `1x0000000000000000000000000000000AA`
 
-With these, the widget renders, issues a dummy token (`XXXX.DUMMY.TOKEN.XXXX`), and enables the submit button — proving the wiring without bot friction. (Test keys are local-only; production uses the real keys in Vercel.)
+With these, the widget renders, issues a dummy token, and enables the submit button — proving the wiring without bot friction.
+
+---
+
+## Cloudflare Setup (Working)
+
+**Domain:** `tequilafestusa.com` → Cloudflare → Vercel
+
+### DNS Records
+- `A` record: `tequilafestusa.com` → Vercel IP (proxied through Cloudflare, orange cloud)
+- `CNAME` record: `www` → `cname.vercel-dns.com` (proxied through Cloudflare, orange cloud)
+- `CNAME` record: `mail` → Resend sending domain (DNS only, grey cloud — **must NOT be proxied**)
+
+### SSL/TLS Settings
+- **SSL Mode:** Full (Strict) — required. "Full" (non-strict) caused redirect loops. Set under SSL/TLS → Overview.
+- **Minimum TLS:** 1.2
+
+### Security Settings
+- **Bot Fight Mode:** OFF — was interfering with Stripe webhooks and form submissions
+- **Browser Integrity Check:** OFF — was blocking legitimate API calls
+- **Security Level:** Medium
+
+### Key Cloudflare Rules
+- Cloudflare always redirects bare domain (`tequilafestusa.com`) → `www.tequilafestusa.com` with 308. **Stripe webhooks MUST use `https://www.tequilafestusa.com/...`** — Stripe does not follow redirects.
 
 ---
 
@@ -148,69 +175,42 @@ With these, the widget renders, issues a dummy token (`XXXX.DUMMY.TOKEN.XXXX`), 
 
 ### How It Works
 1. Customer completes Stripe checkout → Stripe fires webhook to `https://www.tequilafestusa.com/api/webhooks/stripe`
-2. Webhook handler (`handleCheckoutComplete`):
+2. Webhook handler (`handleCheckoutComplete`) in `src/app/api/webhooks/stripe/route.ts`:
    - Inserts order into `ticket_orders`
    - Creates QR-coded rows in `ticket_instances`
-   - Checks `customer_accounts` table (by email) to see if account exists
+   - Checks `customer_accounts` table **by email** to see if account exists (not `listUsers()`)
    - If **new customer**: creates Supabase Auth account with generated password
-   - Sends **one combined email** with QR tickets + order summary + (if new account) login credentials
-3. Admin can resend via the **Send icon** in Orders section, which calls `/api/admin/resend-email`
+   - Sends **ONE combined email** with QR tickets + order summary + (if new account) login credentials
+3. Admin can resend via the **Send icon (→)** in Admin → Orders, which calls `/api/admin/resend-email`
 
 ### Email Templates in `src/lib/resend.ts`
-- `qrTicketHtml()` — Main post-purchase email: QR codes + order summary + optional account credentials. Accepts: `firstName, eventCity, eventDate, eventTime, eventVenue, orderNumber, tickets[], appUrl, total?, ticketType?, quantity?, newPassword?`
-- `ticketConfirmationHtml()` — Legacy simple confirmation (still exists, no longer sent on purchase)
-- `welcomeAccountHtml()` — Standalone account welcome (no longer sent separately — merged into qrTicketHtml)
+- `qrTicketHtml()` — **Main post-purchase email**: QR codes + order summary + optional account credentials. Params: `firstName, eventCity, eventDate, eventTime, eventVenue, orderNumber, tickets[], appUrl, total?, ticketType?, quantity?, newPassword?`
+- `ticketConfirmationHtml()` — Legacy simple confirmation (exists but no longer sent on purchase)
+- `welcomeAccountHtml()` — Standalone account welcome (no longer sent separately — merged into `qrTicketHtml`)
 - `passwordResetHtml()` — Password reset email
-- `INBOX_ROUTING` — Maps contact form subjects to inbox labels (all send from `@mail.tequilafestusa.com`)
+- `INBOX_ROUTING` — Maps contact form subjects → inbox labels (all send from `@mail.tequilafestusa.com`)
 
-### Critical: Why Emails Were Broken (Fixed)
-1. **Resend API key was stale/revoked** — User generated new key in Resend dashboard and updated `RESEND_API_KEY` in Vercel env vars
-2. **Turnstile was blocking all form submissions** — Turnstile widget was removed from frontend but server still called `verifyTurnstile()` with empty token → returned false → all API routes returned 400. Fixed in `src/lib/turnstile.ts` to bypass when token is empty or `"bypass"`
-3. **Stripe webhook 308 redirect** — Webhook URL in Stripe was set to `https://tequilafestusa.com` (no-www). Cloudflare redirects bare domain to www with 308. Stripe does not follow redirects. Fixed by updating Stripe webhook URL to `https://www.tequilafestusa.com/api/webhooks/stripe`
-4. **Two emails sent back-to-back to same recipient** — Resend silently dropped the second one. Fixed by merging QR ticket email and confirmation email into one
-5. **`listUsers()` only returns 50 users** — Account existence check used `adminAuth.auth.admin.listUsers()` which is paginated to 50 by default. For >50 customers, existing users would be treated as new, causing duplicate account creation failure. Fixed to check `customer_accounts` table by email instead
+### Critical Rules
+- **Only ONE email per purchase** — sending two to the same recipient in the same webhook execution causes Resend to silently drop one
+- **`RESEND_API_KEY` must be active** — the previous key was silently revoked; if emails stop, generate a new key at resend.com/api-keys and update Vercel env
+- **Contact form emails go to the admin inbox in the website** (Supabase `contact_submissions` table) — they do NOT forward to any external email
 
----
-
-## Cloudflare Setup
-
-**Domain:** `tequilafestusa.com` → Cloudflare → Vercel
-
-### DNS Records
-- `A` record: `tequilafestusa.com` → Vercel IP (proxied through Cloudflare)
-- `CNAME` record: `www` → Vercel (proxied through Cloudflare)
-- `CNAME` record: `mail` → Resend sending domain (for email)
-
-### SSL/TLS Settings
-- **SSL Mode:** Full (Strict) — required. "Full" (non-strict) caused redirect loops previously. Set to Full (Strict) under SSL/TLS → Overview.
-- **Minimum TLS:** 1.2
-
-### Security Settings That Caused Problems
-- **Bot Fight Mode** — was interfering with Stripe webhook and form submissions. If webhook issues return, check this setting under Security → Bots.
-- **Browser Integrity Check** — can block legitimate API calls. Under Security → Settings.
-- **Security Level** — set to Medium or lower. High caused false positives on checkout.
-- **Cloudflare Turnstile** — Widget was added to all forms but caused spinning/verification loop on checkout and login pages. Root issue was `onExpire` callback creating new function on every React render → widget remounted on every keystroke. **Final fix: Turnstile removed from all forms entirely.** Server-side `verifyTurnstile()` now bypasses verification when token is empty or `"bypass"`.
-
-### Turnstile Status
-Turnstile is **disabled on all forms**. The following files send `captchaToken: "bypass"`:
-- `TicketCartModal.tsx`
-- `PreCheckoutModal.tsx`
-- `LoginPage.tsx`
-- `SignupPage.tsx`
-- `ContactPage.tsx`
-- `vendors/page.tsx`, `press/page.tsx`, `sponsors/page.tsx`, `affiliates/page.tsx`, `forgot-password/page.tsx`
-
-Server-side bypass is in `src/lib/turnstile.ts` — returns `true` when token is empty or `"bypass"`. **Do not re-enable Turnstile without testing thoroughly.**
+### Why Emails Were Broken (History — Fixed)
+1. Resend API key was stale/revoked
+2. Turnstile was blocking all form submissions server-side with empty tokens
+3. Stripe webhook 308 redirect (bare domain → www) — Stripe doesn't follow redirects
+4. Two emails sent back-to-back to same recipient — Resend dropped the second
+5. `listUsers()` only returns 50 users — replaced with direct `customer_accounts` DB lookup
 
 ---
 
 ## Stripe Configuration
 
-- **Webhook URL:** `https://www.tequilafestusa.com/api/webhooks/stripe` (must be exact — www prefix required)
+- **Webhook URL:** `https://www.tequilafestusa.com/api/webhooks/stripe` (must be exact — www prefix required, no trailing slash)
 - **Webhook events:** `checkout.session.completed`, `payment_intent.payment_failed`, `charge.refunded`
 - **Webhook signing secret:** stored as `STRIPE_WEBHOOK_SECRET` in Vercel env
 - **Success URL:** `https://www.tequilafestusa.com/ticket-confirmation?session_id={CHECKOUT_SESSION_ID}`
-- **Service fee:** shown as "Service Fee" line item (no description breakdown)
+- **Service fee:** shown as "Service Fee" line item only (no description breakdown)
 
 ---
 
@@ -227,27 +227,28 @@ Server-side bypass is in `src/lib/turnstile.ts` — returns `true` when token is
 
 ## Admin Dashboard
 
-URL: `/admin` (requires admin password)
+URL: `/admin` (requires admin password — sent as `x-admin-token` header)
 
 ### Sections
-- **Orders** — all ticket purchases, Stripe receipt link, resend ticket email button (Send icon), refund button
-- **Events** — manage event listings and ticket types
+- **Orders** — all ticket purchases, Stripe receipt link, **Send icon resends ticket email**, refund button. Save now shows error alert if it fails.
+- **Events** — manage event listings and ticket types. Status options: `on_sale`, `coming_soon`, `sold_out`, `draft`, `cancelled`
 - **Users** — customer accounts
-- **Inbox** — contact form submissions organized by type (Support / Sponsors / Affiliates). Reads from `contact_submissions` table via `/api/admin/contact` GET endpoint. Supports AI-generated replies.
+- **Inbox** — contact form submissions by type (Support / Sponsors / Affiliates). Reads from `contact_submissions` via `/api/admin/contact` GET. Supports AI-generated replies.
 - **Staff** — staff management
 - **Analytics** — site stats
 
 ### Admin API Endpoints
 | Endpoint | Method | Purpose |
 |---|---|---|
-| `/api/admin/resend-email` | POST | Resend ticket email for order. Body: `{ order_number }` |
+| `/api/admin/resend-email` | POST | Resend ticket email. Body: `{ order_number }` |
 | `/api/admin/contact` | GET | Fetch all contact submissions |
-| `/api/admin/contact` | POST | Send reply to submission |
+| `/api/admin/contact` | POST | Send reply to a submission |
 | `/api/admin/test-email` | POST | Test Resend directly. Body: `{ to }` |
 | `/api/admin/refund` | POST | Issue Stripe refund |
-| `/api/admin/events` | GET/POST | Manage events |
+| `/api/admin/events` | GET | List all events with ticket types + live sold counts |
+| `/api/admin/events/[id]` | PATCH | Update event fields including status |
 
-All admin endpoints require `x-admin-token` header.
+All admin endpoints require `x-admin-token` header matching `ADMIN_PASSWORD` env var.
 
 ---
 
@@ -262,10 +263,10 @@ SUPABASE_SERVICE_ROLE_KEY=...
 STRIPE_SECRET_KEY=...
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=...
 STRIPE_WEBHOOK_SECRET=...
-RESEND_API_KEY=...          # must be current/active key from resend.com dashboard
-ADMIN_PASSWORD=...          # used in x-admin-token header
-TURNSTILE_SECRET_KEY=...    # exists but effectively unused (bypass active)
-NEXT_PUBLIC_TURNSTILE_SITE_KEY=...  # exists but widget removed from all forms
+RESEND_API_KEY=...                      # must be current/active key from resend.com
+ADMIN_PASSWORD=...                      # used in x-admin-token header
+NEXT_PUBLIC_TURNSTILE_SITE_KEY=...      # Cloudflare Turnstile site key
+TURNSTILE_SECRET_KEY=...                # Cloudflare Turnstile secret key
 OPENAI_API_KEY=...
 ```
 
@@ -276,89 +277,88 @@ OPENAI_API_KEY=...
 ### Infrastructure
 - [x] Next.js 16 App Router project scaffolded
 - [x] Supabase project created and schema migrated
-- [x] GitHub repo `kingadam333/tequila-fest-usa` connected to Vercel
+- [x] GitHub repo `kingadam333/tequila-fest-usa` connected to Vercel (auto-deploy on push to `main`)
 - [x] Custom domain `www.tequilafestusa.com` live on Vercel via Cloudflare
 - [x] All Vercel env vars configured
-- [x] `NEXT_PUBLIC_APP_URL` and `NEXT_PUBLIC_SITE_URL` updated from `tequila-fest-usa.vercel.app` to `https://www.tequilafestusa.com`
+- [x] Cloudflare SSL Full (Strict), Bot Fight Mode off, Browser Integrity Check off
+- [x] Cloudflare Turnstile re-enabled and working on all 9 forms
 
 ### Pages Built
-- [x] Homepage — hero, event cards, highlights, sponsors
+- [x] Homepage — hero, event cards (city cards link to `#tickets`), highlights, sponsors
 - [x] `/events` — all events listing
-- [x] `/events/[slug]` — individual event pages with `#tickets` anchor working on all city pages
+- [x] `/events/[slug]` — individual event pages with `#tickets` anchor
 - [x] `/login` — with `?email=` and `?redirect=` URL param support + Suspense wrapper
 - [x] `/signup`
 - [x] `/account` — order history, QR tickets
 - [x] `/ticket-confirmation` — post-Stripe success page, prefills login link with customer email
 - [x] `/contact` — contact form (saves to Supabase `contact_submissions`)
-- [x] `/affiliates`
-- [x] `/vendors`
-- [x] `/press`
-- [x] `/sponsors`
-- [x] `/forgot-password`
+- [x] `/affiliates`, `/vendors`, `/press`, `/sponsors`, `/forgot-password`
 - [x] `/admin` — full admin dashboard
 - [x] `/blog`
 
 ### Ticket Purchase Flow
-- [x] `TicketCartModal.tsx` — ticket purchase modal (Turnstile removed)
-- [x] `PreCheckoutModal.tsx` — pre-checkout info collection (Turnstile removed)
+- [x] `TicketCartModal.tsx` and `PreCheckoutModal.tsx` — Turnstile working
 - [x] Stripe Checkout Session creation via `/api/pre-checkout`
-- [x] Stripe webhook handler — order creation, QR ticket generation, auth account creation, email
-- [x] Service fee shown as "Service Fee" only (no breakdown description)
+- [x] Stripe webhook handler — order creation, QR ticket generation, auth account creation, one combined email
+- [x] Service fee shown as "Service Fee" only (no breakdown)
 
 ### Email System
 - [x] Resend domain `mail.tequilafestusa.com` verified
-- [x] New Resend API key configured (old one was revoked)
-- [x] Combined ticket email: QR codes + order summary + account credentials in one email
-- [x] Account auto-creation on purchase (checks `customer_accounts` table, not `listUsers()`)
-- [x] Admin resend-email endpoint updated to use new combined template
-- [x] Admin inbox reads from Supabase via `/api/admin/contact` (not direct `supabaseAdmin` in client)
-- [x] "Resend Ticket Email" button in Orders section fully wired up
+- [x] Active Resend API key configured
+- [x] ONE combined ticket email: QR codes + order summary + account credentials
+- [x] Account existence check uses `customer_accounts` table (not broken `listUsers()`)
+- [x] Admin "Resend Ticket Email" button (Send icon in Orders) fully wired up
+- [x] Admin inbox reads from Supabase via `/api/admin/contact` server-side route (not broken client-side `supabaseAdmin`)
 
-### Bug Fixes Applied
-- [x] Cloudflare Turnstile spinning loop — removed from all forms
-- [x] Stripe webhook 308 redirect — updated webhook URL to www
-- [x] All site links updated from `tequila-fest-usa.vercel.app` to `www.tequilafestusa.com`
-- [x] `useSearchParams()` Suspense boundary added to login page
-- [x] Admin inbox showing empty — fixed `supabaseAdmin` in client component bug
-- [x] Two back-to-back emails to same recipient — merged into one email
-- [x] `listUsers()` pagination limit bug — replaced with direct DB lookup
+### Event Status
+- [x] Phoenix set to `coming_soon` in DB
+- [x] Homepage Phoenix card shows "🔔 COMING SOON" (non-clickable)
+- [x] DB check constraint updated to allow `coming_soon`
+- [x] Admin event save now shows error alert on failure
+
+### Bug Fixes
+- [x] Cloudflare Turnstile spinning loop — fixed via refs in Turnstile.tsx
+- [x] Stripe webhook 308 redirect — webhook URL updated to www
+- [x] All site links updated from `tequila-fest-usa.vercel.app` → `www.tequilafestusa.com`
+- [x] `useSearchParams()` Suspense boundary on login page
+- [x] Admin inbox was empty — `supabaseAdmin` was used in client component (server-only key)
+- [x] Two back-to-back emails dropped by Resend — merged into one
+- [x] `listUsers()` pagination bug — replaced with direct DB lookup
 
 ---
 
 ## What Still Needs to Be Done
 
 ### High Priority
-- [ ] **Send ticket emails to 2 VIP customers** whose emails were never sent before the system was fixed:
+- [ ] **Send ticket emails to 2 VIP customers** — emails never sent while system was broken:
   - `TF-MQ4J7CXY` — Dalton Lobenstein — `daltonobenstein@gmail.com` — Cincinnati VIP — $131.92
   - `TF-MQ4J86AD` — Jon Osman — `jonnyosman98@gmail.com` — Cincinnati VIP — $131.92
-  - Use the **Resend Ticket Email (Send icon)** button in Admin → Orders
-- [ ] **Coupon/promo codes** at checkout — table exists in DB, UI and API not built
-- [ ] **Security audit / Supabase RLS** — Row Level Security policies need review on all tables
+  - **Use the Send icon (→) in Admin → Orders**
+- [ ] **Coupon/promo codes** at checkout — `coupons` table exists in DB, UI and API not built
+- [ ] **Supabase RLS security audit** — Row Level Security policies need review on all tables
 
 ### Medium Priority
-- [ ] **Stripe receipt link** on account page — currently not shown
-- [ ] **Email blast to Cincinnati ticket holders** — announce event details / day-of info
-- [ ] **City-specific logos** on each event page — currently using generic logo
-- [ ] **Check-in / QR scanner page** (`/check-in`) — for door staff to scan tickets
-- [ ] **Loyalty/points system** — DB table exists, no UI or award logic beyond comment placeholder
-- [ ] **Social feed** — not yet built
-- [ ] **Sponsor portal** — not yet built
-- [ ] **Brand owner portal** — not yet built
-- [ ] **Vendor application flow** — form submits but no review/approval workflow in admin
-- [ ] **Push notifications** — VAPID keys exist in env, not wired up
-- [ ] **Blog** — page scaffolded, needs CMS/admin editing and content
+- [ ] **Stripe receipt link** on account page — not currently shown
+- [ ] **Email blast to Cincinnati ticket holders** — event details / day-of info
+- [ ] **City-specific logos** on each event page — using generic logo currently
+- [ ] **Check-in / QR scanner page** (`/check-in`) — for door staff to scan tickets at entry
+- [ ] **Loyalty/points system** — DB table exists, no UI or award logic
+- [ ] **Vendor application admin workflow** — form submits but no review/approval in admin
+- [ ] **Blog CMS** — page scaffolded, needs admin editing and real content
+- [ ] **Push notifications** — VAPID keys in env, not wired up
 
 ### Nice to Have
-- [ ] **AI auto-reply suggestions** in inbox — OpenAI key exists, partially wired, needs testing
-- [ ] **Columbus event page** — city site not yet built at `/Users/adambossin/Sites/tequila-fest-columbus`
-- [ ] **Affiliate dashboard** — signup form exists, no dashboard for affiliates to track commissions
-- [ ] **Admin analytics** — deeper stats (revenue by city, ticket type breakdown, etc.)
+- [ ] **AI auto-reply in inbox** — OpenAI key exists, partially wired
+- [ ] **Columbus event page** — city site not built at `/Users/adambossin/Sites/tequila-fest-columbus`
+- [ ] **Affiliate dashboard** — signup exists, no commission tracking UI for affiliates
+- [ ] **Sponsor portal** — not built
+- [ ] **Brand owner portal** — not built
+- [ ] **Admin analytics** — revenue by city, ticket type breakdown, etc.
+- [ ] **Wire homepage EventCards to DB** — so admin status changes reflect on homepage without code deploy
 
 ---
 
 ## Design System
-
-**Match the Cincinnati/Cleveland city sites exactly** — same fonts, colors, animations.
 
 ### Colors
 | Role | Hex |
@@ -386,9 +386,8 @@ OPENAI_API_KEY=...
 
 Original Replit project archived at: `/Users/adambossin/Sites/tequila-fest-usa-old/`
 
-**DO NOT** copy anything referencing: `businesses`, `SedonaPassport`, `Lodging`, `Restaurants`, `ThingsToDo`, `BusinessDetail`, `BusinessMap`, `ClaimListing` — dead code from another project.
+**DO NOT** copy anything referencing: `businesses`, `SedonaPassport`, `Lodging`, `Restaurants`, `ThingsToDo`, `BusinessDetail`, `BusinessMap`, `ClaimListing` — dead code from another project mixed in.
 
-### Key Old Files
 | File | Purpose |
 |---|---|
 | `server/routes.ts` | All original API endpoints (~3000 lines) |
@@ -399,16 +398,20 @@ Original Replit project archived at: `/Users/adambossin/Sites/tequila-fest-usa-o
 
 ---
 
-## Important Notes for Next Session
+## Critical Notes for Next Session
 
-1. **Do not re-enable Turnstile** without extensive testing. It caused a near-total site outage (all forms silently failing). If you add it back, test the checkout flow end-to-end before deploying.
+1. **Stripe webhook URL must be exactly `https://www.tequilafestusa.com/api/webhooks/stripe`** — www prefix required. Cloudflare redirects bare domain with 308 and Stripe does not follow redirects.
 
-2. **Stripe webhook URL must be exactly `https://www.tequilafestusa.com/api/webhooks/stripe`** — no trailing slash, must include www. Cloudflare redirects bare domain to www with 308 and Stripe does not follow redirects.
+2. **Only ONE Resend email per webhook execution** — do not add a second `resend.emails.send()` for the same recipient. Resend silently drops it.
 
-3. **Resend API key must be active** — check `https://resend.com/api-keys` if emails stop sending. The previous key was silently revoked. Update `RESEND_API_KEY` in Vercel env and redeploy.
+3. **`RESEND_API_KEY` must be active** — check resend.com/api-keys if emails stop. Previous key was silently revoked.
 
-4. **Admin inbox data comes from Supabase `contact_submissions`** — fetched server-side via `/api/admin/contact`. Never import `supabaseAdmin` in a client component — `SUPABASE_SERVICE_ROLE_KEY` is server-only.
+4. **Never import `supabaseAdmin` in a client component** — `SUPABASE_SERVICE_ROLE_KEY` is server-only. Always fetch via an API route.
 
-5. **All email sends happen in the Stripe webhook** (`src/app/api/webhooks/stripe/route.ts`). Only ONE email is sent per purchase. Do not add additional `resend.emails.send()` calls for the same recipient in the same webhook execution — Resend will silently drop the second one.
+5. **Turnstile is working** — the fix was stabilizing callbacks in refs inside `Turnstile.tsx`. Do not change the dependency array of the widget's `useEffect`. If Turnstile ever starts looping again, the cause is callbacks being recreated on every render.
 
-6. **Local builds will fail** with `supabaseUrl is required` because Vercel pulls empty strings for secrets. This is expected. Vercel builds pass because secrets are injected at build time. Do not try to fix this locally.
+6. **Local builds fail** with `supabaseUrl is required` — Vercel pulls empty strings for secrets locally. This is expected and harmless. Vercel production builds work fine.
+
+7. **Homepage event cards are hardcoded** (`src/components/EventCards.tsx`) — admin status changes only affect individual event pages, not the homepage cards. Update the `status` field in `EventCards.tsx` directly to change homepage display.
+
+8. **DB events status constraint** — allowed values: `draft`, `on_sale`, `sold_out`, `cancelled`, `coming_soon`. Adding any new status requires an `ALTER TABLE` to update the check constraint first.
