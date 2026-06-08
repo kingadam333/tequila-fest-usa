@@ -34,17 +34,25 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ skipped: "not a help@ email" });
   }
 
-  // Body is included directly in the inbound webhook payload (data.text / data.html)
-  // Note: GET /emails/:id only works for sent emails, not inbound ones
-  const rawBody = data?.text || data?.html?.replace(/<[^>]+>/g, " ") || "";
-  console.log("Email body from payload — length:", rawBody.length, "preview:", rawBody.slice(0, 100));
-
-  // Strip quoted reply history
-  const message = rawBody
-    .replace(/On .+wrote:[\s\S]*/i, "")
-    .replace(/_{3,}[\s\S]*/g, "")
-    .replace(/From:[\s\S]*/m, "")
-    .trim();
+  // Fetch the full email body from Resend API
+  let message = "";
+  try {
+    console.log("Fetching email body for id:", emailId);
+    const emailRes = await fetch(`https://api.resend.com/emails/${emailId}`, {
+      headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}` },
+    });
+    const emailData = await emailRes.json();
+    console.log("Email API response status:", emailRes.status, "full keys:", Object.keys(emailData || {}));
+    console.log("Email API raw (first 500):", JSON.stringify(emailData).slice(0, 500));
+    const raw = emailData.text || emailData.html?.replace(/<[^>]+>/g, " ") || emailData.body || "";
+    message = raw
+      .replace(/On .+wrote:[\s\S]*/i, "")
+      .replace(/_{3,}[\s\S]*/g, "")
+      .replace(/From:[\s\S]*/m, "")
+      .trim();
+  } catch (err) {
+    console.error("Failed to fetch email body:", err);
+  }
 
   if (!message) {
     return NextResponse.json({ skipped: "empty body" });
