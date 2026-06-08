@@ -114,10 +114,14 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
         const { error: ticketError } = await db.from("ticket_instances").insert(tickets);
         if (ticketError) console.error("Ticket instances error:", ticketError);
 
-        // ── Award purchase points (5 per ticket) ───────────────────
+        // ── Award purchase points ──────────────────────────────────
+        // GA Entry: 1 point/ticket, no raffle. All other types: 5 points/ticket + raffle eligible.
         if (customerEmail) {
           try {
-            const purchasePoints = qty * 5;
+            const isGA = ticketType === "ga";
+            const pointsPerTicket = isGA ? 1 : 5;
+            const purchasePoints = qty * pointsPerTicket;
+
             const { data: buyer } = await db
               .from("customer_accounts")
               .select("id, loyalty_points")
@@ -133,11 +137,11 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
                 customer_id: buyer.id,
                 action_code: "ticket_purchase",
                 points: purchasePoints,
-                description: `Purchased ${qty} ticket${qty > 1 ? "s" : ""} to Tequila Fest ${eventCity}`,
+                description: `Purchased ${qty} ${isGA ? "GA Entry" : "All Inclusive"} ticket${qty > 1 ? "s" : ""} to Tequila Fest ${eventCity}`,
                 source_id: order.id,
                 source_type: "order",
               });
-              console.log(`⭐ Awarded ${purchasePoints} points to ${customerEmail}`);
+              console.log(`⭐ Awarded ${purchasePoints} points to ${customerEmail} (${isGA ? "GA: 1pt/ticket" : "All Inclusive: 5pts/ticket"})`);
             }
           } catch (pointsErr) {
             console.error("Points award error:", pointsErr);
@@ -247,8 +251,9 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
               .single();
 
             if (refCodeRow && refCodeRow.customer_id !== order.customer_id) {
-              const POINTS = 5;
-              const ENTRIES = 1;
+              const isGA = ticketType === "ga";
+              const POINTS = isGA ? 1 : 5;
+              const ENTRIES = isGA ? 0 : 1; // GA referrals: points only, no raffle entry
 
               // Log the referral conversion
               await db.from("referrals").upsert({
