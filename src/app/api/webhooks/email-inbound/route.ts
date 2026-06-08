@@ -34,17 +34,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ skipped: "not a help@ email" });
   }
 
-  // Fetch the full email body from Resend API
+  // DEBUG: Fetch email body and return raw API response so we can inspect it
   let message = "";
+  let debugApiResponse: any = null;
   try {
-    console.log("Fetching email body for id:", emailId);
     const emailRes = await fetch(`https://api.resend.com/emails/${emailId}`, {
       headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}` },
     });
-    const emailData = await emailRes.json();
-    console.log("Email API response status:", emailRes.status, "full keys:", Object.keys(emailData || {}));
-    console.log("Email API raw (first 500):", JSON.stringify(emailData).slice(0, 500));
-    const raw = emailData.text || emailData.html?.replace(/<[^>]+>/g, " ") || emailData.body || "";
+    debugApiResponse = await emailRes.json();
+    const raw = debugApiResponse.text || debugApiResponse.html?.replace(/<[^>]+>/g, " ") || debugApiResponse.body || "";
     message = raw
       .replace(/On .+wrote:[\s\S]*/i, "")
       .replace(/_{3,}[\s\S]*/g, "")
@@ -52,6 +50,11 @@ export async function POST(req: NextRequest) {
       .trim();
   } catch (err) {
     console.error("Failed to fetch email body:", err);
+  }
+
+  // Temporarily return debug info so we can see the API response in Resend webhook logs
+  if (!message) {
+    return NextResponse.json({ skipped: "empty body", emailId, debugApiResponse });
   }
 
   if (!message) {
