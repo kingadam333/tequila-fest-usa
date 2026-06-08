@@ -31,7 +31,11 @@ export async function POST(req: NextRequest) {
     switch (event.type) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
-        await handleCheckoutComplete(session);
+        if (session.metadata?.type === "brand_package") {
+          await handleBrandPackagePaid(session);
+        } else {
+          await handleCheckoutComplete(session);
+        }
         break;
       }
       case "payment_intent.payment_failed": {
@@ -311,5 +315,108 @@ async function handleRefund(charge: Stripe.Charge) {
     }
   } catch (err) {
     console.error("Refund update error:", err);
+  }
+}
+
+// ─── Brand Package paid (from /api/brand-checkout) ───────────────────────────
+async function handleBrandPackagePaid(session: Stripe.Checkout.Session) {
+  const md = session.metadata || {};
+  const orderNumber = md.orderNumber || `TFB-${session.id.slice(-6).toUpperCase()}`;
+  const brandName = md.brandName || "";
+  const contactName = md.contactName || session.customer_details?.name || "";
+  const contactEmail = session.customer_email || session.customer_details?.email || "";
+  const contactPhone = md.contactPhone || "";
+  const tier = md.tier || "";
+  const cityLabels = md.cityLabels || "";
+  const amount = (session.amount_total || 0) / 100;
+  const paymentIntentId = typeof session.payment_intent === "string" ? session.payment_intent : "";
+
+  // Mark paid (idempotent — pending row was inserted at session creation)
+  if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    try {
+      const { supabaseAdmin } = await import("@/lib/supabase");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const db = supabaseAdmin as any;
+      const { data: existing } = await db
+        .from("brand_package_orders")
+        .select("id, status")
+        .eq("stripe_session_id", session.id)
+        .single();
+      if (existing) {
+        if (existing.status !== "paid") {
+          await db.from("brand_package_orders").update({
+            status: "paid",
+            stripe_payment_intent_id: paymentIntentId || null,
+            paid_at: new Date().toISOString(),
+          }).eq("id", existing.id);
+        } else {
+          return; // already processed
+        }
+      } else {
+        // Webhook arrived before insert (shouldn't happen, but safe)
+        await db.from("brand_package_orders").insert({
+          order_number: orderNumber,
+          brand_name: brandName,
+          contact_name: contactName,
+          contact_email: contactEmail,
+          contact_phone: contactPhone || null,
+          tier,
+          cities: (md.cities || "").split(",").filter(Boolean),
+          amount,
+          stripe_session_id: session.id,
+          stripe_payment_intent_id: paymentIntentId || null,
+          status: "paid",
+          paid_at: new Date().toISOString(),
+        });
+      }
+    } catch (err) {
+      console.error("brand_package_orders write failed:", err);
+    }
+  }
+
+  // Confirmation to the brand + notification to Adam
+  try {
+    const { resend, FROM_BRANDS } = await import("@/lib/resend");
+    const confirmText =
+`Hi ${contactName.split(" ")[0] || "there"},
+
+Thanks for booking with Tequila Fest USA — we're excited to have ${brandName} on board.
+
+Order: ${orderNumber}
+Package: ${tier} Brand Package
+Cities: ${cityLabels}
+Total: $${amount.toFixed(2)}
+
+Our team will be in touch this week with your onboarding details — booth requirements, signage cutoffs, and case-commitment specifics.
+
+Questions? Just reply to this email.
+
+— Adam Bossin
+Tequila Fest USA`;
+    await resend.emails.send({
+      from: FROM_BRANDS,
+      to: contactEmail,
+      subject: `Booking confirmed — ${tier} Brand Package · ${brandName}`,
+      text: confirmText,
+    });
+
+    await resend.emails.send({
+      from: FROM_BRANDS,
+      to: "adam@tequilafestusa.com",
+      subject: `[NEW BRAND ORDER] ${brandName} — ${tier} · $${amount.toFixed(2)}`,
+      text:
+`New brand package order paid.
+
+Order: ${orderNumber}
+Brand: ${brandName}
+Contact: ${contactName} <${contactEmail}>${contactPhone ? ` · ${contactPhone}` : ""}
+Package: ${tier}
+Cities: ${cityLabels}
+Amount: $${amount.toFixed(2)}
+
+Admin: https://www.tequilafestusa.com/admin`,
+    });
+  } catch (err) {
+    console.error("brand confirmation email failed:", err);
   }
 }

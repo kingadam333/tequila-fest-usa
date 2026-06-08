@@ -17,6 +17,7 @@ type Pkg = {
   blurb: string;
   features: string[];
   soldCityIds?: string[]; // cities where this package is sold out
+  buyable?: boolean; // true = Stripe checkout, false = inject into inquiry form
 };
 
 const CITIES: City[] = [
@@ -32,18 +33,21 @@ const BRAND_PACKAGES: Pkg[] = [
     pricePerCity: 250,
     blurb: "For brands with average retail bottle price of $25 or less",
     features: ["10x10 Area", "Tent & Table", "Staff Member to Pour", "1 Social Post per Week", "Listing on Website"],
+    buyable: true,
   },
   {
     name: "Standard",
     pricePerCity: 300,
     blurb: "For brands with average retail bottle price of $25 to $45",
     features: ["10x10 Area", "Tent & Table", "Staff Member to Pour", "1 Social Post per Week", "Listing on Website"],
+    buyable: true,
   },
   {
     name: "Premium",
     pricePerCity: 350,
     blurb: "For brands with average retail bottle price of $45 or more",
     features: ["10x10 Area", "Tent & Table", "Staff Member to Pour", "1 Social Post per Week", "Listing on Website"],
+    buyable: true,
   },
 ];
 
@@ -154,7 +158,7 @@ function PackageCard({ pkg, index, onSelect, accent = "#F5A623" }: { pkg: Pkg; i
         </div>
         <button onClick={() => onSelect(pkg.name, [...picked], total)} disabled={picked.size === 0}
           className="w-full flex items-center justify-center gap-2 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-40 disabled:hover:bg-yellow-500 text-black font-bold tracking-widest text-xs px-4 py-3 rounded-xl transition-all cursor-pointer disabled:cursor-not-allowed">
-          REQUEST CITIES
+          {pkg.buyable ? "BUY NOW" : "REQUEST CITIES"}
         </button>
       </div>
     </motion.div>
@@ -170,10 +174,26 @@ export default function BrandPackagesPage() {
   const [error, setError] = useState("");
   const [captchaToken, setCaptchaToken] = useState("");
 
+  // Checkout modal state
+  const [checkout, setCheckout] = useState<{ tier: string; cities: string[]; total: number } | null>(null);
+  const [coBrand, setCoBrand] = useState("");
+  const [coName, setCoName] = useState("");
+  const [coEmail, setCoEmail] = useState("");
+  const [coPhone, setCoPhone] = useState("");
+  const [coCaptcha, setCoCaptcha] = useState("");
+  const [coLoading, setCoLoading] = useState(false);
+  const [coError, setCoError] = useState("");
+
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
     setForm(f => ({ ...f, [k]: e.target.value }));
 
   const onPackagePick = (pkgName: string, cities: string[], total: number) => {
+    const pkg = [...BRAND_PACKAGES, ...PARTNER_PACKAGES].find(p => p.name === pkgName);
+    if (pkg?.buyable) {
+      setCheckout({ tier: pkgName, cities, total });
+      setCoError("");
+      return;
+    }
     const cityLabels = cities.map(id => CITIES.find(c => c.id === id)?.label).filter(Boolean).join(", ");
     setForm(f => ({
       ...f,
@@ -181,6 +201,35 @@ export default function BrandPackagesPage() {
     }));
     if (typeof window !== "undefined") {
       document.getElementById("inquire")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
+
+  const startCheckout = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!checkout) return;
+    setCoError("");
+    setCoLoading(true);
+    try {
+      const res = await fetch("/api/brand-checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          brandName: coBrand,
+          contactName: coName,
+          contactEmail: coEmail,
+          contactPhone: coPhone,
+          tier: checkout.tier,
+          cities: checkout.cities,
+          captchaToken: coCaptcha,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.url) throw new Error(data.error || "Checkout failed");
+      window.location.href = data.url;
+    } catch (err: any) {
+      setCoError(err.message || "Something went wrong");
+      setCoCaptcha("");
+      setCoLoading(false);
     }
   };
 
@@ -336,6 +385,65 @@ export default function BrandPackagesPage() {
             </p>
           </div>
         </section>
+
+        {/* ─── CHECKOUT MODAL ─── */}
+        {checkout && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+            onClick={e => { if (e.target === e.currentTarget && !coLoading) setCheckout(null); }}>
+            <div className="bg-[#0d0500] border border-white/15 rounded-3xl p-6 sm:p-8 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+              <div className="flex items-start justify-between gap-4 mb-5">
+                <div>
+                  <p className="text-yellow-400 text-xs uppercase tracking-[3px] font-bold mb-1">Checkout</p>
+                  <h3 className="text-white font-display text-2xl tracking-wider">{checkout.tier} BRAND PACKAGE</h3>
+                  <p className="text-white/40 text-xs mt-1">
+                    {checkout.cities.map(id => CITIES.find(c => c.id === id)?.label).filter(Boolean).join(", ")}
+                  </p>
+                </div>
+                <button onClick={() => !coLoading && setCheckout(null)} className="text-white/40 hover:text-white text-2xl leading-none">×</button>
+              </div>
+
+              <div className="bg-white/[0.04] border border-white/10 rounded-2xl px-4 py-3 mb-5 flex items-baseline justify-between">
+                <span className="text-white/50 text-sm">Total</span>
+                <span className="font-display text-3xl text-yellow-400">${checkout.total.toLocaleString()}</span>
+              </div>
+
+              <form onSubmit={startCheckout} className="space-y-3">
+                <div>
+                  <label className="block text-white/40 text-xs uppercase tracking-wider mb-1.5">Brand Name *</label>
+                  <input required value={coBrand} onChange={e => setCoBrand(e.target.value)} placeholder="Casa Tequila"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-yellow-500/50 placeholder-white/30" />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-white/40 text-xs uppercase tracking-wider mb-1.5">Your Name *</label>
+                    <input required value={coName} onChange={e => setCoName(e.target.value)} placeholder="Jane Smith"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-yellow-500/50 placeholder-white/30" />
+                  </div>
+                  <div>
+                    <label className="block text-white/40 text-xs uppercase tracking-wider mb-1.5">Phone</label>
+                    <input type="tel" value={coPhone} onChange={e => setCoPhone(e.target.value)} placeholder="(555) 000-0000"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-yellow-500/50 placeholder-white/30" />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-white/40 text-xs uppercase tracking-wider mb-1.5">Email *</label>
+                  <input required type="email" value={coEmail} onChange={e => setCoEmail(e.target.value)} placeholder="you@brand.com"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-yellow-500/50 placeholder-white/30" />
+                </div>
+
+                <Turnstile onVerify={setCoCaptcha} onError={() => setCoCaptcha("")} onExpire={() => setCoCaptcha("")} />
+
+                {coError && <p className="text-red-400 text-sm">{coError}</p>}
+
+                <button type="submit" disabled={coLoading || !coCaptcha || !coBrand.trim() || !coName.trim() || !coEmail.trim()}
+                  className="w-full flex items-center justify-center gap-2 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-50 text-black font-bold tracking-widest text-sm px-6 py-3.5 rounded-xl transition-all cursor-pointer">
+                  {coLoading ? "REDIRECTING…" : `PAY $${checkout.total.toLocaleString()}`}
+                </button>
+                <p className="text-white/30 text-xs text-center">You'll be redirected to Stripe to complete payment.</p>
+              </form>
+            </div>
+          </div>
+        )}
       </main>
       <Footer />
     </>

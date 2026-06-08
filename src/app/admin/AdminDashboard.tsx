@@ -1862,9 +1862,40 @@ const BLANK_BRAND: BrandEntry = { name: "", price_per_bottle: "" };
 const BLANK_CONTACT = { contact_name: "", contact_email: "", contact_phone: "", contact_type: "self_distributed" as const, brands: [{ ...BLANK_BRAND }], distributor: "", supplier: "", notes: "" };
 const BLANK_LINE_ITEM = { description: "", quantity: 1, unit_price: 0, total: 0 };
 
+interface BrandOrder {
+  id: string;
+  order_number: string;
+  brand_name: string;
+  contact_name: string;
+  contact_email: string;
+  contact_phone?: string;
+  tier: string;
+  cities: string[];
+  amount: number;
+  status: string;
+  created_at: string;
+  paid_at?: string;
+}
+
+const CITY_LABELS_BRAND: Record<string, string> = {
+  cleveland: "Cleveland, OH",
+  cincinnati: "Cincinnati, OH",
+  columbus: "Columbus, OH",
+  phoenix: "Phoenix, AZ",
+};
+
 function BrandsSection({ adminToken }: { adminToken: string }) {
   const headers = { "x-admin-token": adminToken };
-  const [view, setView] = useState<"inbox" | "contacts" | "invoices">("inbox");
+  const [view, setView] = useState<"inbox" | "orders" | "contacts" | "invoices">("inbox");
+  const [orders, setOrders] = useState<BrandOrder[]>([]);
+  const [loadingOrders, setLoadingOrders] = useState(false);
+
+  const fetchOrders = useCallback(async () => {
+    setLoadingOrders(true);
+    const res = await fetch("/api/admin/brand-orders", { headers });
+    if (res.ok) setOrders((await res.json()).orders || []);
+    setLoadingOrders(false);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Contacts state
   const [contacts, setContacts] = useState<BrandContact[]>([]);
@@ -2007,6 +2038,7 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
   useEffect(() => { fetchContacts(); }, [fetchContacts]);
   useEffect(() => { if (view === "invoices") fetchInvoices(); }, [view, fetchInvoices]);
   useEffect(() => { if (view === "inbox") fetchInbox(); }, [view, fetchInbox]);
+  useEffect(() => { if (view === "orders") fetchOrders(); }, [view, fetchOrders]);
 
   const openAdd = () => { setContactForm({ ...BLANK_CONTACT, brands: [{ ...BLANK_BRAND }] }); setEditContact(null); setShowAddContact(true); };
   const openEdit = (c: BrandContact) => { setEditContact(c); setContactForm({ contact_name: c.contact_name, contact_email: c.contact_email, contact_phone: c.contact_phone || "", contact_type: c.contact_type as typeof BLANK_CONTACT.contact_type, brands: c.brands.length ? c.brands : [{ ...BLANK_BRAND }], distributor: c.distributor || "", supplier: c.supplier || "", notes: c.notes || "" }); setShowAddContact(true); };
@@ -2076,7 +2108,7 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
           <p className="text-white/40 text-sm mt-0.5">Tequila brand contacts, invoicing & inbox</p>
         </div>
         <div className="flex gap-2">
-          {(["inbox", "contacts", "invoices"] as const).map(v => (
+          {(["inbox", "orders", "contacts", "invoices"] as const).map(v => (
             <button key={v} onClick={() => setView(v)}
               className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all cursor-pointer capitalize ${view === v ? "bg-yellow-500 text-black" : "text-white/40 hover:text-white border border-white/10"}`}>
               {v}
@@ -2141,6 +2173,33 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── BRAND PACKAGE ORDERS ── */}
+      {view === "orders" && (
+        <div className="space-y-3">
+          {loadingOrders ? <div className="text-white/30 text-sm py-10 text-center">Loading…</div>
+            : orders.length === 0 ? <div className="text-white/30 text-sm py-10 text-center">No brand package orders yet.</div>
+            : orders.map(o => (
+              <div key={o.id} className="bg-white/[0.03] border border-white/10 rounded-2xl p-5 flex items-start justify-between gap-4 flex-wrap">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <p className="font-mono text-yellow-400 text-sm">{o.order_number}</p>
+                    <span className={`text-xs rounded-full px-2 py-0.5 border capitalize ${o.status === "paid" ? "bg-green-500/15 text-green-400 border-green-500/20" : o.status === "pending" ? "bg-yellow-500/15 text-yellow-400 border-yellow-500/20" : o.status === "refunded" ? "bg-red-500/15 text-red-400 border-red-500/20" : "bg-white/5 text-white/40 border-white/10"}`}>{o.status}</span>
+                    <span className="text-xs bg-white/5 border border-white/10 rounded-full px-2 py-0.5 text-white/60">{o.tier}</span>
+                  </div>
+                  <p className="text-white font-semibold mt-1">{o.brand_name}</p>
+                  <p className="text-white/50 text-sm">{o.contact_name} · <a href={`mailto:${o.contact_email}`} className="hover:text-yellow-400">{o.contact_email}</a>{o.contact_phone ? ` · ${o.contact_phone}` : ""}</p>
+                  <p className="text-white/40 text-xs mt-1">{(o.cities || []).map(c => CITY_LABELS_BRAND[c] || c).join(", ")}</p>
+                  <p className="text-white/25 text-xs mt-1">{new Date(o.created_at).toLocaleString()}{o.paid_at ? ` · paid ${new Date(o.paid_at).toLocaleDateString()}` : ""}</p>
+                </div>
+                <div className="text-right flex-shrink-0">
+                  <p className="font-display text-2xl text-white">${Number(o.amount).toFixed(2)}</p>
+                  <p className="text-white/30 text-xs">{(o.cities || []).length} {((o.cities || []).length === 1 ? "city" : "cities")}</p>
+                </div>
+              </div>
+            ))}
         </div>
       )}
 
