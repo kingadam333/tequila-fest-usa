@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyAdminToken, unauthorizedResponse } from "@/lib/adminAuth";
 import { supabaseAdmin } from "@/lib/supabase";
 
-const SOCIAL_POINTS = 75;
+const SOCIAL_POINTS = 50;
 
 // GET — list all pending social share claims
 export async function GET(req: NextRequest) {

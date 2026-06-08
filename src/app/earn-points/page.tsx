@@ -18,9 +18,9 @@ const EVENTS = [
 
 const POINT_ACTIONS = [
   { icon: <Ticket size={20} />, label: "Buy a Ticket", points: 100, desc: "Automatically awarded on purchase", color: "#F5A623" },
-  { icon: <Camera size={20} />, label: "Upload a Photo", points: 25, desc: "From any Tequila Fest event", color: "#00A878" },
-  { icon: <Video size={20} />, label: "Upload a Video", points: 50, desc: "Reels, TikToks, clips from the event", color: "#C8102E" },
-  { icon: <Share2 size={20} />, label: "Social Share", points: 75, desc: "Post on Instagram, TikTok, or Facebook", color: "#7B2FBE" },
+  { icon: <Camera size={20} />, label: "Upload a Photo", points: 10, desc: "From any Tequila Fest event", color: "#00A878" },
+  { icon: <Video size={20} />, label: "Upload a Video", points: 20, desc: "Reels, TikToks, clips from the event", color: "#C8102E" },
+  { icon: <Share2 size={20} />, label: "Social Share", points: 50, desc: "Post on Instagram, TikTok, or Facebook", color: "#7B2FBE" },
 ];
 
 const SOCIAL_PLATFORMS = [
@@ -211,7 +211,7 @@ export default function EarnPointsPage() {
                           <button key={type} onClick={() => { setMediaType(type); setFileData(null); setPreview(null); setFileName(""); }}
                             className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all cursor-pointer capitalize ${mediaType === type ? "bg-yellow-500 text-black" : "bg-white/5 border border-white/15 text-white/50 hover:text-white"}`}>
                             {type === "photo" ? <Camera size={15} /> : <Video size={15} />}
-                            {type} <span className="text-xs opacity-70">({type === "photo" ? "+25" : "+50"} pts)</span>
+                            {type} <span className="text-xs opacity-70">({type === "photo" ? "+10" : "+20"} pts)</span>
                           </button>
                         ))}
                       </div>
@@ -285,7 +285,7 @@ export default function EarnPointsPage() {
                       <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-5 text-center">
                         <p className="text-white/30 text-xs uppercase tracking-wider mb-1">You&apos;ll earn</p>
                         <p className="font-display text-yellow-400" style={{ fontSize: "4rem" }}>
-                          {mediaType === "photo" ? 25 : 50}
+                          {mediaType === "photo" ? 10 : 20}
                         </p>
                         <p className="text-yellow-500/60 text-sm font-bold uppercase tracking-wider">points</p>
                       </div>
@@ -303,7 +303,7 @@ export default function EarnPointsPage() {
                             </svg>
                             Uploading...
                           </span>
-                        ) : `UPLOAD & EARN ${mediaType === "photo" ? 25 : 50} POINTS`}
+                        ) : `UPLOAD & EARN ${mediaType === "photo" ? 10 : 20} POINTS`}
                       </button>
                     </div>
                   </div>
@@ -320,7 +320,7 @@ export default function EarnPointsPage() {
                     <p className="text-5xl mb-4">📱</p>
                     <p className="font-display text-purple-400 text-3xl mb-2">SUBMITTED!</p>
                     <p className="text-white/60 mb-2">Thanks for sharing! Your claim is under review.</p>
-                    <p className="text-white/30 text-sm mb-6">75 points will be awarded after verification (usually within 24 hours).</p>
+                    <p className="text-white/30 text-sm mb-6">50 points will be awarded after verification (usually within 24 hours).</p>
                     <button onClick={() => setSocialResult(null)}
                       className="bg-yellow-500 hover:bg-yellow-400 text-black font-bold px-6 py-3 rounded-xl transition-all cursor-pointer">
                       Submit Another
@@ -331,7 +331,7 @@ export default function EarnPointsPage() {
                     <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-6 mb-5">
                       <h3 className="text-white font-bold mb-1">How it works</h3>
                       <ol className="space-y-2 mt-3">
-                        {["Post about Tequila Fest on Instagram, TikTok, or Facebook", "Tag @tequilafestusa and use #TequilaFestUSA", "Paste your post URL below", "Earn 75 points after verification"].map((step, i) => (
+                        {["Post about Tequila Fest on Instagram, TikTok, or Facebook", "Tag @tequilafestusa and use #TequilaFestUSA", "Paste your post URL below", "Earn 50 points after verification"].map((step, i) => (
                           <li key={i} className="flex items-start gap-3 text-white/60 text-sm">
                             <span className="w-5 h-5 rounded-full bg-yellow-500/20 border border-yellow-500/30 text-yellow-400 text-xs flex items-center justify-center flex-shrink-0 mt-0.5 font-bold">{i + 1}</span>
                             {step}
@@ -375,7 +375,7 @@ export default function EarnPointsPage() {
                       {socialError && <p className="text-red-400 text-sm">{socialError}</p>}
                       <button type="submit" disabled={socialSubmitting}
                         className="w-full bg-yellow-500 hover:bg-yellow-400 disabled:opacity-60 text-black font-bold text-base py-4 rounded-xl transition-all cursor-pointer">
-                        {socialSubmitting ? "Submitting..." : "CLAIM 75 POINTS"}
+                        {socialSubmitting ? "Submitting..." : "CLAIM 50 POINTS"}
                       </button>
                     </form>
                   </div>

@@ -85,11 +85,31 @@ function ProfileTab({ user }: { user: AuthUser }) {
     joinedDate: "",
   });
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState("");
+  const [saving, setSaving] = useState(false);
 
-  const handleSave = () => {
-    setSaved(true);
-    setEditing(false);
-    setTimeout(() => setSaved(false), 2500);
+  const handleSave = async () => {
+    setSaving(true);
+    setSaveError("");
+    try {
+      const res = await fetch("/api/account/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ firstName: form.firstName, lastName: form.lastName, phone: form.phone }),
+      });
+      if (res.ok) {
+        setSaved(true);
+        setEditing(false);
+        setTimeout(() => setSaved(false), 2500);
+      } else {
+        const d = await res.json();
+        setSaveError(d.error || "Failed to save. Please try again.");
+      }
+    } catch {
+      setSaveError("Network error. Please try again.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -103,7 +123,7 @@ function ProfileTab({ user }: { user: AuthUser }) {
             ? { borderColor: "#22c55e", color: "#22c55e" }
             : { borderColor: "rgba(245,166,35,0.4)", color: "#F5A623" }}
         >
-          {editing ? <><Check size={14} /> Save</> : <><Edit2 size={14} /> Edit</>}
+          {editing ? <><Check size={14} /> {saving ? "Saving..." : "Save"}</> : <><Edit2 size={14} /> Edit</>}
         </button>
       </div>
 
@@ -111,6 +131,13 @@ function ProfileTab({ user }: { user: AuthUser }) {
         <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
           className="bg-green-900/30 border border-green-500/40 text-green-400 text-sm rounded-xl px-4 py-3 mb-6">
           ✓ Profile updated successfully
+        </motion.div>
+      )}
+
+      {saveError && (
+        <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
+          className="bg-red-900/30 border border-red-500/40 text-red-400 text-sm rounded-xl px-4 py-3 mb-6">
+          {saveError}
         </motion.div>
       )}
 

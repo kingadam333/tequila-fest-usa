@@ -78,9 +78,9 @@ export default function DashboardTab({ firstName, loyaltyPoints, ticketCount, on
         <p className="text-white/30 text-xs font-bold tracking-[0.2em] uppercase mb-4">Earn Points</p>
         <div className="grid grid-cols-3 gap-3">
           {[
-            { icon: <Camera size={16} />, label: "Upload Photo", points: "+25 pts", href: "/earn-points", color: "#00A878" },
-            { icon: <Camera size={16} />, label: "Upload Video", points: "+50 pts", href: "/earn-points", color: "#C8102E" },
-            { icon: <Share2 size={16} />, label: "Social Share", points: "+75 pts", href: "/earn-points", color: "#7B2FBE" },
+            { icon: <Camera size={16} />, label: "Upload Photo", points: "+10 pts", href: "/earn-points", color: "#00A878" },
+            { icon: <Camera size={16} />, label: "Upload Video", points: "+20 pts", href: "/earn-points", color: "#C8102E" },
+            { icon: <Share2 size={16} />, label: "Social Share", points: "+50 pts", href: "/earn-points", color: "#7B2FBE" },
           ].map(item => (
             <Link key={item.label} href={item.href}
               className="flex flex-col items-center gap-2 bg-white/[0.03] border border-white/10 hover:border-white/20 rounded-2xl p-4 text-center transition-all group">

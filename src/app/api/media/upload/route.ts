@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
     }
 
     const dropboxResult = await uploadResponse.json();
-    const pointsAwarded = mediaType === "photo" ? 25 : 50;
+    const pointsAwarded = mediaType === "photo" ? 10 : 20;
     const db = supabaseAdmin as any;
 
     // Save upload record
