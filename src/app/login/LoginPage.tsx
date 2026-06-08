@@ -1,22 +1,30 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
 import { Eye, EyeOff, Mail, Lock } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 
 import Navbar from "@/components/Navbar";
 import OfficialBanner from "@/components/OfficialBanner";
 import Footer from "@/components/Footer";
 
 export default function LoginPage() {
+  const params = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  
+
+  useEffect(() => {
+    const prefill = params.get("email");
+    if (prefill) setEmail(prefill);
+  }, [params]);
+
+  const redirectTo = params.get("redirect") || "/account";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,7 +38,7 @@ export default function LoginPage() {
       });
       const data = await res.json();
       if (res.ok) {
-        window.location.href = "/account";
+        window.location.href = redirectTo;
       } else {
         setError(data.error || "Invalid email or password.");
       }

@@ -19,7 +19,18 @@ export default function ConfirmationPage() {
   const event = eventSlug ? getEvent(eventSlug) : null;
 
   const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const [customerEmail, setCustomerEmail] = useState<string | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+    // Fetch customer email from session so we can prefill login
+    if (sessionId) {
+      fetch(`/api/session-email?session_id=${sessionId}`)
+        .then(r => r.json())
+        .then(d => { if (d.email) setCustomerEmail(d.email); })
+        .catch(() => {});
+    }
+  }, [sessionId]);
 
   return (
     <>
@@ -117,7 +128,7 @@ export default function ConfirmationPage() {
             transition={{ delay: 0.8 }}
             className="flex flex-col sm:flex-row gap-3 justify-center"
           >
-            <Link href="/account"
+            <Link href={customerEmail ? `/login?email=${encodeURIComponent(customerEmail)}&redirect=/account` : "/account"}
               className="flex items-center justify-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-black font-bold px-7 py-3.5 rounded-full transition-all duration-200 hover:scale-105">
               <User size={16} />
               View My Tickets
