@@ -74,7 +74,6 @@ export async function POST(req: NextRequest) {
         unit_amount: serviceFeeCents,
         product_data: {
           name: "Service Fee",
-          description: `$3.00/ticket platform fee + 2.9% + $0.30 processing`,
         },
       },
       quantity: 1,
