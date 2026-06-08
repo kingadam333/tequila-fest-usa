@@ -108,9 +108,8 @@ export default function ConfirmationPage() {
             <p className="text-yellow-400 font-bold text-sm mb-3">What happens next:</p>
             <ul className="space-y-2">
               {[
-                "Check your email for your order confirmation",
-                "Your account login details are on the way — check your inbox",
-                "Log in to view your QR tickets anytime",
+                "Check your email — your order confirmation and account login details are in one email",
+                "Log in to view your QR tickets anytime at tequilafestusa.com/account",
                 "Show your QR code at the door — one scan per entry",
               ].map((item, i) => (
                 <li key={i} className="flex items-start gap-2 text-white/60 text-sm">

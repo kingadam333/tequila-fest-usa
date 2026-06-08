@@ -85,6 +85,13 @@ function useAdminData(adminToken: string) {
     if (adminToken) fetchAll();
   }, [adminToken, fetchAll]);
 
+  // Auto-refresh every 60 seconds while logged in
+  useEffect(() => {
+    if (!adminToken) return;
+    const interval = setInterval(() => fetchAll(), 60_000);
+    return () => clearInterval(interval);
+  }, [adminToken, fetchAll]);
+
   return { orders, stats, events, loading, error, refetch: fetchAll };
 }
 
@@ -1133,7 +1140,7 @@ function UsersSection({ adminToken }: { adminToken: string }) {
 
       {/* Tabs */}
       <div className="flex gap-1 bg-white/[0.04] border border-white/10 rounded-xl p-1 w-fit">
-        {([["tickets", `Tickets (${ticketCount})`], ["free", `Free (${freeCount})`]] as const).map(([id, label]) => (
+        {([["tickets", `Ticket Buyers (${ticketCount})`], ["free", `No Tickets (${freeCount})`]] as const).map(([id, label]) => (
           <button key={id} onClick={() => { setTab(id); setExpandedId(null); setSearch(""); }}
             className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer ${tab === id ? "bg-yellow-500 text-black" : "text-white/40 hover:text-white/70"}`}>
             {label}
@@ -1216,8 +1223,8 @@ function UsersSection({ adminToken }: { adminToken: string }) {
         </div>
       ) : (
         <div className="space-y-2">
-          {filtered.map(u => (
-            <div key={u.id} className="bg-white/[0.03] border border-white/10 rounded-xl overflow-hidden transition-all">
+          {filtered.map((u, idx) => (
+            <div key={u.id || u.email || idx} className="bg-white/[0.03] border border-white/10 rounded-xl overflow-hidden transition-all">
               {/* Row */}
               <div className="flex items-center justify-between px-4 py-3.5">
                 <div className="flex-1 min-w-0">
@@ -2731,19 +2738,39 @@ function AdminLogin({ onLogin }: { onLogin: (token: string) => void }) {
 
 // ─── Main dashboard ───────────────────────────────────────────────────────────
 export default function AdminDashboard() {
-  const [adminToken, setAdminToken] = useState("");
+  const [adminToken, setAdminToken] = useState(() => {
+    if (typeof window !== "undefined") return sessionStorage.getItem("admin_token") || "";
+    return "";
+  });
   const [activeSection, setActiveSection] = useState("overview");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
 
   const { orders, stats, events, loading, error, refetch } = useAdminData(adminToken);
 
+  const handleLogin = (token: string) => {
+    sessionStorage.setItem("admin_token", token);
+    setAdminToken(token);
+  };
+
+  const handleLogout = () => {
+    sessionStorage.removeItem("admin_token");
+    setAdminToken("");
+  };
+
   // If token was invalidated by API, log out
   if (error === "unauthorized" && adminToken) {
-    setAdminToken("");
+    handleLogout();
   }
 
-  if (!adminToken) return <AdminLogin onLogin={(token) => setAdminToken(token)} />;
+  // Refresh data whenever the user switches sections
+  const handleSectionChange = (section: string) => {
+    setActiveSection(section);
+    setSidebarOpen(false);
+    refetch();
+  };
+
+  if (!adminToken) return <AdminLogin onLogin={handleLogin} />;
 
   const SECTION_MAP: Record<string, React.ReactNode> = {
     overview:  <OverviewSection stats={stats} orders={orders} events={events} loading={loading} />,
@@ -2782,7 +2809,7 @@ export default function AdminDashboard() {
         {/* Nav */}
         <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
           {NAV_ITEMS.map(item => (
-            <button key={item.id} onClick={() => { setActiveSection(item.id); setSidebarOpen(false); if (item.id === "events") setEditingEventId(null); }}
+            <button key={item.id} onClick={() => { handleSectionChange(item.id); if (item.id === "events") setEditingEventId(null); }}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer text-left ${activeSection === item.id ? "bg-yellow-500/15 text-yellow-400 border border-yellow-500/20" : "text-white/40 hover:text-white hover:bg-white/5"}`}>
               {item.icon}
               {item.label}
@@ -2796,7 +2823,7 @@ export default function AdminDashboard() {
             className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-white/30 hover:text-white hover:bg-white/5 transition-all cursor-pointer">
             <Eye size={15} /> View Site
           </Link>
-          <button onClick={() => setAdminToken("")}
+          <button onClick={handleLogout}
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-white/30 hover:text-red-400 hover:bg-red-500/5 transition-all cursor-pointer">
             <LogOut size={15} /> Log Out
           </button>
