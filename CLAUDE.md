@@ -398,6 +398,66 @@ Original Replit project archived at: `/Users/adambossin/Sites/tequila-fest-usa-o
 
 ---
 
+## AI Inbox (Support Tickets)
+
+### How It Works
+- Contact form submissions → `contact_submissions` table → AI processes inline (awaited) in `/api/contact`
+- AI uses OpenAI `gpt-4o-mini` (NOT Anthropic/Claude) — key is `OPENAI_API_KEY` in Vercel
+- Knowledge base loaded from `knowledge_base` DB table (9 entries) at runtime
+- If AI confident → auto-replies to customer, sets status `auto-replied`
+- If AI not confident → escalates to `adam@tequilafestusa.com` with "Open Ticket in Tequila Fest Inbox" email, sets status `needs-review`
+- Manual trigger: admin can click "Auto-Handle with AI" button on any `new` or `needs-review` ticket
+
+### DB Status Values
+`contact_submissions_status_check` constraint allows: `new`, `read`, `replied`, `closed`, `auto-replied`, `needs-review`
+
+### Key Files
+- `src/lib/aiInbox.ts` — OpenAI client, knowledge base, `generateAIReply()`
+- `src/lib/aiInboxEmail.ts` — Email HTML builders: `buildReplyHtml()`, `buildEscalationHtml()`
+- `src/app/api/ai-inbox/route.ts` — Manual trigger endpoint (POST with submissionId)
+- `src/app/api/contact/route.ts` — Contact form handler; AI runs INLINE (awaited) before response returns
+
+### Admin Inbox UI (`src/app/admin/AdminDashboard.tsx`)
+- Blue "✨ AI" chip = auto-replied
+- Orange border = needs-review
+- Trash icon = delete (calls DELETE `/api/admin/contact`)
+- "Auto-Handle with AI" button (🤖) = manual AI trigger
+
+---
+
+## Inbound Email (Customer Replies) — INCOMPLETE / NEEDS FIX
+
+**Goal:** When a customer replies to their ticket confirmation email (sent to `help@mail.tequilafestusa.com`), that reply should appear in the admin inbox and be AI-handled.
+
+**Current Status:** Webhook fires correctly (200 OK in Resend), email appears in Resend "Receiving emails" — but body is never captured. Emails land in admin inbox with placeholder text only.
+
+**Root Cause:** Resend's inbound webhook payload for `mail.tequilafestusa.com` does NOT include `data.text` or `data.html`. The `GET /emails/{email_id}` API returns 404 for inbound email IDs (that endpoint is for sent emails only). Body is completely inaccessible through Resend's API for this domain configuration.
+
+**Working Reference:** `mail.tastecleveland.net` (sister project) has a working setup where the Resend webhook payload DOES include the body. The Taste Cleveland Supabase edge function (`process-inbound-email`) successfully reads the body. The exact configuration difference between the two domains was not identified in this session.
+
+**What was tried (Sonnet 4.6 session):**
+1. Tried `GET /emails/{uuid_email_id}` → 404
+2. Tried `GET /emails/{msg_prefixed_id}` → returned list of sent emails (wrong endpoint)
+3. Added 3s delay before API call → still 404 (not a timing issue)
+4. Checked API key permissions → Full Access, All Domains (not the issue)
+5. Compared DNS: both domains use `inbound-smtp.us-east-1.amazonaws.com` MX (not the issue)
+6. Compared Resend domain config: Tequila Fest uses `send.mail` for sending + `mail` for receiving (two different subdomains); Taste Cleveland uses `mail` for both (same subdomain) — this difference was never tested as a fix
+7. Cloudflare Email Workers was suggested but not implemented (Opus successfully configured it in a separate session)
+
+**What Opus figured out:** Start a new Claude session with Opus to set up Cloudflare Email Workers for `help@mail.tequilafestusa.com`. Opus was able to configure this where Sonnet 4.6 could not.
+
+**Current fallback behavior** (`src/app/api/webhooks/email-inbound/route.ts`):
+- Email arrives → saved to `contact_submissions` with subject as message placeholder
+- Escalated to `adam@tequilafestusa.com` with `needs-review` status
+- Customer does NOT receive auto-reply
+
+**Resend Webhook Config:**
+- URL: `https://www.tequilafestusa.com/api/webhooks/email-inbound`
+- Event: `email.received`
+- Status: Enabled
+
+---
+
 ## Critical Notes for Next Session
 
 1. **Stripe webhook URL must be exactly `https://www.tequilafestusa.com/api/webhooks/stripe`** — www prefix required. Cloudflare redirects bare domain with 308 and Stripe does not follow redirects.
