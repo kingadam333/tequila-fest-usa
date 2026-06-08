@@ -40,31 +40,67 @@ export async function POST(req: NextRequest) {
   // Resend's email.received webhook payload does NOT include the body.
   // Fetch it from the inbound retrieval endpoint: GET /emails/receiving/{id}
   // (The /emails/{id} endpoint is for SENT emails and 404s for inbound.)
+  // Resend can fire the webhook before the body is indexed, so retry once.
   let fetchedText = "";
   let fetchedHtml = "";
   const emailId: string | undefined = data?.email_id || data?.id;
+  async function fetchReceivedOnce() {
+    const r = await fetch(`https://api.resend.com/emails/receiving/${emailId}`, {
+      headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}` },
+    });
+    if (!r.ok) return { ok: false, status: r.status, msg: await r.text() };
+    const body = await r.json();
+    return { ok: true, text: (body?.text || "") as string, html: (body?.html || "") as string };
+  }
   if (emailId && process.env.RESEND_API_KEY) {
     try {
-      const r = await fetch(`https://api.resend.com/emails/receiving/${emailId}`, {
-        headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}` },
-      });
-      if (r.ok) {
-        const body = await r.json();
-        fetchedText = body?.text || "";
-        fetchedHtml = body?.html || "";
-      } else {
-        console.error("Resend receiving fetch failed", r.status, await r.text());
+      let res = await fetchReceivedOnce();
+      if (res.ok && !res.text && !res.html) res = { ok: false, status: 0, msg: "empty body" };
+      if (!res.ok) {
+        await new Promise((r) => setTimeout(r, 1500));
+        res = await fetchReceivedOnce();
       }
+      if (res.ok) { fetchedText = res.text || ""; fetchedHtml = res.html || ""; }
+      else console.error("Resend receiving fetch failed", res.status, res.msg);
     } catch (err) {
       console.error("Resend receiving fetch threw", err);
     }
   }
 
-  const rawBody = fetchedText || data?.text || fetchedHtml.replace(/<[^>]+>/g, " ") || data?.html?.replace(/<[^>]+>/g, " ") || "";
+  // HTML → plain text that preserves line breaks. Block-level tags become
+  // newlines BEFORE we strip remaining tags, so signatures and paragraphs
+  // keep their layout.
+  function htmlToText(h: string) {
+    return h
+      .replace(/<\s*br\s*\/?>/gi, "\n")
+      .replace(/<\/(p|div|li|tr|h[1-6])>/gi, "\n")
+      .replace(/<\s*li[^>]*>/gi, "• ")
+      .replace(/<style[\s\S]*?<\/style>/gi, "")
+      .replace(/<script[\s\S]*?<\/script>/gi, "")
+      .replace(/<[^>]+>/g, "")
+      .replace(/&nbsp;/g, " ")
+      .replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/[ \t]+\n/g, "\n")
+      .replace(/\n{3,}/g, "\n\n");
+  }
+
+  const rawBody =
+    fetchedText ||
+    data?.text ||
+    (fetchedHtml ? htmlToText(fetchedHtml) : "") ||
+    (data?.html ? htmlToText(data.html) : "") ||
+    "";
+
+  // Strip only quoted-reply blocks. Do NOT strip on "From:" — that chops
+  // legitimate signatures (e.g. "From : adam@..." in contact info).
   const bodyFromPayload = rawBody
-    .replace(/On .+wrote:[\s\S]*/i, "")
-    .replace(/_{3,}[\s\S]*/g, "")
-    .replace(/From:[\s\S]*/m, "")
+    .replace(/^On .+ wrote:[\s\S]*$/im, "")
+    .replace(/^_{3,}[\s\S]*$/m, "")
+    .replace(/^-{3,}\s*Original Message\s*-{3,}[\s\S]*$/im, "")
     .trim();
 
   // Parse sender info
