@@ -97,7 +97,8 @@ Event data is defined in `src/lib/events.ts`. VIP ticket available at all events
 | `src/lib/stripe.ts` | Stripe client + TICKET_LABELS map |
 | `src/lib/resend.ts` | Resend client + all email HTML templates |
 | `src/lib/supabase.ts` | Supabase client (anon + admin) |
-| `src/lib/turnstile.ts` | Cloudflare Turnstile verification (currently bypassed) |
+| `src/lib/turnstile.ts` | Cloudflare Turnstile server-side verification (enforced — see CAPTCHA section) |
+| `src/components/Turnstile.tsx` | Turnstile widget React component (renders once, no remount loop) |
 | `src/lib/adminAuth.ts` | Admin token verification |
 | `src/app/api/webhooks/stripe/route.ts` | Stripe webhook handler — creates order, QR tickets, auth account, sends email |
 | `src/app/api/admin/resend-email/route.ts` | Admin: resend ticket email for any order |
@@ -108,6 +109,35 @@ Event data is defined in `src/lib/events.ts`. VIP ticket available at all events
 | `src/components/PreCheckoutModal.tsx` | Pre-checkout info collection modal |
 | `src/app/login/LoginPage.tsx` | Login page (supports ?email= and ?redirect= URL params) |
 | `src/app/ticket-confirmation/ConfirmationPage.tsx` | Post-Stripe success page |
+
+---
+
+## CAPTCHA — Cloudflare Turnstile (working, enforced site-wide)
+
+Turnstile protects every public form. It was looping/spinning in production earlier; the fix and the correct setup are documented here so it can be reproduced.
+
+### Why it was looping (the bug)
+The widget component had `onVerify/onError/onExpire` in its `useEffect` dependency array. Parents pass inline arrow functions, so every keystroke re-render created new function references → the effect tore down (`turnstile.remove()`) and re-rendered the widget → endless spin/reset. **Fix:** callbacks are held in refs so the effect depends only on `siteKey` and renders exactly once. Also sets `retry: "never"`.
+
+### How it's wired
+- **Client:** [`src/components/Turnstile.tsx`](src/components/Turnstile.tsx) renders the widget. Each form holds `const [captchaToken, setCaptchaToken] = useState("")`, renders `<Turnstile onVerify={setCaptchaToken} onError/onExpire={() => setCaptchaToken("")} />` above the submit button, disables submit until a token exists, sends the token in the request body, and clears the token on any failure (tokens are single-use).
+- **Server:** [`src/lib/turnstile.ts`](src/lib/turnstile.ts) `verifyTurnstile()` is called by every form route. Rule: **no `TURNSTILE_SECRET_KEY` set = dev skip; secret set (production) = a real token is required** or the request is rejected. There is **no `"bypass"` escape hatch** anymore.
+- **Forms covered (9):** contact, signup, login, forgot-password, vendors, sponsors, affiliates, press, and the two checkout modals (`PreCheckoutModal`, `TicketCartModal`). Routes: `/api/contact` (contact/sponsors/affiliates/press), `/api/vendor-apply`, `/api/auth/*`, `/api/pre-checkout`.
+
+### Required config (all three must be correct or it loops)
+1. **Cloudflare → Turnstile widget → Hostnames:** must list `tequilafestusa.com`, `www.tequilafestusa.com`, AND `tequila-fest-usa.vercel.app`. A missing hostname is the #1 cause of an infinite spinner.
+2. **Widget Mode:** `Managed` (Recommended). Not Invisible.
+3. **No account-level WAF "Managed Challenge"** firing on form routes (would stack with Turnstile). N/A here — WAF add-on isn't purchased.
+4. **Vercel env vars** (production + preview + development), then redeploy:
+   - `NEXT_PUBLIC_TURNSTILE_SITE_KEY` (public)
+   - `TURNSTILE_SECRET_KEY` (secret)
+
+### Local dev / testing
+`vercel env pull` blanks all protected values, so local `.env.local` keys come up empty. Use Cloudflare's **always-pass test keys** in `.env.local` to exercise the real widget locally:
+- Site key: `1x00000000000000000000AA`
+- Secret key: `1x0000000000000000000000000000000AA`
+
+With these, the widget renders, issues a dummy token (`XXXX.DUMMY.TOKEN.XXXX`), and enables the submit button — proving the wiring without bot friction. (Test keys are local-only; production uses the real keys in Vercel.)
 
 ---
 
