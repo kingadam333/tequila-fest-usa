@@ -123,15 +123,17 @@ ${orderInfo ? `**Their order history found in our system:**\n${orderInfo}\n` : "
 
 Instructions:
 1. Write a warm, helpful reply as the Tequila Fest USA support team.
-2. If this is a password reset request, mention they can reset at https://tequilafestusa.com/forgot-password and that if they never set a password, they should go to https://tequilafestusa.com/signup instead.
-3. If they need their tickets resent or can't find them, tell them to log in at https://tequilafestusa.com/account — and if they never created an account, sign up at https://tequilafestusa.com/signup with their purchase email.
-4. Sign off as "The Tequila Fest USA Team".
-5. Keep the reply concise and friendly — 2-5 sentences typically. Don't over-explain.
-6. Only answer what you know from the knowledge base. If the question requires information you don't have (specific refund exceptions, special requests, complaints requiring human judgment), output ESCALATE on its own line.
+2. If this is a password reset request, mention they can reset at https://tequilafestusa.com/forgot-password — and if they never set a password, go to https://tequilafestusa.com/signup instead.
+3. If they can't find their tickets or don't see a digital ticket, tell them tickets live in their account at https://tequilafestusa.com/account. If they never created an account, they should sign up at https://tequilafestusa.com/signup using the same email they used to purchase — their tickets will appear automatically.
+4. If they ask about transferring a ticket, clearly explain that tickets are non-transferable per our policy, but entry is via QR code scan so the name on the order is just for reference. Be empathetic but firm.
+5. If they ask about refunds, clearly explain that all sales are final and we do not offer refunds. Be empathetic but firm.
+6. Sign off as "The Tequila Fest USA Team".
+7. Keep the reply concise and friendly — 2-5 sentences. Don't over-explain.
+8. ONLY output ESCALATE (on its own line, nothing else) if the message truly cannot be answered from the knowledge base — e.g. a complaint requiring a judgment call, a special accommodation request, or something completely outside our FAQ. Do NOT escalate questions about policies, tickets, accounts, or anything covered above — answer those directly and confidently.
 
 Respond with either:
-- Just the reply text (if you can answer confidently), OR
-- ESCALATE on the first line if this needs human review`;
+- Just the reply text (if you can answer from the knowledge base), OR
+- ESCALATE (alone on the first line) only if genuinely outside your knowledge`;
 
   const response = await anthropic.messages.create({
     model: "claude-haiku-4-5-20251001",
