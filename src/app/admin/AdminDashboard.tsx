@@ -42,6 +42,7 @@ interface StatsData {
 function useAdminData(adminToken: string) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [stats, setStats] = useState<StatsData | null>(null);
+  const [events, setEvents] = useState<EventRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -51,9 +52,10 @@ function useAdminData(adminToken: string) {
     setLoading(true);
     setError("");
     try {
-      const [ordersRes, statsRes] = await Promise.all([
+      const [ordersRes, statsRes, eventsRes] = await Promise.all([
         fetch("/api/admin/orders", { headers }),
         fetch("/api/admin/stats", { headers }),
+        fetch("/api/admin/events", { headers }),
       ]);
 
       if (ordersRes.status === 401 || statsRes.status === 401) {
@@ -62,13 +64,15 @@ function useAdminData(adminToken: string) {
         return;
       }
 
-      const [ordersData, statsData] = await Promise.all([
+      const [ordersData, statsData, eventsData] = await Promise.all([
         ordersRes.json(),
         statsRes.json(),
+        eventsRes.json(),
       ]);
 
       setOrders(ordersData.orders || []);
       setStats(statsData);
+      setEvents(eventsData.events || []);
     } catch {
       setError("Failed to load data");
     } finally {
@@ -80,7 +84,7 @@ function useAdminData(adminToken: string) {
     if (adminToken) fetchAll();
   }, [adminToken, fetchAll]);
 
-  return { orders, stats, loading, error, refetch: fetchAll };
+  return { orders, stats, events, loading, error, refetch: fetchAll };
 }
 
 // Real event config — capacities, venues, colors (not dynamic data)
@@ -131,7 +135,7 @@ function StatusBadge({ status }: { status: string }) {
 
 // ─── Sections ────────────────────────────────────────────────────────────────
 
-function OverviewSection({ stats, orders, loading }: { stats: StatsData | null; orders: Order[]; loading: boolean }) {
+function OverviewSection({ stats, orders, events, loading }: { stats: StatsData | null; orders: Order[]; events: EventRow[]; loading: boolean }) {
   return (
     <div className="space-y-8">
       <div>
@@ -157,17 +161,21 @@ function OverviewSection({ stats, orders, loading }: { stats: StatsData | null; 
           {EVENTS_CONFIG.map(ev => {
             const cityStats = stats?.byCity?.[ev.city];
             const sold = cityStats?.tickets ?? 0;
+            const dbEvent = events.find(e => e.city.toLowerCase() === ev.city.toLowerCase());
+            const capacity = dbEvent && dbEvent.ticket_types.length > 0
+              ? dbEvent.ticket_types.reduce((s, t) => s + t.capacity, 0)
+              : ev.capacity;
             return (
             <div key={ev.id} className="bg-white/[0.03] border border-white/10 rounded-xl p-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="font-display text-lg" style={{ color: ev.color }}>{ev.city}</span>
                 <div className="text-right">
-                  <span className="text-white/50 text-sm">{sold} / {ev.capacity} sold</span>
+                  <span className="text-white/50 text-sm">{sold} / {capacity} sold</span>
                   {cityStats?.revenue ? <span className="text-white/30 text-xs ml-2">${cityStats.revenue.toLocaleString()}</span> : null}
                 </div>
               </div>
               <div className="h-2 bg-white/10 rounded-full overflow-hidden mb-2">
-                <div className="h-full rounded-full transition-all duration-500" style={{ width: `${Math.min((sold / ev.capacity) * 100, 100)}%`, background: ev.color }} />
+                <div className="h-full rounded-full transition-all duration-500" style={{ width: `${Math.min((sold / capacity) * 100, 100)}%`, background: ev.color }} />
               </div>
               {/* Ticket type breakdown */}
               {cityStats?.byType && Object.keys(cityStats.byType).length > 0 && (
@@ -179,7 +187,7 @@ function OverviewSection({ stats, orders, loading }: { stats: StatsData | null; 
                   ))}
                 </div>
               )}
-              <p className="text-white/30 text-xs mt-1">{Math.round((sold / ev.capacity) * 100)}% capacity · {ev.date}</p>
+              <p className="text-white/30 text-xs mt-1">{Math.round((sold / capacity) * 100)}% capacity · {ev.date}</p>
             </div>
           );})}
         </div>
@@ -2405,7 +2413,7 @@ export default function AdminDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
 
-  const { orders, stats, loading, error, refetch } = useAdminData(adminToken);
+  const { orders, stats, events, loading, error, refetch } = useAdminData(adminToken);
 
   // If token was invalidated by API, log out
   if (error === "unauthorized" && adminToken) {
@@ -2415,7 +2423,7 @@ export default function AdminDashboard() {
   if (!adminToken) return <AdminLogin onLogin={(token) => setAdminToken(token)} />;
 
   const SECTION_MAP: Record<string, React.ReactNode> = {
-    overview:  <OverviewSection stats={stats} orders={orders} loading={loading} />,
+    overview:  <OverviewSection stats={stats} orders={orders} events={events} loading={loading} />,
     orders:    <OrdersSection orders={orders} loading={loading} adminToken={adminToken} onRefetch={refetch} />,
     events:    <EventsSection adminToken={adminToken} stats={stats} editingId={editingEventId} setEditingId={setEditingEventId} />,
     customers: <UsersSection adminToken={adminToken} />,
