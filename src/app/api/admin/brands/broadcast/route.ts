@@ -15,10 +15,15 @@ function plainHtml(message: string) {
 export async function POST(req: NextRequest) {
   if (!verifyAdminToken(req)) return unauthorizedResponse();
 
-  const { recipients, subject, message } = await req.json();
+  const { recipients, subject, message, cc } = await req.json();
   const list: string[] = Array.isArray(recipients)
     ? recipients.map((e) => String(e).trim()).filter(Boolean)
     : [];
+  const ccList: string[] = Array.isArray(cc)
+    ? cc.map((e) => String(e).trim()).filter(Boolean)
+    : typeof cc === "string"
+      ? cc.split(",").map((e) => e.trim()).filter(Boolean)
+      : [];
   if (!list.length || !subject?.trim() || !message?.trim()) {
     return NextResponse.json({ error: "recipients, subject, and message required" }, { status: 400 });
   }
@@ -31,7 +36,7 @@ export async function POST(req: NextRequest) {
   for (let i = 0; i < list.length; i++) {
     const to = list[i];
     try {
-      const r = await resend.emails.send({ from: FROM_BRANDS, to, subject, text: message, html });
+      const r = await resend.emails.send({ from: FROM_BRANDS, to, subject, text: message, html, ...(ccList.length ? { cc: ccList } : {}) });
       results.push({ to, ok: !r.error, error: r.error?.message });
     } catch (err: any) {
       results.push({ to, ok: false, error: err?.message || "send failed" });

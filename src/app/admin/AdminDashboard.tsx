@@ -1483,6 +1483,7 @@ function ContactSection({ adminToken }: { adminToken: string }) {
   const [deleting, setDeleting] = useState(false);
   const [forwardOpen, setForwardOpen] = useState(false);
   const [forwardTo, setForwardTo] = useState("");
+  const [forwardCc, setForwardCc] = useState("");
   const [forwardNote, setForwardNote] = useState("");
   const [forwarding, setForwarding] = useState(false);
   const [forwardStatus, setForwardStatus] = useState("");
@@ -1494,12 +1495,12 @@ function ContactSection({ adminToken }: { adminToken: string }) {
       const res = await fetch("/api/admin/contact/forward", {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-admin-token": adminToken },
-        body: JSON.stringify({ id: selected.id, to: forwardTo, note: forwardNote }),
+        body: JSON.stringify({ id: selected.id, to: forwardTo, note: forwardNote, cc: forwardCc }),
       });
       const data = await res.json();
       if (res.ok) {
         setForwardStatus("Forwarded");
-        setTimeout(() => { setForwardOpen(false); setForwardTo(""); setForwardNote(""); setForwardStatus(""); }, 900);
+        setTimeout(() => { setForwardOpen(false); setForwardTo(""); setForwardCc(""); setForwardNote(""); setForwardStatus(""); }, 900);
       } else setForwardStatus(`Error: ${data.error || "failed"}`);
     } catch (e: any) { setForwardStatus(`Error: ${e?.message || "failed"}`); }
     setForwarding(false);
@@ -1701,6 +1702,15 @@ function ContactSection({ adminToken }: { adminToken: string }) {
                   <div className="mt-3 p-3 bg-white/[0.03] border border-white/10 rounded-xl space-y-2">
                     <input value={forwardTo} onChange={e => setForwardTo(e.target.value)} placeholder="forward to (email, comma-separated)"
                       className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-yellow-500/40" />
+                    <div className="flex items-center gap-2">
+                      <input value={forwardCc} onChange={e => setForwardCc(e.target.value)} placeholder="cc (optional, comma-separated)"
+                        className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-yellow-500/40" />
+                      <button type="button" onClick={() => setForwardCc(cc => {
+                        const tre = "tre.santamaria@condadotacos.com";
+                        const list = cc.split(",").map(s => s.trim()).filter(Boolean);
+                        return list.includes(tre) ? cc : [...list, tre].join(", ");
+                      })} className="text-xs text-yellow-400 hover:text-yellow-300 cursor-pointer whitespace-nowrap">+ Tre</button>
+                    </div>
                     <textarea value={forwardNote} onChange={e => setForwardNote(e.target.value)} rows={2} placeholder="optional note above the forwarded message"
                       className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-yellow-500/40 resize-y" />
                     <div className="flex items-center gap-2">
@@ -1880,6 +1890,7 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
   const [sending, setSending] = useState(false);
   const [bForwardOpen, setBForwardOpen] = useState(false);
   const [bForwardTo, setBForwardTo] = useState("");
+  const [bForwardCc, setBForwardCc] = useState("");
   const [bForwardNote, setBForwardNote] = useState("");
   const [bForwarding, setBForwarding] = useState(false);
   const [bForwardStatus, setBForwardStatus] = useState("");
@@ -1902,12 +1913,12 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
       const res = await fetch("/api/admin/contact/forward", {
         method: "POST",
         headers: { ...headers, "Content-Type": "application/json" },
-        body: JSON.stringify({ id: selectedMsg.id, to: bForwardTo, note: bForwardNote }),
+        body: JSON.stringify({ id: selectedMsg.id, to: bForwardTo, note: bForwardNote, cc: bForwardCc }),
       });
       const data = await res.json();
       if (res.ok) {
         setBForwardStatus("Forwarded");
-        setTimeout(() => { setBForwardOpen(false); setBForwardTo(""); setBForwardNote(""); setBForwardStatus(""); }, 900);
+        setTimeout(() => { setBForwardOpen(false); setBForwardTo(""); setBForwardCc(""); setBForwardNote(""); setBForwardStatus(""); }, 900);
       } else setBForwardStatus(`Error: ${data.error || "failed"}`);
     } catch (e: any) { setBForwardStatus(`Error: ${e?.message || "failed"}`); }
     setBForwarding(false);
@@ -1917,6 +1928,7 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
   const [showCompose, setShowCompose] = useState(false);
   const [composeSubject, setComposeSubject] = useState("");
   const [composeMessage, setComposeMessage] = useState("");
+  const [composeCc, setComposeCc] = useState("");
   const [composeSelected, setComposeSelected] = useState<Set<string>>(new Set());
   const [composeSending, setComposeSending] = useState(false);
   const [composeStatus, setComposeStatus] = useState<string>("");
@@ -1942,7 +1954,7 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
     });
   };
   const openCompose = () => {
-    setComposeSubject(""); setComposeMessage(""); setComposeSelected(new Set()); setComposeStatus(""); setComposeSearch("");
+    setComposeSubject(""); setComposeMessage(""); setComposeCc(""); setComposeSelected(new Set()); setComposeStatus(""); setComposeSearch("");
     setShowCompose(true);
   };
   const sendBroadcast = async () => {
@@ -1953,7 +1965,7 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
       const res = await fetch("/api/admin/brands/broadcast", {
         method: "POST",
         headers: { ...headers, "Content-Type": "application/json" },
-        body: JSON.stringify({ recipients: emails, subject: composeSubject, message: composeMessage }),
+        body: JSON.stringify({ recipients: emails, subject: composeSubject, message: composeMessage, cc: composeCc }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -2209,6 +2221,15 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
                   <div className="p-3 bg-white/[0.03] border border-white/10 rounded-xl space-y-2">
                     <input value={bForwardTo} onChange={e => setBForwardTo(e.target.value)} placeholder="forward to (email, comma-separated)"
                       className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-yellow-500/40" />
+                    <div className="flex items-center gap-2">
+                      <input value={bForwardCc} onChange={e => setBForwardCc(e.target.value)} placeholder="cc (optional, comma-separated)"
+                        className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-yellow-500/40" />
+                      <button type="button" onClick={() => setBForwardCc(cc => {
+                        const tre = "tre.santamaria@condadotacos.com";
+                        const list = cc.split(",").map(s => s.trim()).filter(Boolean);
+                        return list.includes(tre) ? cc : [...list, tre].join(", ");
+                      })} className="text-xs text-yellow-400 hover:text-yellow-300 cursor-pointer whitespace-nowrap">+ Tre</button>
+                    </div>
                     <textarea value={bForwardNote} onChange={e => setBForwardNote(e.target.value)} rows={2} placeholder="optional note above the forwarded message"
                       className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-yellow-500/40 resize-y" />
                     <div className="flex items-center gap-2">
@@ -2284,6 +2305,19 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
                   </div>
                 </div>
 
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className={labelCls} style={{ margin: 0 }}>CC (optional)</label>
+                    <button type="button" onClick={() => setComposeCc(cc => {
+                      const tre = "tre.santamaria@condadotacos.com";
+                      const list = cc.split(",").map(s => s.trim()).filter(Boolean);
+                      return list.includes(tre) ? cc : [...list, tre].join(", ");
+                    })} className="text-xs text-yellow-400 hover:text-yellow-300 cursor-pointer">
+                      + Tre Santamaria
+                    </button>
+                  </div>
+                  <input value={composeCc} onChange={e => setComposeCc(e.target.value)} className={inputCls} placeholder="cc@example.com, another@example.com" />
+                </div>
                 <div>
                   <label className={labelCls}>Subject</label>
                   <input value={composeSubject} onChange={e => setComposeSubject(e.target.value)} className={inputCls} placeholder="Subject line" />

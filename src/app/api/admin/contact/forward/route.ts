@@ -18,10 +18,15 @@ function escape(s: string) {
 export async function POST(req: NextRequest) {
   if (!verifyAdminToken(req)) return unauthorizedResponse();
 
-  const { id, to, note } = await req.json();
+  const { id, to, note, cc } = await req.json();
   if (!id || !to || !String(to).trim()) {
     return NextResponse.json({ error: "id and to required" }, { status: 400 });
   }
+  const ccList: string[] = Array.isArray(cc)
+    ? cc.map((e: any) => String(e).trim()).filter(Boolean)
+    : typeof cc === "string"
+      ? cc.split(",").map((e) => e.trim()).filter(Boolean)
+      : [];
 
   const db = supabaseAdmin as any;
   const { data: msg, error } = await db
@@ -54,6 +59,7 @@ ${noteHtml}
       to: String(to).split(",").map((s) => s.trim()).filter(Boolean),
       subject: `Fwd: ${(msg.subject || "").replace(/^(Fwd:\s*)+/i, "")}`,
       replyTo: msg.email || undefined,
+      ...(ccList.length ? { cc: ccList } : {}),
       html,
       text,
     });
