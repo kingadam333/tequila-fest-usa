@@ -463,7 +463,14 @@ function EventEditor({ event, adminToken, onSaved }: { event: EventRow; adminTok
       body: JSON.stringify(payload),
     });
     setSaving(false);
-    if (res.ok) { setSaved(true); setTimeout(() => setSaved(false), 2000); onSaved(); }
+    if (res.ok) {
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+      onSaved();
+    } else {
+      const err = await res.json().catch(() => ({}));
+      alert(`Save failed: ${err.error || res.statusText}`);
+    }
   };
 
   const updateTicketType = async (ttId: string, updates: Partial<TicketType>) => {
