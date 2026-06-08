@@ -6,6 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { User, ShoppingBag, QrCode, LogOut, MapPin, Calendar, Phone, Mail, Edit2, Check, LayoutDashboard } from "lucide-react";
 import DashboardTab from "./DashboardTab";
+import { TICKET_LABELS } from "@/lib/stripe";
 import Navbar from "@/components/Navbar";
 import OfficialBanner from "@/components/OfficialBanner";
 import Footer from "@/components/Footer";
@@ -249,17 +250,26 @@ function OrdersTab({ onViewTickets, orders }: { onViewTickets: (orderId: string)
 }
 
 const TYPE_STYLES: Record<string, { bg: string; text: string; border: string; label: string }> = {
-  "All Inclusive": { bg: "bg-yellow-500/20",   text: "text-yellow-400",   border: "border-yellow-500/40",   label: "ALL INCLUSIVE" },
-  "VIP":           { bg: "bg-[#C0C0C0]/15",    text: "text-[#E8E8E8]",   border: "border-[#C0C0C0]/30",    label: "VIP" },
-  "GA Entry":      { bg: "bg-white/10",         text: "text-white/70",    border: "border-white/20",         label: "GA ENTRY" },
+  "All Inclusive":    { bg: "bg-yellow-500/20", text: "text-yellow-400",  border: "border-yellow-500/40", label: "ALL INCLUSIVE" },
+  "Early Bird":       { bg: "bg-yellow-500/20", text: "text-yellow-400",  border: "border-yellow-500/40", label: "EARLY BIRD" },
+  "Regular Rate":     { bg: "bg-yellow-500/20", text: "text-yellow-400",  border: "border-yellow-500/40", label: "REGULAR RATE" },
+  "Late Registration":{ bg: "bg-orange-500/20", text: "text-orange-400",  border: "border-orange-500/40", label: "LATE REGISTRATION" },
+  "VIP Experience":   { bg: "bg-[#C0C0C0]/15",  text: "text-[#E8E8E8]",  border: "border-[#C0C0C0]/30",  label: "VIP EXPERIENCE" },
+  "VIP":              { bg: "bg-[#C0C0C0]/15",  text: "text-[#E8E8E8]",  border: "border-[#C0C0C0]/30",  label: "VIP" },
+  "GA Entry":         { bg: "bg-white/10",       text: "text-white/70",   border: "border-white/20",      label: "GA ENTRY" },
 };
+
+// Normalize raw DB ticket type keys (e.g. "regular") to display labels (e.g. "Regular Rate")
+function normalizeTicketType(raw: string): string {
+  return (TICKET_LABELS as Record<string, string>)[raw] ?? raw;
+}
 
 function TicketsTab({ highlightOrderId, orders }: { highlightOrderId?: string; orders: RealOrder[] }) {
   const allTickets = orders.flatMap(order =>
     (order.ticket_instances || []).map((t, idx) => ({
       id: t.qr_code,
       name: t.holder_name,
-      type: t.ticket_type || order.ticket_type,
+      type: normalizeTicketType(t.ticket_type || order.ticket_type || ""),
       event: `Tequila Fest ${order.event_city}`,
       date: new Date(order.created_at).toLocaleDateString(),
       orderId: order.id,
@@ -340,7 +350,7 @@ function TicketsTab({ highlightOrderId, orders }: { highlightOrderId?: string; o
                   </div>
 
                   {/* Ticket type — big, right below holder */}
-                  {ticket.type === "VIP" ? (
+                  {ticket.type === "VIP" || ticket.type === "VIP Experience" ? (
                     <div className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 w-fit"
                       style={{
                         background: "linear-gradient(135deg, rgba(192,192,192,0.15), rgba(80,80,80,0.1))",
