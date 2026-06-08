@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resend, FROM_EMAIL, passwordResetHtml } from "@/lib/resend";
 import { verifyTurnstile } from "@/lib/turnstile";
+import { supabaseAdmin } from "@/lib/supabase";
 import crypto from "crypto";
-
-// In-memory token store — replace with DB when backend is live
-const resetTokens = new Map<string, { email: string; expires: number }>();
 
 export async function POST(req: NextRequest) {
   const { email, captchaToken } = await req.json();
@@ -14,13 +12,15 @@ export async function POST(req: NextRequest) {
   const captchaOk = await verifyTurnstile(captchaToken || "", ip);
   if (!captchaOk) return NextResponse.json({ error: "CAPTCHA failed" }, { status: 400 });
 
-  // Generate secure token
   const token = crypto.randomBytes(32).toString("hex");
-  const expires = Date.now() + 60 * 60 * 1000; // 1 hour
+  const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hour
 
-  resetTokens.set(token, { email: email.toLowerCase(), expires });
+  // Delete any existing tokens for this email, then insert new one
+  const db = supabaseAdmin as any;
+  await db.from("password_reset_tokens").delete().eq("email", email.toLowerCase());
+  await db.from("password_reset_tokens").insert({ token, email: email.toLowerCase(), expires_at: expiresAt });
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://tequila-fest-usa.vercel.app";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.tequilafestusa.com";
   const resetUrl = `${appUrl}/reset-password?token=${token}`;
 
   try {
@@ -32,21 +32,24 @@ export async function POST(req: NextRequest) {
     });
   } catch (err) {
     console.error("Failed to send reset email:", err);
-    // Still return success to prevent email enumeration
   }
 
-  // Always return success (don't reveal if email exists)
   return NextResponse.json({ success: true });
 }
 
-// Verify token endpoint
 export async function GET(req: NextRequest) {
   const token = req.nextUrl.searchParams.get("token");
   if (!token) return NextResponse.json({ valid: false });
 
-  const record = resetTokens.get(token);
-  if (!record || record.expires < Date.now()) {
+  const db = supabaseAdmin as any;
+  const { data } = await db
+    .from("password_reset_tokens")
+    .select("email, expires_at")
+    .eq("token", token)
+    .single();
+
+  if (!data || new Date(data.expires_at) < new Date()) {
     return NextResponse.json({ valid: false });
   }
-  return NextResponse.json({ valid: true, email: record.email });
+  return NextResponse.json({ valid: true, email: data.email });
 }
