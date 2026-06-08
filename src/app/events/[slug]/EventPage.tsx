@@ -141,6 +141,15 @@ export default function EventPage({ event, ogImage, dbStatus }: { event: EventDa
   const liveTypes = useLiveTicketTypes(event.slug);
   const { openCart, modal } = useCartModal(event, liveTypes);
   const isComingSoon = dbStatus === "coming_soon";
+
+  // Capture referral code from URL and store in localStorage
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get("ref");
+    if (ref) {
+      localStorage.setItem(`ref_${event.slug}`, ref);
+    }
+  }, [event.slug]);
   return (
     <>
       <div className="sticky top-0 z-50">

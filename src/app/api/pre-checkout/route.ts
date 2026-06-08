@@ -9,7 +9,7 @@ import { calculateFeesForCart } from "@/lib/fees";
 interface CartItem { ticketType: TicketType; quantity: number; price: number; platformFee?: number; }
 
 export async function POST(req: NextRequest) {
-  const { firstName, lastName, email, phone, eventSlug, items, ticketType, quantity, captchaToken } = await req.json();
+  const { firstName, lastName, email, phone, eventSlug, items, ticketType, quantity, captchaToken, refCode } = await req.json();
 
   if (!firstName || !email || !eventSlug) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -105,6 +105,7 @@ export async function POST(req: NextRequest) {
       serviceFee: fees.serviceFee.toFixed(2),
       platformFee: fees.platformFee.toFixed(2),
       ticketSubtotal: totalAmount.toFixed(2),
+      refCode: refCode || "",
     },
     payment_intent_data: {
       description: `Tequila Fest ${event.city} 2026 — ${ticketSummary}`,

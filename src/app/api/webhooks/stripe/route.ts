@@ -206,6 +206,53 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
           }
         }
 
+        // ── Award referral points ──────────────────────────────────
+        const refCode = session.metadata?.refCode;
+        if (refCode) {
+          try {
+            const { data: refCodeRow } = await db
+              .from("referral_codes")
+              .select("customer_id")
+              .eq("code", refCode)
+              .single();
+
+            if (refCodeRow && refCodeRow.customer_id !== order.customer_id) {
+              const POINTS = 5;
+              const ENTRIES = 1;
+
+              // Log the referral conversion
+              await db.from("referrals").upsert({
+                referral_code: refCode,
+                referrer_customer_id: refCodeRow.customer_id,
+                referred_email: customerEmail,
+                referred_order_id: order.id,
+                status: "converted",
+                points_awarded: POINTS,
+                raffle_entries: ENTRIES,
+              }, { onConflict: "referred_order_id" });
+
+              // Add points to referrer's account
+              await db.from("customer_accounts")
+                .update({ loyalty_points: db.raw(`loyalty_points + ${POINTS}`) })
+                .eq("id", refCodeRow.customer_id);
+
+              // Log the transaction
+              await db.from("loyalty_transactions").insert({
+                customer_id: refCodeRow.customer_id,
+                action_code: "referral_conversion",
+                points: POINTS,
+                description: `Referral: ${customerEmail} bought a ticket to Tequila Fest ${eventCity}`,
+                source_id: order.id,
+                source_type: "referral",
+              });
+
+              console.log(`🎯 Referral awarded: ${POINTS} pts to ${refCodeRow.customer_id} for code ${refCode}`);
+            }
+          } catch (refErr) {
+            console.error("Referral award error:", refErr);
+          }
+        }
+
         console.log(`📋 Order ${orderNumber} saved to Supabase with ${qty} ticket(s)`);
       }
     } catch (dbErr) {

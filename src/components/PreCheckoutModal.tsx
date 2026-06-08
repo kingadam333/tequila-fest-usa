@@ -47,6 +47,7 @@ export default function PreCheckoutModal({
           ticketType,
           quantity,
           captchaToken,
+          refCode: typeof window !== "undefined" ? localStorage.getItem(`ref_${eventSlug}`) || undefined : undefined,
         }),
       });
       const data = await res.json();

@@ -4,7 +4,8 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
-import { User, ShoppingBag, QrCode, LogOut, MapPin, Calendar, Phone, Mail, Edit2, Check, LayoutDashboard } from "lucide-react";
+import { User, ShoppingBag, QrCode, LogOut, MapPin, Calendar, Phone, Mail, Edit2, Check, LayoutDashboard, Gift, Copy, Send, Trophy } from "lucide-react";
+import QRCode from "qrcode";
 import DashboardTab from "./DashboardTab";
 import { TICKET_LABELS } from "@/lib/ticket-config";
 import Navbar from "@/components/Navbar";
@@ -23,7 +24,9 @@ interface AuthUser {
 interface RealOrder {
   id: string;
   order_number: string;
+  event_slug: string;
   event_city: string;
+  customer_name: string;
   ticket_type: string;
   quantity: number;
   total: number;
@@ -33,7 +36,7 @@ interface RealOrder {
   ticket_instances: { id: string; qr_code: string; ticket_number: number; status: string; holder_name: string; ticket_type: string }[];
 }
 
-type Tab = "dashboard" | "profile" | "orders" | "tickets";
+type Tab = "dashboard" | "profile" | "orders" | "tickets" | "refer";
 
 // Simple QR placeholder using SVG pattern
 function QRPlaceholder({ value }: { value: string }) {
@@ -418,6 +421,188 @@ function TicketsTab({ highlightOrderId, orders }: { highlightOrderId?: string; o
   );
 }
 
+function ReferTab({ orders, userName }: { orders: RealOrder[]; userName: string }) {
+  // Deduplicate events the user has bought tickets for
+  const userEvents = Array.from(
+    new Map(
+      orders.filter(o => o.event_slug && o.status === "paid").map(o => [o.event_slug, { slug: o.event_slug, city: o.event_city }])
+    ).values()
+  );
+
+  const [selectedSlug, setSelectedSlug] = useState(userEvents[0]?.slug || "");
+  const [refData, setRefData] = useState<{ code: string; referralUrl: string; stats: { totalReferrals: number; pendingReferrals: number; pointsEarned: number; raffleEntries: number }; event: { city: string; date: string } | null } | null>(null);
+  const [qrDataUrl, setQrDataUrl] = useState("");
+  const [inviteEmails, setInviteEmails] = useState("");
+  const [sending, setSending] = useState(false);
+  const [sendSuccess, setSendSuccess] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!selectedSlug) return;
+    setLoading(true);
+    fetch(`/api/referral?event_slug=${selectedSlug}`)
+      .then(r => r.json())
+      .then(async data => {
+        setRefData(data);
+        if (data.referralUrl) {
+          const qr = await QRCode.toDataURL(data.referralUrl, { width: 200, margin: 2, color: { dark: "#F5A623", light: "#0d0500" } });
+          setQrDataUrl(qr);
+        }
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, [selectedSlug]);
+
+  const copyLink = () => {
+    if (!refData?.referralUrl) return;
+    navigator.clipboard.writeText(refData.referralUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const sendInvites = async () => {
+    const emails = inviteEmails.split(/[\s,]+/).map(e => e.trim()).filter(e => e.includes("@"));
+    if (!emails.length || !refData) return;
+    setSending(true);
+    await fetch("/api/referral", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        event_slug: selectedSlug,
+        invitee_emails: emails,
+        referral_code: refData.code,
+        referrer_name: userName || orders[0]?.customer_name?.split(" ")[0] || "A friend",
+      }),
+    });
+    setSending(false);
+    setSendSuccess(true);
+    setInviteEmails("");
+    setTimeout(() => setSendSuccess(false), 4000);
+  };
+
+  if (userEvents.length === 0) {
+    return (
+      <div className="text-center py-16">
+        <Gift size={40} className="mx-auto text-white/20 mb-4" />
+        <p className="font-display text-white text-2xl mb-2">REFER A FRIEND</p>
+        <p className="text-white/40 text-sm">Purchase a ticket first to get your referral link.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h2 className="font-display text-white text-3xl mb-1">REFER A FRIEND</h2>
+        <p className="text-white/40 text-sm">Earn 5 points + 1 raffle entry for every friend who buys a ticket. Win a VIP upgrade!</p>
+      </div>
+
+      {/* Raffle banner */}
+      <div className="rounded-2xl p-5 border border-yellow-500/30" style={{ background: "linear-gradient(135deg, rgba(123,47,190,0.3), rgba(200,16,46,0.2))" }}>
+        <div className="flex items-start gap-4">
+          <Trophy size={28} className="text-yellow-400 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="font-display text-yellow-400 text-xl tracking-wide">VIP UPGRADE RAFFLE</p>
+            <p className="text-white/70 text-sm mt-1 leading-relaxed">Every referral = 5 points + 1 raffle entry. The more friends you bring, the more chances to win a free VIP upgrade for your next Tequila Fest!</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Stats */}
+      {refData && (
+        <div className="grid grid-cols-3 gap-3">
+          {[
+            { label: "Referrals", value: refData.stats.totalReferrals, color: "#F5A623" },
+            { label: "Points Earned", value: refData.stats.pointsEarned, color: "#00A878" },
+            { label: "Raffle Entries", value: refData.stats.raffleEntries, color: "#7B2FBE" },
+          ].map(s => (
+            <div key={s.label} className="bg-white/[0.03] border border-white/10 rounded-2xl p-4 text-center">
+              <p className="font-display text-3xl" style={{ color: s.color }}>{s.value}</p>
+              <p className="text-white/40 text-xs mt-1">{s.label}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Event selector (if multiple) */}
+      {userEvents.length > 1 && (
+        <div>
+          <p className="text-white/50 text-xs uppercase tracking-wider mb-2">Your Event</p>
+          <div className="flex gap-2 flex-wrap">
+            {userEvents.map(ev => (
+              <button key={ev.slug} onClick={() => setSelectedSlug(ev.slug)}
+                className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-all cursor-pointer ${selectedSlug === ev.slug ? "bg-yellow-500 text-black border-yellow-500" : "bg-white/5 border-white/15 text-white/60 hover:text-white"}`}>
+                {ev.city}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="h-32 bg-white/5 rounded-2xl animate-pulse" />
+      ) : refData ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Left: link + QR */}
+          <div className="space-y-5">
+            {/* Referral link */}
+            <div>
+              <p className="text-white/50 text-xs uppercase tracking-wider mb-2">Your Referral Link</p>
+              <div className="flex gap-2">
+                <div className="flex-1 bg-white/5 border border-white/15 rounded-xl px-4 py-3 text-yellow-400 text-sm font-mono truncate">
+                  {refData.referralUrl}
+                </div>
+                <button onClick={copyLink}
+                  className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-black font-bold px-4 py-3 rounded-xl text-sm transition-all cursor-pointer flex-shrink-0">
+                  {copied ? <Check size={16} /> : <Copy size={16} />}
+                  {copied ? "Copied!" : "Copy"}
+                </button>
+              </div>
+            </div>
+
+            {/* QR Code */}
+            {qrDataUrl && (
+              <div>
+                <p className="text-white/50 text-xs uppercase tracking-wider mb-2">Share QR Code</p>
+                <div className="bg-[#0d0500] border border-white/10 rounded-2xl p-4 inline-block">
+                  <img src={qrDataUrl} alt="Referral QR Code" className="w-36 h-36" />
+                </div>
+                <p className="text-white/30 text-xs mt-2">Screenshot and share anywhere</p>
+              </div>
+            )}
+          </div>
+
+          {/* Right: email invite */}
+          <div>
+            <p className="text-white/50 text-xs uppercase tracking-wider mb-2">Send Email Invites</p>
+            <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-5 space-y-4">
+              <textarea
+                value={inviteEmails}
+                onChange={e => setInviteEmails(e.target.value)}
+                placeholder="Enter email addresses, separated by commas or spaces"
+                rows={4}
+                className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-3 text-white placeholder-white/30 text-sm outline-none resize-none transition-colors"
+              />
+              <button onClick={sendInvites} disabled={sending || !inviteEmails.trim()}
+                className="w-full flex items-center justify-center gap-2 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-50 text-black font-bold py-3 rounded-xl text-sm transition-all cursor-pointer">
+                <Send size={15} />
+                {sending ? "Sending..." : "Send Invites"}
+              </button>
+              {sendSuccess && (
+                <p className="text-green-400 text-sm text-center flex items-center justify-center gap-2">
+                  <Check size={14} /> Invites sent! You&apos;ll earn points when they buy.
+                </p>
+              )}
+              <p className="text-white/30 text-xs text-center">Up to 10 invites per send</p>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export default function AccountPage() {
   const [tab, setTab] = useState<Tab>("dashboard");
   const [highlightOrder, setHighlightOrder] = useState<string | undefined>();
@@ -463,6 +648,7 @@ export default function AccountPage() {
     { id: "dashboard" as Tab, label: "Dashboard", icon: <LayoutDashboard size={16} /> },
     { id: "orders" as Tab, label: "Orders", icon: <ShoppingBag size={16} /> },
     { id: "tickets" as Tab, label: "My Tickets", icon: <QrCode size={16} /> },
+    { id: "refer" as Tab, label: "Refer a Friend", icon: <Gift size={16} /> },
     { id: "profile" as Tab, label: "Profile", icon: <User size={16} /> },
   ];
 
@@ -534,6 +720,7 @@ export default function AccountPage() {
               {tab === "profile" && <ProfileTab user={user} />}
               {tab === "orders" && <OrdersTab onViewTickets={handleViewTickets} orders={orders} />}
               {tab === "tickets" && <TicketsTab highlightOrderId={highlightOrder} orders={orders} />}
+              {tab === "refer" && <ReferTab orders={orders} userName={user.firstName} />}
             </motion.div>
           </AnimatePresence>
         </div>
