@@ -15,6 +15,7 @@ export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [noAccount, setNoAccount] = useState(false);
   const [error, setError] = useState("");
   const [captchaToken, setCaptchaToken] = useState("");
 
@@ -32,8 +33,14 @@ export default function ForgotPasswordPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, captchaToken }),
       });
-      if (res.ok) setSubmitted(true);
-      else {
+      const data = await res.json();
+      if (res.ok) {
+        if (data.noAccount && data.hasTickets) {
+          setNoAccount(true);
+        } else {
+          setSubmitted(true);
+        }
+      } else {
         setError("Something went wrong. Please try again.");
         setCaptchaToken("");
       }
@@ -58,7 +65,25 @@ export default function ForgotPasswordPage() {
               <p className="text-white/40 text-sm mt-2">We&apos;ll send you a reset link</p>
             </div>
 
-            {submitted ? (
+            {noAccount ? (
+              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-4">
+                <p className="text-4xl mb-4">🎟️</p>
+                <p className="font-display text-yellow-400 text-2xl mb-2">SET UP YOUR ACCOUNT</p>
+                <p className="text-white/50 text-sm mb-4">
+                  We found tickets purchased with <span className="text-white">{email}</span>, but no account has been created yet.
+                </p>
+                <p className="text-white/40 text-sm mb-6">
+                  Create your free account using this same email address and your tickets, points, and order history will automatically appear in your dashboard.
+                </p>
+                <Link href="/signup"
+                  className="inline-flex items-center justify-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-black font-bold text-sm px-6 py-3 rounded-xl transition-all mb-4 w-full">
+                  CREATE MY ACCOUNT
+                </Link>
+                <Link href="/login" className="inline-flex items-center gap-2 text-white/30 hover:text-white/60 text-sm transition-colors">
+                  <ArrowLeft size={13} /> Back to Log In
+                </Link>
+              </motion.div>
+            ) : submitted ? (
               <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-4">
                 <p className="text-4xl mb-4">📬</p>
                 <p className="font-display text-yellow-400 text-2xl mb-2">CHECK YOUR EMAIL</p>

@@ -12,6 +12,30 @@ export async function POST(req: NextRequest) {
   const captchaOk = await verifyTurnstile(captchaToken || "", ip);
   if (!captchaOk) return NextResponse.json({ error: "CAPTCHA failed" }, { status: 400 });
 
+  // Check if this email has a registered account
+  const db = supabaseAdmin as any;
+  const { data: account } = await db
+    .from("customer_accounts")
+    .select("id")
+    .eq("email", email.toLowerCase())
+    .single();
+
+  if (!account) {
+    // Check if they have a ticket order — if so, direct them to sign up
+    const { data: order } = await db
+      .from("ticket_orders")
+      .select("id")
+      .ilike("customer_email", email)
+      .limit(1)
+      .single();
+
+    if (order) {
+      return NextResponse.json({ noAccount: true, hasTickets: true });
+    }
+    // No account and no tickets — still return generic success to avoid email enumeration
+    return NextResponse.json({ success: true });
+  }
+
   const token = crypto.randomBytes(32).toString("hex");
   const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hour
 

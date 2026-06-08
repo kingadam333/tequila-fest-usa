@@ -394,3 +394,79 @@ export function passwordResetHtml({ resetUrl }: { resetUrl: string }) {
 </body>
 </html>`;
 }
+
+// ─── Claim Account Email ──────────────────────────────────────────────────────
+export function claimAccountHtml({ firstName, signupUrl, points }: { firstName: string; signupUrl: string; points: number }) {
+  const steps = [
+    "Go to tequilafestusa.com/signup",
+    "Enter the <strong style='color:#fff8f0'>same email address</strong> you used to buy your ticket",
+    "Create a password",
+    "Your tickets &amp; points appear automatically in your dashboard",
+  ];
+  return `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#0d0500;font-family:'Segoe UI',Arial,sans-serif;color:#fff8f0">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#0d0500;padding:40px 20px">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%">
+
+        <tr><td style="text-align:center;padding-bottom:32px">
+          <p style="font-family:Arial,sans-serif;font-size:36px;font-weight:900;letter-spacing:4px;color:#F5A623;margin:0">TEQUILA FEST</p>
+          <p style="font-family:Arial,sans-serif;font-size:18px;color:#ffffff;letter-spacing:6px;margin:4px 0 0">USA</p>
+        </td></tr>
+
+        <tr><td style="background:linear-gradient(135deg,#1a0e00,#2a1800);border:1px solid rgba(245,166,35,0.3);border-radius:16px;padding:32px;text-align:center">
+          <p style="font-size:48px;margin:0 0 12px">🏆</p>
+          <p style="font-family:Arial;font-size:26px;font-weight:900;letter-spacing:2px;color:#F5A623;margin:0 0 8px">YOU'VE GOT POINTS WAITING!</p>
+          <p style="color:rgba(255,248,240,0.7);font-size:16px;margin:0 0 24px">Hi ${firstName} — we just launched our Rewards Program and your ticket purchase already earned you points.</p>
+
+          <table cellpadding="0" cellspacing="0" border="0" style="background:rgba(245,166,35,0.12);border:1px solid rgba(245,166,35,0.3);border-radius:12px;padding:20px 40px;margin:0 auto 28px">
+            <tr><td style="text-align:center">
+              <p style="margin:0;color:rgba(255,248,240,0.5);font-size:12px;letter-spacing:2px;text-transform:uppercase">Your Points Waiting</p>
+              <p style="margin:8px 0 0;font-family:Arial;font-size:52px;font-weight:900;color:#F5A623;line-height:1">${points}</p>
+              <p style="margin:4px 0 0;color:#F5A623;font-size:13px;font-weight:700;letter-spacing:2px;text-transform:uppercase">PTS</p>
+            </td></tr>
+          </table>
+
+          <p style="color:rgba(255,248,240,0.6);font-size:15px;margin:0 0 24px">Create your free account using <strong style="color:#fff8f0">the same email address you used to buy your ticket</strong> and everything will automatically appear in your dashboard.</p>
+
+          <p style="color:rgba(255,248,240,0.5);font-size:13px;font-weight:700;margin:0 0 16px;text-transform:uppercase;letter-spacing:1px;text-align:left">How to set up your account:</p>
+          <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:28px;text-align:left">
+            ${steps.map((step, i) => `
+            <tr><td style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.06)">
+              <table cellpadding="0" cellspacing="0" border="0"><tr>
+                <td width="36" valign="top">
+                  <span style="display:inline-block;width:26px;height:26px;background:rgba(245,166,35,0.2);border:1px solid rgba(245,166,35,0.4);border-radius:50%;text-align:center;line-height:26px;font-size:12px;font-weight:700;color:#F5A623">${i + 1}</span>
+                </td>
+                <td style="color:rgba(255,248,240,0.75);font-size:14px;vertical-align:middle">${step}</td>
+              </tr></table>
+            </td></tr>`).join("")}
+          </table>
+
+          <a href="${signupUrl}" style="display:inline-block;background:#F5A623;color:#0d0500;font-weight:900;font-size:18px;letter-spacing:2px;text-transform:uppercase;text-decoration:none;padding:18px 48px;border-radius:50px">
+            CREATE MY ACCOUNT
+          </a>
+          <p style="color:rgba(255,248,240,0.25);font-size:12px;margin-top:16px">Or copy: ${signupUrl}</p>
+        </td></tr>
+
+        <tr><td style="padding:24px 0">
+          <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:20px">
+            <tr><td>
+              <p style="margin:0 0 12px;font-weight:700;color:#fff8f0;font-size:14px">Once you're in, you can:</p>
+              ${["View and download your digital tickets &amp; QR codes", "Earn more points — upload photos, share on social, refer friends", "Climb the leaderboard and compete for VIP upgrades", "Manage your profile and full order history"].map(item =>
+                `<p style="margin:0 0 8px;color:rgba(255,248,240,0.55);font-size:13px">✓ ${item}</p>`).join("")}
+            </td></tr>
+          </table>
+        </td></tr>
+
+        <tr><td style="text-align:center;border-top:1px solid rgba(255,255,255,0.08);padding-top:24px">
+          <p style="color:rgba(255,248,240,0.25);font-size:12px;margin:0">Tequila Fest USA · tequilafestusa.com</p>
+          <p style="color:rgba(255,248,240,0.15);font-size:11px;margin:8px 0 0">Must be 21+ · Tickets are non-transferable</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+}

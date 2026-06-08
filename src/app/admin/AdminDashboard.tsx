@@ -2351,6 +2351,33 @@ function ToolsSection({ adminToken }: { adminToken: string }) {
   const [syncing, setSyncing] = useState(false);
   const [syncDone, setSyncDone] = useState(false);
 
+  const [blasting, setBlasting] = useState(false);
+  const [blastResult, setBlastResult] = useState<{ sent: number; failed: number; total: number } | null>(null);
+  const [blastError, setBlastError] = useState("");
+
+  const sendClaimBlast = async () => {
+    if (!confirm(`This will email all ticket buyers who haven't created an account yet. Continue?`)) return;
+    setBlasting(true);
+    setBlastResult(null);
+    setBlastError("");
+    try {
+      const res = await fetch("/api/admin/email-blast/claim-account", {
+        method: "POST",
+        headers: { "x-admin-token": adminToken },
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setBlastResult(data);
+      } else {
+        setBlastError(data.error || "Blast failed");
+      }
+    } catch {
+      setBlastError("Network error");
+    } finally {
+      setBlasting(false);
+    }
+  };
+
   const runSync = async () => {
     setSyncing(true);
     setSyncDone(false);
@@ -2391,6 +2418,34 @@ function ToolsSection({ adminToken }: { adminToken: string }) {
       <div>
         <h2 className="font-display text-white text-3xl mb-1">TOOLS</h2>
         <p className="text-white/30 text-sm">Admin utilities and data management</p>
+      </div>
+
+      {/* Claim Account Email Blast */}
+      <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-6">
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <h3 className="text-white font-bold text-lg flex items-center gap-2">
+              <Mail size={18} className="text-yellow-400" /> Claim Account Email Blast
+            </h3>
+            <p className="text-white/40 text-sm mt-1">
+              Email all ticket buyers who haven&apos;t created an account yet. Tells them their points are waiting and walks them through signup step-by-step.
+            </p>
+          </div>
+        </div>
+
+        <button onClick={sendClaimBlast} disabled={blasting}
+          className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-60 text-black font-bold px-5 py-2.5 rounded-xl text-sm transition-all cursor-pointer mb-4">
+          <Mail size={15} />
+          {blasting ? "Sending..." : "Send Claim Account Emails"}
+        </button>
+
+        {blastResult && (
+          <div className="bg-green-500/10 border border-green-500/30 rounded-xl px-4 py-3 text-sm">
+            <p className="text-green-400 font-bold">✅ Blast complete</p>
+            <p className="text-white/50 mt-1">Sent: {blastResult.sent} · Failed: {blastResult.failed} · Total: {blastResult.total}</p>
+          </div>
+        )}
+        {blastError && <p className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">{blastError}</p>}
       </div>
 
       {/* Sync from old site */}
