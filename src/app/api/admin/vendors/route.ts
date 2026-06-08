@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAdminToken, unauthorizedResponse } from "@/lib/adminAuth";
 import { supabaseAdmin } from "@/lib/supabase";
-import { resend, FROM_PARTNERS } from "@/lib/resend";
+import { resend, FROM_VENDORS } from "@/lib/resend";
 import Stripe from "stripe";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
@@ -63,7 +63,7 @@ export async function PATCH(req: NextRequest) {
 
       // Send approval email with payment link
       await resend.emails.send({
-        from: FROM_PARTNERS,
+        from: FROM_VENDORS,
         to: app.email,
         subject: `You're Approved! Complete Your Vendor Registration — Tequila Fest USA`,
         html: `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#0d0500;font-family:Arial,sans-serif;color:#fff8f0">
@@ -114,7 +114,7 @@ export async function PATCH(req: NextRequest) {
   // On rejection — send a polite decline email
   if (status === "rejected" && app.status !== "rejected") {
     resend.emails.send({
-      from: FROM_PARTNERS,
+      from: FROM_VENDORS,
       to: app.email,
       subject: `Vendor Application Update — Tequila Fest USA`,
       html: `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#0d0500;font-family:Arial,sans-serif;color:#fff8f0">

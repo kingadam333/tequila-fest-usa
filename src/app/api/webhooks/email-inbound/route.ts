@@ -20,14 +20,47 @@ export async function POST(req: NextRequest) {
   const subject: string = data?.subject || "(no subject)";
   const to: string = Array.isArray(data?.to) ? data.to[0] : (data?.to || "");
 
-  // Only handle emails sent to help@
-  if (!to.toLowerCase().includes("help@")) {
-    return NextResponse.json({ skipped: "not a help@ email" });
+  // Route by local-part to the right inbox label
+  const toLower = to.toLowerCase();
+  const inboxByPrefix: Record<string, string> = {
+    "help@": "Support",
+    "partners@": "Sponsors",
+    "affiliates@": "Affiliates",
+    "brands@": "Brands",
+    "sponsors@": "Sponsors",
+    "vendors@": "Vendors",
+    "press@": "Press",
+  };
+  const matchedPrefix = Object.keys(inboxByPrefix).find((p) => toLower.includes(p));
+  if (!matchedPrefix) {
+    return NextResponse.json({ skipped: `unrouted recipient: ${to}` });
+  }
+  const inboxLabel = inboxByPrefix[matchedPrefix];
+
+  // Resend's email.received webhook payload does NOT include the body.
+  // Fetch it from the inbound retrieval endpoint: GET /emails/receiving/{id}
+  // (The /emails/{id} endpoint is for SENT emails and 404s for inbound.)
+  let fetchedText = "";
+  let fetchedHtml = "";
+  const emailId: string | undefined = data?.email_id || data?.id;
+  if (emailId && process.env.RESEND_API_KEY) {
+    try {
+      const r = await fetch(`https://api.resend.com/emails/receiving/${emailId}`, {
+        headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}` },
+      });
+      if (r.ok) {
+        const body = await r.json();
+        fetchedText = body?.text || "";
+        fetchedHtml = body?.html || "";
+      } else {
+        console.error("Resend receiving fetch failed", r.status, await r.text());
+      }
+    } catch (err) {
+      console.error("Resend receiving fetch threw", err);
+    }
   }
 
-  // Try to get body from payload (data.text / data.html)
-  // Resend inbound webhooks may or may not include body depending on domain config
-  const rawBody = data?.text || data?.html?.replace(/<[^>]+>/g, " ") || "";
+  const rawBody = fetchedText || data?.text || fetchedHtml.replace(/<[^>]+>/g, " ") || data?.html?.replace(/<[^>]+>/g, " ") || "";
   const bodyFromPayload = rawBody
     .replace(/On .+wrote:[\s\S]*/i, "")
     .replace(/_{3,}[\s\S]*/g, "")
@@ -54,7 +87,7 @@ export async function POST(req: NextRequest) {
     subject: subject.replace(/^(Re:\s*)+/i, "Re: ").trim(),
     message,
     status: "new",
-    inbox: "Support",
+    inbox: inboxLabel,
     phone: null,
   }).select("id").single();
 

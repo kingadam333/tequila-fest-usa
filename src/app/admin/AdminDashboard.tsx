@@ -1601,23 +1601,22 @@ function ContactSection({ adminToken }: { adminToken: string }) {
       {activeTab === "inbox" && <>
 
       {/* Inbox tabs */}
-      <div className="grid grid-cols-3 gap-3 mb-6">
+      <div className="grid grid-cols-4 gap-2 mb-6">
         {INBOXES.map(ib => {
           const count = unread(ib.id);
           const total = submissions.filter(s => (s.inbox || "Support") === ib.id).length;
           return (
             <button key={ib.id} onClick={() => { setActiveInbox(ib.id); setSelected(null); setReply(""); }}
-              className={`rounded-2xl p-4 border text-left transition-all cursor-pointer ${activeInbox === ib.id ? "border-opacity-50" : "border-white/10 bg-white/[0.02] hover:border-white/20"}`}
+              className={`rounded-xl px-3 py-2.5 border text-left transition-all cursor-pointer ${activeInbox === ib.id ? "border-opacity-50" : "border-white/10 bg-white/[0.02] hover:border-white/20"}`}
               style={activeInbox === ib.id ? { borderColor: `${ib.color}60`, background: `${ib.color}10` } : {}}>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xl">{ib.icon}</span>
+              <div className="flex items-center gap-2">
+                <span className="text-base">{ib.icon}</span>
+                <p className="font-bold text-sm truncate" style={{ color: activeInbox === ib.id ? ib.color : "rgba(255,248,240,0.7)" }}>{ib.label}</p>
                 {count > 0 && (
-                  <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-red-500 text-white">{count}</span>
+                  <span className="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-red-500 text-white">{count}</span>
                 )}
               </div>
-              <p className="font-bold text-sm" style={{ color: activeInbox === ib.id ? ib.color : "rgba(255,248,240,0.7)" }}>{ib.label}</p>
-              <p className="text-white/30 text-xs mt-0.5">{ib.email}</p>
-              <p className="text-white/20 text-xs mt-1">{total} message{total !== 1 ? "s" : ""}</p>
+              <p className="text-white/20 text-[10px] mt-1">{total} message{total !== 1 ? "s" : ""}</p>
             </button>
           );
         })}
@@ -1809,7 +1808,7 @@ const BLANK_LINE_ITEM = { description: "", quantity: 1, unit_price: 0, total: 0 
 
 function BrandsSection({ adminToken }: { adminToken: string }) {
   const headers = { "x-admin-token": adminToken };
-  const [view, setView] = useState<"contacts" | "invoices" | "inbox">("contacts");
+  const [view, setView] = useState<"inbox" | "contacts" | "invoices">("inbox");
 
   // ── Contacts state
   const [contacts, setContacts] = useState<BrandContact[]>([]);
@@ -1930,7 +1929,7 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
           <p className="text-white/40 text-sm mt-0.5">Tequila brand contacts, invoicing & inbox</p>
         </div>
         <div className="flex gap-2">
-          {(["contacts", "invoices", "inbox"] as const).map(v => (
+          {(["inbox", "contacts", "invoices"] as const).map(v => (
             <button key={v} onClick={() => setView(v)}
               className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all cursor-pointer capitalize ${view === v ? "bg-yellow-500 text-black" : "text-white/40 hover:text-white border border-white/10"}`}>
               {v}

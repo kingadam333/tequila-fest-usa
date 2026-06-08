@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAdminToken, unauthorizedResponse } from "@/lib/adminAuth";
 import { supabaseAdmin } from "@/lib/supabase";
-import { resend, FROM_SUPPORT, FROM_AFFILIATES, FROM_PARTNERS } from "@/lib/resend";
+import { resend, FROM_SUPPORT, FROM_AFFILIATES, FROM_SPONSORS, FROM_VENDORS, FROM_BRANDS } from "@/lib/resend";
 
 const INBOX_FROM: Record<string, string> = {
   Support:    FROM_SUPPORT,
+  Vendors:    FROM_VENDORS,
+  Sponsors:   FROM_SPONSORS,
   Affiliates: FROM_AFFILIATES,
-  Sponsors:   FROM_PARTNERS,
+  Brands:     FROM_BRANDS,
 };
 
 export async function GET(req: NextRequest) {
