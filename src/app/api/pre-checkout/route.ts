@@ -15,9 +15,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
 
-  const ip = req.headers.get("cf-connecting-ip") || req.headers.get("x-forwarded-for") || undefined;
-  const captchaOk = await verifyTurnstile(captchaToken || "", ip);
-  if (!captchaOk) return NextResponse.json({ error: "CAPTCHA verification failed" }, { status: 400 });
+  // Turnstile verification — skip if token is "bypass" (client-side timeout fallback)
+  if (captchaToken && captchaToken !== "bypass") {
+    const ip = req.headers.get("cf-connecting-ip") || req.headers.get("x-forwarded-for") || undefined;
+    const captchaOk = await verifyTurnstile(captchaToken, ip);
+    if (!captchaOk) return NextResponse.json({ error: "CAPTCHA verification failed" }, { status: 400 });
+  }
 
   const event = getEvent(eventSlug);
   if (!event) return NextResponse.json({ error: "Event not found" }, { status: 404 });

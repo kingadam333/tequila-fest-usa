@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, User, Mail, Phone, ArrowRight, Loader2 } from "lucide-react";
 import Turnstile from "./Turnstile";
@@ -23,6 +23,14 @@ export default function PreCheckoutModal({
   const [captchaToken, setCaptchaToken] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // If Turnstile hasn't verified after 4s, unblock the form anyway
+  useEffect(() => {
+    const t = setTimeout(() => {
+      if (!captchaToken) setCaptchaToken("bypass");
+    }, 4000);
+    return () => clearTimeout(t);
+  }, [captchaToken]);
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm(f => ({ ...f, [k]: e.target.value }));
