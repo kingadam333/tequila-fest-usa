@@ -12,30 +12,51 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
   }
 
-  // Resend inbound email schema
-  const fromRaw: string = payload.from || "";
-  const subject: string = payload.subject || "(no subject)";
-  const text: string = payload.text || payload.html?.replace(/<[^>]+>/g, " ").trim() || "";
-
-  // Parse "Name <email>" format
-  const emailMatch = fromRaw.match(/<(.+?)>/);
-  const email = emailMatch ? emailMatch[1] : fromRaw.trim();
-  const name = fromRaw.includes("<") ? fromRaw.split("<")[0].trim().replace(/^"|"$/g, "") : email;
-
-  if (!email || !text) {
+  // Resend inbound webhook: type is "email.received"
+  if (payload.type !== "email.received") {
     return NextResponse.json({ skipped: true });
   }
 
-  // Strip quoted reply history (everything after "On ... wrote:" or "----")
-  const message = text
-    .replace(/On .+wrote:[\s\S]*/i, "")
-    .replace(/_{3,}[\s\S]*/g, "")
-    .replace(/From:[\s\S]*/m, "")
-    .trim();
+  const data = payload.data;
+  const emailId: string = data?.email_id;
+  const fromRaw: string = data?.from || "";
+  const subject: string = data?.subject || "(no subject)";
+  const to: string = data?.to?.[0] || "";
+
+  // Only handle emails sent to help@ — ignore other addresses on the domain
+  if (!to.startsWith("help@")) {
+    return NextResponse.json({ skipped: "not a help@ email" });
+  }
+
+  // Fetch the full email content from Resend API (body not included in webhook)
+  let message = "";
+  try {
+    const emailRes = await fetch(`https://api.resend.com/emails/${emailId}`, {
+      headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}` },
+    });
+    const emailData = await emailRes.json();
+    const raw = emailData.text || emailData.html?.replace(/<[^>]+>/g, " ") || "";
+
+    // Strip quoted reply history
+    message = raw
+      .replace(/On .+wrote:[\s\S]*/i, "")
+      .replace(/_{3,}[\s\S]*/g, "")
+      .replace(/From:[\s\S]*/m, "")
+      .trim();
+  } catch (err) {
+    console.error("Failed to fetch email body:", err);
+  }
 
   if (!message) {
-    return NextResponse.json({ skipped: "empty after stripping quotes" });
+    return NextResponse.json({ skipped: "empty body" });
   }
+
+  // Parse "Name <email>" from address
+  const emailMatch = fromRaw.match(/<(.+?)>/);
+  const email = emailMatch ? emailMatch[1] : fromRaw.trim();
+  const name = fromRaw.includes("<")
+    ? fromRaw.split("<")[0].trim().replace(/^"|"$/g, "")
+    : email;
 
   const db = supabaseAdmin as any;
 
@@ -51,10 +72,11 @@ export async function POST(req: NextRequest) {
   }).select("id").single();
 
   if (!inserted?.id) {
+    console.error("DB insert failed for inbound email from", email);
     return NextResponse.json({ error: "DB insert failed" }, { status: 500 });
   }
 
-  // Run AI inline
+  // Run AI
   try {
     const { data: orders } = await db
       .from("ticket_orders")
@@ -78,7 +100,6 @@ export async function POST(req: NextRequest) {
         subject: subject.startsWith("Re:") ? subject : `Re: ${subject}`,
         html: buildReplyHtml(name, result.reply),
       });
-
       await db.from("contact_submissions").update({
         status: "auto-replied",
         admin_reply: result.reply,
@@ -92,7 +113,6 @@ export async function POST(req: NextRequest) {
         subject: `Open Ticket in Tequila Fest Inbox — ${subject}`,
         html: buildEscalationHtml(name, email, subject, message, orderInfo),
       });
-
       await db.from("contact_submissions").update({
         status: "needs-review",
         ai_handled: false,
@@ -100,7 +120,6 @@ export async function POST(req: NextRequest) {
     }
   } catch (err) {
     console.error("AI inbox error on inbound email:", err);
-    // Fallback: escalate so nothing is dropped
     try {
       await resend.emails.send({
         from: FROM_SUPPORT,
