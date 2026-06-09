@@ -197,6 +197,15 @@ export async function POST(req: NextRequest) {
         replied_at: new Date().toISOString(),
         ai_handled: true,
       }).eq("id", inserted.id);
+
+      await db.from("contact_replies").insert({
+        submission_id: inserted.id,
+        direction: "outbound",
+        sent_by: "ai",
+        from_email: "help@mail.tequilafestusa.com",
+        from_name: "AI Assistant",
+        body: result.reply,
+      });
     } else {
       await resend.emails.send({
         from: FROM_SUPPORT,

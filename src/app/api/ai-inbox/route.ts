@@ -54,6 +54,15 @@ export async function POST(req: NextRequest) {
       ai_handled: true,
     }).eq("id", submissionId);
 
+    await db.from("contact_replies").insert({
+      submission_id: submissionId,
+      direction: "outbound",
+      sent_by: "ai",
+      from_email: "help@mail.tequilafestusa.com",
+      from_name: "AI Assistant",
+      body: result.reply,
+    });
+
     return NextResponse.json({ handled: true, reply: result.reply });
   } else {
     try {

@@ -1459,10 +1459,22 @@ function CheckInSection() {
   );
 }
 
+interface ContactReply {
+  id: string;
+  submission_id: string;
+  direction: "inbound" | "outbound";
+  sent_by: "customer" | "admin" | "ai";
+  from_email?: string;
+  from_name?: string;
+  body: string;
+  created_at: string;
+}
+
 interface ContactSubmission {
   id: string; name: string; email: string; subject: string;
   message: string; status: string; created_at: string; admin_reply?: string;
   inbox?: string;
+  replies?: ContactReply[];
 }
 
 const INBOXES = [
@@ -1558,8 +1570,19 @@ function ContactSection({ adminToken }: { adminToken: string }) {
       });
       if (res.ok) {
         setSent(true);
-        setSubmissions(prev => prev.map(s => s.id === selected.id ? { ...s, status: "replied", admin_reply: reply, ai_handled: false } as any : s));
-        setSelected(s => s ? ({ ...s, status: "replied", admin_reply: reply, ai_handled: false } as any) : s);
+        const newReply: ContactReply = {
+          id: `local-${Date.now()}`,
+          submission_id: selected.id,
+          direction: "outbound",
+          sent_by: "admin",
+          from_email: inbox.email,
+          from_name: "Admin",
+          body: reply,
+          created_at: new Date().toISOString(),
+        };
+        const append = (s: ContactSubmission | null) => s ? ({ ...s, status: "replied", admin_reply: reply, ai_handled: false, replies: [...(s.replies || []), newReply] } as any) : s;
+        setSubmissions(prev => prev.map(s => s.id === selected.id ? append(s) as ContactSubmission : s));
+        setSelected(s => append(s));
         setTimeout(() => { setSent(false); setReply(""); }, 2500);
       }
     } catch { /* ignore */ }
@@ -1728,13 +1751,34 @@ function ContactSection({ adminToken }: { adminToken: string }) {
                 )}
                 <p className="text-white/40 text-xs">{selected.email} · {new Date(selected.created_at).toLocaleDateString()}</p>
                 <p className="text-sm font-semibold mt-2" style={{ color: inbox.color }}>{selected.subject}</p>
-                <p className="text-white/60 text-sm mt-2 leading-relaxed">{selected.message}</p>
-                {selected.admin_reply && (
-                  <div className={`mt-3 p-3 rounded-xl border ${(selected as any).ai_handled ? "bg-blue-900/20 border-blue-500/20" : "bg-green-900/20 border-green-500/20"}`}>
-                    <p className={`text-xs font-semibold mb-1 ${(selected as any).ai_handled ? "text-blue-400" : "text-green-400"}`}>
-                      {(selected as any).ai_handled ? "✨ Auto-replied by AI:" : "Previous reply sent:"}
-                    </p>
-                    <p className="text-white/50 text-xs">{selected.admin_reply}</p>
+                <p className="text-white/60 text-sm mt-2 leading-relaxed whitespace-pre-wrap">{selected.message}</p>
+                {(selected.replies && selected.replies.length > 0) && (
+                  <div className="mt-4 space-y-3">
+                    {selected.replies.map(rep => {
+                      const isAI = rep.sent_by === "ai";
+                      const isAdmin = rep.sent_by === "admin";
+                      const isCustomer = rep.sent_by === "customer";
+                      const tone = isAI
+                        ? { bg: "bg-blue-900/20", border: "border-blue-500/20", label: "text-blue-400", title: "✨ Auto-replied by AI" }
+                        : isAdmin
+                          ? { bg: "bg-green-900/20", border: "border-green-500/20", label: "text-green-400", title: "You replied" }
+                          : { bg: "bg-white/[0.03]", border: "border-white/10", label: "text-white/60", title: `${rep.from_name || selected.name} replied` };
+                      return (
+                        <div key={rep.id} className={`p-3 rounded-xl border ${tone.bg} ${tone.border}`}>
+                          <p className={`text-xs font-semibold mb-1 ${tone.label}`}>
+                            {tone.title} <span className="text-white/30 font-normal">· {new Date(rep.created_at).toLocaleString()}</span>
+                          </p>
+                          <p className="text-white/70 text-xs whitespace-pre-wrap leading-relaxed">{rep.body}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                {/* Backward-compat: if there's an admin_reply but no replies[] (shouldn't happen post-backfill, but just in case) */}
+                {(!selected.replies || selected.replies.length === 0) && selected.admin_reply && (
+                  <div className="mt-3 p-3 rounded-xl border bg-white/[0.03] border-white/10">
+                    <p className="text-xs font-semibold mb-1 text-white/60">Previous reply</p>
+                    <p className="text-white/70 text-xs whitespace-pre-wrap">{selected.admin_reply}</p>
                   </div>
                 )}
                 {selected.status === "needs-review" && (
@@ -2105,8 +2149,19 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
       });
       if (res.ok) {
         const replyText = reply;
-        setBrandMessages(prev => prev.map(m => m.id === selectedMsg.id ? ({ ...m, status: "replied", admin_reply: replyText } as any) : m));
-        setSelectedMsg(m => m ? ({ ...m, status: "replied", admin_reply: replyText } as any) : m);
+        const newReply: ContactReply = {
+          id: `local-${Date.now()}`,
+          submission_id: selectedMsg.id,
+          direction: "outbound",
+          sent_by: "admin",
+          from_email: "brands@mail.tequilafestusa.com",
+          from_name: "Admin",
+          body: replyText,
+          created_at: new Date().toISOString(),
+        };
+        const append = (s: ContactSubmission | null) => s ? ({ ...s, status: "replied", admin_reply: replyText, ai_handled: false, replies: [...(s.replies || []), newReply] } as any) : s;
+        setBrandMessages(prev => prev.map(m => m.id === selectedMsg.id ? append(m) as ContactSubmission : m));
+        setSelectedMsg(m => append(m));
         setReply("");
       }
     } catch { /* ignore */ }
@@ -2352,10 +2407,31 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
                     <p className="text-white/40 text-xs">{selectedMsg.email} · {new Date(selectedMsg.created_at).toLocaleDateString()}</p>
                     <p className="text-sm font-semibold mt-2 text-yellow-400">{selectedMsg.subject}</p>
                     <p className="text-white/60 text-sm mt-2 leading-relaxed whitespace-pre-wrap">{selectedMsg.message}</p>
-                    {selectedMsg.admin_reply && (
-                      <div className="mt-3 p-3 rounded-xl border bg-green-900/20 border-green-500/20">
-                        <p className="text-xs font-semibold mb-1 text-green-400">Previous reply sent:</p>
-                        <p className="text-white/50 text-xs whitespace-pre-wrap">{selectedMsg.admin_reply}</p>
+                    {(selectedMsg.replies && selectedMsg.replies.length > 0) && (
+                      <div className="mt-4 space-y-3">
+                        {selectedMsg.replies.map(rep => {
+                          const isAdmin = rep.sent_by === "admin";
+                          const isAI = rep.sent_by === "ai";
+                          const tone = isAI
+                            ? { bg: "bg-blue-900/20", border: "border-blue-500/20", label: "text-blue-400", title: "✨ Auto-replied by AI" }
+                            : isAdmin
+                              ? { bg: "bg-green-900/20", border: "border-green-500/20", label: "text-green-400", title: "You replied" }
+                              : { bg: "bg-white/[0.03]", border: "border-white/10", label: "text-white/60", title: `${rep.from_name || selectedMsg.name} replied` };
+                          return (
+                            <div key={rep.id} className={`p-3 rounded-xl border ${tone.bg} ${tone.border}`}>
+                              <p className={`text-xs font-semibold mb-1 ${tone.label}`}>
+                                {tone.title} <span className="text-white/30 font-normal">· {new Date(rep.created_at).toLocaleString()}</span>
+                              </p>
+                              <p className="text-white/70 text-xs whitespace-pre-wrap leading-relaxed">{rep.body}</p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                    {(!selectedMsg.replies || selectedMsg.replies.length === 0) && selectedMsg.admin_reply && (
+                      <div className="mt-3 p-3 rounded-xl border bg-white/[0.03] border-white/10">
+                        <p className="text-xs font-semibold mb-1 text-white/60">Previous reply</p>
+                        <p className="text-white/70 text-xs whitespace-pre-wrap">{selectedMsg.admin_reply}</p>
                       </div>
                     )}
                   </div>

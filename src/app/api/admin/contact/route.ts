@@ -20,7 +20,22 @@ export async function GET(req: NextRequest) {
     .order("created_at", { ascending: false })
     .limit(200);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ submissions: data || [] });
+  // Attach full reply thread per submission
+  const submissions = data || [];
+  const ids = submissions.map((s: any) => s.id);
+  let replies: any[] = [];
+  if (ids.length) {
+    const { data: r } = await db
+      .from("contact_replies")
+      .select("id, submission_id, direction, sent_by, from_email, from_name, body, created_at")
+      .in("submission_id", ids)
+      .order("created_at", { ascending: true });
+    replies = r || [];
+  }
+  const byId: Record<string, any[]> = {};
+  for (const rep of replies) (byId[rep.submission_id] ||= []).push(rep);
+  for (const s of submissions) s.replies = byId[s.id] || [];
+  return NextResponse.json({ submissions });
 }
 
 export async function POST(req: NextRequest) {
@@ -68,14 +83,24 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Failed to send email" }, { status: 500 });
   }
 
-  // Update submission status in Supabase
+  // Update submission status + log reply in Supabase
   if (submissionId) {
     const db = supabaseAdmin as any;
     await db.from("contact_submissions").update({
       status: "replied",
-      admin_reply: message,
+      admin_reply: message, // kept for backward compat; full thread lives in contact_replies
       replied_at: new Date().toISOString(),
+      ai_handled: false,
     }).eq("id", submissionId);
+
+    await db.from("contact_replies").insert({
+      submission_id: submissionId,
+      direction: "outbound",
+      sent_by: "admin",
+      from_email: fromEmail.match(/<(.+?)>/)?.[1] || fromEmail,
+      from_name: "Admin",
+      body: message,
+    });
   }
 
   return NextResponse.json({ success: true });
