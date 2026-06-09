@@ -1501,6 +1501,37 @@ function ContactSection({ adminToken }: { adminToken: string }) {
   const [forwarding, setForwarding] = useState(false);
   const [forwardStatus, setForwardStatus] = useState("");
 
+  const [backfillOpen, setBackfillOpen] = useState(false);
+  const [backfillSender, setBackfillSender] = useState<"admin" | "ai" | "customer">("ai");
+  const [backfillBody, setBackfillBody] = useState("");
+  const [backfillSaving, setBackfillSaving] = useState(false);
+  const [backfillStatus, setBackfillStatus] = useState("");
+
+  const handleBackfillReply = async () => {
+    if (!selected || !backfillBody.trim()) return;
+    setBackfillSaving(true); setBackfillStatus("");
+    try {
+      const res = await fetch("/api/admin/contact/add-reply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-token": adminToken },
+        body: JSON.stringify({ submissionId: selected.id, sent_by: backfillSender, body: backfillBody }),
+      });
+      const data = await res.json();
+      if (res.ok && data.reply) {
+        const newReply = data.reply as ContactReply;
+        const append = (s: ContactSubmission | null) => s ? ({ ...s, replies: [...(s.replies || []), newReply] } as ContactSubmission) : s;
+        setSubmissions(prev => prev.map(s => s.id === selected.id ? append(s) as ContactSubmission : s));
+        setSelected(s => append(s));
+        setBackfillBody("");
+        setBackfillStatus("Added to thread");
+        setTimeout(() => { setBackfillOpen(false); setBackfillStatus(""); }, 900);
+      } else {
+        setBackfillStatus(`Error: ${data.error || "failed"}`);
+      }
+    } catch (e: any) { setBackfillStatus(`Error: ${e?.message || "failed"}`); }
+    setBackfillSaving(false);
+  };
+
   const handleForward = async () => {
     if (!selected || !forwardTo.trim()) return;
     setForwarding(true); setForwardStatus("");
@@ -1781,6 +1812,39 @@ function ContactSection({ adminToken }: { adminToken: string }) {
                     <p className="text-white/70 text-xs whitespace-pre-wrap">{selected.admin_reply}</p>
                   </div>
                 )}
+                {/* Add historical / missing reply to thread (paste from Resend or email) */}
+                <div className="mt-3">
+                  <button onClick={() => { setBackfillOpen(o => !o); setBackfillStatus(""); }}
+                    className="text-xs text-white/40 hover:text-yellow-400 cursor-pointer">
+                    {backfillOpen ? "− Hide" : "+ Add missing reply to thread"}
+                  </button>
+                  {backfillOpen && (
+                    <div className="mt-2 p-3 rounded-xl border border-white/10 bg-white/[0.03] space-y-2">
+                      <p className="text-white/40 text-xs">Paste a reply that was sent but isn't showing in the thread (e.g. from Resend or your sent folder).</p>
+                      <div className="flex items-center gap-2">
+                        <span className="text-white/40 text-xs">Sent by:</span>
+                        {(["ai", "admin", "customer"] as const).map(s => (
+                          <button key={s} onClick={() => setBackfillSender(s)}
+                            className={`text-xs px-2 py-1 rounded-md border capitalize ${backfillSender === s ? "border-yellow-500/60 text-yellow-400 bg-yellow-500/10" : "border-white/10 text-white/50 hover:text-white"}`}>
+                            {s === "ai" ? "✨ AI" : s === "admin" ? "You" : "Customer"}
+                          </button>
+                        ))}
+                      </div>
+                      <textarea value={backfillBody} onChange={e => setBackfillBody(e.target.value)} rows={5}
+                        placeholder="Paste the reply text…"
+                        className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-yellow-500/40 resize-y" />
+                      <div className="flex items-center gap-2">
+                        <button onClick={handleBackfillReply} disabled={backfillSaving || !backfillBody.trim()}
+                          className="px-3 py-1.5 bg-yellow-500 hover:bg-yellow-400 text-black text-xs font-semibold rounded-lg cursor-pointer disabled:opacity-40">
+                          {backfillSaving ? "Saving…" : "Add to Thread"}
+                        </button>
+                        <button onClick={() => { setBackfillOpen(false); setBackfillBody(""); }} className="text-xs text-white/40 hover:text-white cursor-pointer">Cancel</button>
+                        {backfillStatus && <span className="text-xs text-white/60 ml-auto">{backfillStatus}</span>}
+                      </div>
+                      <p className="text-white/30 text-[10px]">This does not send any email — it only records the reply on the thread.</p>
+                    </div>
+                  )}
+                </div>
                 {selected.status === "needs-review" && (
                   <div className="mt-3 p-3 bg-orange-900/20 border border-orange-500/30 rounded-xl">
                     <p className="text-orange-400 text-xs font-semibold">⚠️ AI could not answer — needs your reply</p>
@@ -1971,6 +2035,37 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
   const [bForwardNote, setBForwardNote] = useState("");
   const [bForwarding, setBForwarding] = useState(false);
   const [bForwardStatus, setBForwardStatus] = useState("");
+
+  const [bBackfillOpen, setBBackfillOpen] = useState(false);
+  const [bBackfillSender, setBBackfillSender] = useState<"admin" | "ai" | "customer">("admin");
+  const [bBackfillBody, setBBackfillBody] = useState("");
+  const [bBackfillSaving, setBBackfillSaving] = useState(false);
+  const [bBackfillStatus, setBBackfillStatus] = useState("");
+
+  const handleBackfillBrandReply = async () => {
+    if (!selectedMsg || !bBackfillBody.trim()) return;
+    setBBackfillSaving(true); setBBackfillStatus("");
+    try {
+      const res = await fetch("/api/admin/contact/add-reply", {
+        method: "POST",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify({ submissionId: selectedMsg.id, sent_by: bBackfillSender, body: bBackfillBody }),
+      });
+      const data = await res.json();
+      if (res.ok && data.reply) {
+        const newReply = data.reply as ContactReply;
+        const append = (s: ContactSubmission | null) => s ? ({ ...s, replies: [...(s.replies || []), newReply] } as ContactSubmission) : s;
+        setBrandMessages(prev => prev.map(m => m.id === selectedMsg.id ? append(m) as ContactSubmission : m));
+        setSelectedMsg(m => append(m));
+        setBBackfillBody("");
+        setBBackfillStatus("Added to thread");
+        setTimeout(() => { setBBackfillOpen(false); setBBackfillStatus(""); }, 900);
+      } else {
+        setBBackfillStatus(`Error: ${data.error || "failed"}`);
+      }
+    } catch (e: any) { setBBackfillStatus(`Error: ${e?.message || "failed"}`); }
+    setBBackfillSaving(false);
+  };
 
   const deleteBrandMsg = async (id: string) => {
     if (!confirm("Delete this message?")) return;
@@ -2443,6 +2538,39 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
                         <p className="text-white/70 text-xs whitespace-pre-wrap">{selectedMsg.admin_reply}</p>
                       </div>
                     )}
+                    {/* Add historical / missing reply to thread (paste from Resend or email) */}
+                    <div className="mt-3">
+                      <button onClick={() => { setBBackfillOpen(o => !o); setBBackfillStatus(""); }}
+                        className="text-xs text-white/40 hover:text-yellow-400 cursor-pointer">
+                        {bBackfillOpen ? "− Hide" : "+ Add missing reply to thread"}
+                      </button>
+                      {bBackfillOpen && (
+                        <div className="mt-2 p-3 rounded-xl border border-white/10 bg-white/[0.03] space-y-2">
+                          <p className="text-white/40 text-xs">Paste a reply that was sent but isn't showing in the thread (e.g. from Resend or your sent folder).</p>
+                          <div className="flex items-center gap-2">
+                            <span className="text-white/40 text-xs">Sent by:</span>
+                            {(["admin", "ai", "customer"] as const).map(s => (
+                              <button key={s} onClick={() => setBBackfillSender(s)}
+                                className={`text-xs px-2 py-1 rounded-md border capitalize ${bBackfillSender === s ? "border-yellow-500/60 text-yellow-400 bg-yellow-500/10" : "border-white/10 text-white/50 hover:text-white"}`}>
+                                {s === "ai" ? "✨ AI" : s === "admin" ? "You" : "Customer"}
+                              </button>
+                            ))}
+                          </div>
+                          <textarea value={bBackfillBody} onChange={e => setBBackfillBody(e.target.value)} rows={5}
+                            placeholder="Paste the reply text…"
+                            className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-yellow-500/40 resize-y" />
+                          <div className="flex items-center gap-2">
+                            <button onClick={handleBackfillBrandReply} disabled={bBackfillSaving || !bBackfillBody.trim()}
+                              className="px-3 py-1.5 bg-yellow-500 hover:bg-yellow-400 text-black text-xs font-semibold rounded-lg cursor-pointer disabled:opacity-40">
+                              {bBackfillSaving ? "Saving…" : "Add to Thread"}
+                            </button>
+                            <button onClick={() => { setBBackfillOpen(false); setBBackfillBody(""); }} className="text-xs text-white/40 hover:text-white cursor-pointer">Cancel</button>
+                            {bBackfillStatus && <span className="text-xs text-white/60 ml-auto">{bBackfillStatus}</span>}
+                          </div>
+                          <p className="text-white/30 text-[10px]">This does not send any email — it only records the reply on the thread.</p>
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <div className="flex items-center gap-2 mb-3">
                     <span className="text-white/30 text-xs">Replying from:</span>
