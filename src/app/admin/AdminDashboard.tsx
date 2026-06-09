@@ -2090,10 +2090,27 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
   const sendReply = async () => {
     if (!selectedMsg || !reply.trim()) return;
     setSending(true);
-    await fetch("/api/admin/contact", { method: "POST", headers: { ...headers, "Content-Type": "application/json" }, body: JSON.stringify({ id: selectedMsg.id, reply, from: "brands@mail.tequilafestusa.com" }) });
-    setReply("");
+    try {
+      const res = await fetch("/api/admin/contact", {
+        method: "POST",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          submissionId: selectedMsg.id,
+          replyTo: selectedMsg.email,
+          replyToName: selectedMsg.name,
+          subject: `Re: ${selectedMsg.subject}`,
+          message: reply,
+          inbox: "Brands",
+        }),
+      });
+      if (res.ok) {
+        const replyText = reply;
+        setBrandMessages(prev => prev.map(m => m.id === selectedMsg.id ? ({ ...m, status: "replied", admin_reply: replyText } as any) : m));
+        setSelectedMsg(m => m ? ({ ...m, status: "replied", admin_reply: replyText } as any) : m);
+        setReply("");
+      }
+    } catch { /* ignore */ }
     setSending(false);
-    fetchInbox();
   };
 
   const invoiceTotal = invoiceForm.line_items.reduce((s, i) => s + i.total, 0);
@@ -2242,81 +2259,128 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
 
       {/* ── INBOX ── */}
       {view === "inbox" && (
-        <div className="grid grid-cols-1 lg:grid-cols-[300px,1fr] gap-5">
-          <div className="space-y-2">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-white/40 text-xs uppercase tracking-wider">brands@mail.tequilafestusa.com</p>
-              <button onClick={openCompose} className="flex items-center gap-1.5 px-3 py-1.5 bg-yellow-500 hover:bg-yellow-400 text-black text-xs font-semibold rounded-lg transition-all cursor-pointer">
-                <Plus size={13} /> Compose
-              </button>
+        <>
+          {/* Header bar — mirror the main inbox "cards row" with a single
+              brand inbox tile and the Compose button. */}
+          <div className="grid grid-cols-1 sm:grid-cols-[1fr,auto] gap-3 mb-6 items-center">
+            <div className="rounded-xl px-3 py-2.5 border border-yellow-500/40 bg-yellow-500/10 flex items-center gap-2">
+              <span className="text-base">🥃</span>
+              <p className="font-bold text-sm text-yellow-400">Brands</p>
+              <p className="text-white/30 text-xs ml-2">brands@mail.tequilafestusa.com</p>
+              <p className="text-white/20 text-xs ml-auto">{brandMessages.length} message{brandMessages.length !== 1 ? "s" : ""}</p>
             </div>
-            {loadingInbox ? <div className="text-white/30 text-sm py-6 text-center">Loading…</div> : brandMessages.length === 0 ? (
-              <div className="text-white/30 text-sm py-6 text-center">No messages yet.</div>
-            ) : brandMessages.map(msg => (
-              <button key={msg.id} onClick={() => { setSelectedMsg(msg); setReply(""); }}
-                className={`w-full text-left p-4 rounded-xl border transition-all cursor-pointer ${selectedMsg?.id === msg.id ? "border-yellow-500/40 bg-yellow-500/5" : "border-white/10 bg-white/[0.02] hover:border-white/20"}`}>
-                <p className="font-semibold text-sm text-white truncate">{msg.name}</p>
-                <p className="text-white/40 text-xs truncate">{msg.subject}</p>
-                <p className="text-white/25 text-xs mt-1">{new Date(msg.created_at).toLocaleDateString()}</p>
-              </button>
-            ))}
+            <button onClick={openCompose} className="flex items-center gap-1.5 px-4 py-2.5 bg-yellow-500 hover:bg-yellow-400 text-black text-sm font-semibold rounded-xl transition-all cursor-pointer whitespace-nowrap">
+              <Plus size={14} /> Compose
+            </button>
           </div>
-          <div>
-            {selectedMsg ? (
-              <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-6 space-y-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0">
-                    <p className="font-semibold text-white text-lg">{selectedMsg.subject}</p>
-                    <p className="text-white/40 text-sm">{selectedMsg.name} · {selectedMsg.email}</p>
-                  </div>
-                  <div className="flex items-center gap-3 flex-shrink-0">
-                    <button onClick={() => { setBForwardOpen(o => !o); setBForwardStatus(""); }} className="flex items-center gap-1 text-xs text-white/50 hover:text-yellow-400 cursor-pointer">
-                      <Send size={12} /> Forward
-                    </button>
-                    <button onClick={() => deleteBrandMsg(selectedMsg.id)} className="flex items-center gap-1 text-xs text-red-400/60 hover:text-red-400 cursor-pointer">
-                      <Trash2 size={12} /> Delete
-                    </button>
-                  </div>
+
+          {/* Messages + reply — matches main inbox 2-column layout. */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <div className="space-y-2 overflow-y-auto max-h-[500px]">
+              {loadingInbox ? (
+                <div className="text-center py-10 text-white/25 border border-dashed border-white/10 rounded-2xl text-sm">Loading…</div>
+              ) : brandMessages.length === 0 ? (
+                <div className="text-center py-10 text-white/25 border border-dashed border-white/10 rounded-2xl">
+                  <MessageSquare size={28} className="mx-auto mb-2 opacity-30" />
+                  <p className="text-sm">No brand messages yet.</p>
                 </div>
-                {bForwardOpen && (
-                  <div className="p-3 bg-white/[0.03] border border-white/10 rounded-xl space-y-2">
-                    <input value={bForwardTo} onChange={e => setBForwardTo(e.target.value)} placeholder="forward to (email, comma-separated)"
-                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-yellow-500/40" />
-                    <div className="flex items-center gap-2">
-                      <input value={bForwardCc} onChange={e => setBForwardCc(e.target.value)} placeholder="cc (optional, comma-separated)"
-                        className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-yellow-500/40" />
-                      <button type="button" onClick={() => setBForwardCc(cc => {
-                        const tre = "tre.santamaria@condadotacos.com";
-                        const list = cc.split(",").map(s => s.trim()).filter(Boolean);
-                        return list.includes(tre) ? cc : [...list, tre].join(", ");
-                      })} className="text-xs text-yellow-400 hover:text-yellow-300 cursor-pointer whitespace-nowrap">+ Tre</button>
-                    </div>
-                    <textarea value={bForwardNote} onChange={e => setBForwardNote(e.target.value)} rows={2} placeholder="optional note above the forwarded message"
-                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-yellow-500/40 resize-y" />
-                    <div className="flex items-center gap-2">
-                      <button onClick={forwardBrandMsg} disabled={bForwarding || !bForwardTo.trim()}
-                        className="px-3 py-1.5 bg-yellow-500 hover:bg-yellow-400 text-black text-xs font-semibold rounded-lg cursor-pointer disabled:opacity-40">
-                        {bForwarding ? "Sending…" : "Send Forward"}
+              ) : brandMessages.map(msg => (
+                <button key={msg.id} onClick={() => { setSelectedMsg(msg); setReply(""); }}
+                  className={`w-full text-left bg-white/[0.03] border rounded-2xl px-4 py-3.5 transition-all cursor-pointer ${selectedMsg?.id === msg.id ? "border-yellow-500/40 bg-yellow-500/5" : msg.status === "needs-review" ? "border-orange-500/30 bg-orange-500/5 hover:border-orange-500/50" : "border-white/10 hover:border-white/20"}`}>
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-white font-semibold text-sm">{msg.name}</p>
+                    <div className="flex items-center gap-1.5">
+                      <StatusBadge status={msg.status} />
+                      <button
+                        onClick={e => { e.stopPropagation(); deleteBrandMsg(msg.id); }}
+                        className="p-1 rounded-lg bg-red-500/10 hover:bg-red-500/25 border border-red-500/20 text-red-400 transition-all cursor-pointer"
+                        title="Delete"
+                      >
+                        <Trash2 size={11} />
                       </button>
-                      <button onClick={() => { setBForwardOpen(false); setBForwardTo(""); setBForwardNote(""); }} className="text-xs text-white/40 hover:text-white cursor-pointer">Cancel</button>
-                      {bForwardStatus && <span className="text-xs text-white/60 ml-auto">{bForwardStatus}</span>}
                     </div>
                   </div>
-                )}
-                <p className="text-white/70 text-sm whitespace-pre-wrap">{selectedMsg.message}</p>
-                <div className="border-t border-white/10 pt-4 space-y-3">
-                  <textarea value={reply} onChange={e => setReply(e.target.value)} placeholder="Write a reply…" rows={4}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-white placeholder-white/30 focus:outline-none focus:border-yellow-500/50 resize-none" />
-                  <button onClick={sendReply} disabled={sending || !reply.trim()} className="flex items-center gap-2 px-4 py-2 bg-yellow-500 hover:bg-yellow-400 text-black text-sm font-semibold rounded-xl transition-all cursor-pointer disabled:opacity-40">
-                    <Send size={14} /> {sending ? "Sending…" : "Send Reply"}
+                  <p className="text-white/50 text-xs">{msg.subject}</p>
+                  <p className="text-white/30 text-xs mt-0.5 truncate">{msg.message}</p>
+                  <p className="text-white/20 text-xs mt-1">{new Date(msg.created_at).toLocaleDateString()}</p>
+                </button>
+              ))}
+            </div>
+
+            <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-5">
+              {selectedMsg ? (
+                <>
+                  <div className="mb-4 pb-4 border-b border-white/10">
+                    <div className="flex items-start justify-between">
+                      <p className="text-white font-bold">{selectedMsg.name}</p>
+                      <div className="flex items-center gap-3">
+                        <button onClick={() => { setBForwardOpen(o => !o); setBForwardStatus(""); }}
+                          className="flex items-center gap-1 text-xs text-white/50 hover:text-yellow-400 transition-all cursor-pointer">
+                          <Send size={12} /> Forward
+                        </button>
+                        <button onClick={() => deleteBrandMsg(selectedMsg.id)}
+                          className="flex items-center gap-1 text-xs text-red-400/60 hover:text-red-400 transition-all cursor-pointer">
+                          <Trash2 size={12} /> Delete
+                        </button>
+                      </div>
+                    </div>
+                    {bForwardOpen && (
+                      <div className="mt-3 p-3 bg-white/[0.03] border border-white/10 rounded-xl space-y-2">
+                        <input value={bForwardTo} onChange={e => setBForwardTo(e.target.value)} placeholder="forward to (email, comma-separated)"
+                          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-yellow-500/40" />
+                        <div className="flex items-center gap-2">
+                          <input value={bForwardCc} onChange={e => setBForwardCc(e.target.value)} placeholder="cc (optional, comma-separated)"
+                            className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-yellow-500/40" />
+                          <button type="button" onClick={() => setBForwardCc(cc => {
+                            const tre = "tre.santamaria@condadotacos.com";
+                            const list = cc.split(",").map(s => s.trim()).filter(Boolean);
+                            return list.includes(tre) ? cc : [...list, tre].join(", ");
+                          })} className="text-xs text-yellow-400 hover:text-yellow-300 cursor-pointer whitespace-nowrap">+ Tre</button>
+                        </div>
+                        <textarea value={bForwardNote} onChange={e => setBForwardNote(e.target.value)} rows={2} placeholder="optional note above the forwarded message"
+                          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-yellow-500/40 resize-y" />
+                        <div className="flex items-center gap-2">
+                          <button onClick={forwardBrandMsg} disabled={bForwarding || !bForwardTo.trim()}
+                            className="px-3 py-1.5 bg-yellow-500 hover:bg-yellow-400 text-black text-xs font-semibold rounded-lg cursor-pointer disabled:opacity-40">
+                            {bForwarding ? "Sending…" : "Send Forward"}
+                          </button>
+                          <button onClick={() => { setBForwardOpen(false); setBForwardTo(""); setBForwardCc(""); setBForwardNote(""); }} className="text-xs text-white/40 hover:text-white cursor-pointer">Cancel</button>
+                          {bForwardStatus && <span className="text-xs text-white/60 ml-auto">{bForwardStatus}</span>}
+                        </div>
+                      </div>
+                    )}
+                    <p className="text-white/40 text-xs">{selectedMsg.email} · {new Date(selectedMsg.created_at).toLocaleDateString()}</p>
+                    <p className="text-sm font-semibold mt-2 text-yellow-400">{selectedMsg.subject}</p>
+                    <p className="text-white/60 text-sm mt-2 leading-relaxed whitespace-pre-wrap">{selectedMsg.message}</p>
+                    {selectedMsg.admin_reply && (
+                      <div className="mt-3 p-3 rounded-xl border bg-green-900/20 border-green-500/20">
+                        <p className="text-xs font-semibold mb-1 text-green-400">Previous reply sent:</p>
+                        <p className="text-white/50 text-xs whitespace-pre-wrap">{selectedMsg.admin_reply}</p>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-white/30 text-xs">Replying from:</span>
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full border text-yellow-400 border-yellow-500/40">
+                      brands@mail.tequilafestusa.com
+                    </span>
+                  </div>
+                  <textarea value={reply} onChange={e => setReply(e.target.value)} rows={5}
+                    placeholder={`Type your reply to ${selectedMsg.name}...`}
+                    className="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-yellow-500/40 resize-none placeholder-white/30 mb-3" />
+                  <button onClick={sendReply} disabled={sending || !reply.trim()}
+                    className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-50 text-black font-bold text-sm px-5 py-2.5 rounded-xl transition-all cursor-pointer">
+                    {sending ? "Sending..." : <><Send size={13} /> Send Reply</>}
                   </button>
+                </>
+              ) : (
+                <div className="h-full flex items-center justify-center text-white/20 py-10">
+                  <p>Select a message to reply</p>
                 </div>
-              </div>
-            ) : (
-              <div className="flex items-center justify-center h-full text-white/20 text-sm py-20">Select a message to read</div>
-            )}
+              )}
+            </div>
           </div>
-        </div>
+        </>
       )}
 
       {/* ── COMPOSE BROADCAST MODAL ── */}
