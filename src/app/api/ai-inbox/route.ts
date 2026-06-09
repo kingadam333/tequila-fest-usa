@@ -47,13 +47,15 @@ export async function POST(req: NextRequest) {
   }
 
   if (result.confident) {
+    let sentMessageId: string | null = null;
     try {
-      await resend.emails.send({
+      const sendRes = await resend.emails.send({
         from: FROM_SUPPORT,
         to: email,
         subject: `Re: ${subject}`,
         html: buildReplyHtml(name, result.reply),
       });
+      sentMessageId = sendRes?.data?.id || null;
     } catch (err) {
       console.error("Failed to send auto-reply:", err);
     }
@@ -72,6 +74,7 @@ export async function POST(req: NextRequest) {
       from_email: "help@mail.tequilafestusa.com",
       from_name: "AI Assistant",
       body: result.reply,
+      provider_message_id: sentMessageId,
     });
 
     return NextResponse.json({ handled: true, reply: result.reply });

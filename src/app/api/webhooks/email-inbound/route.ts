@@ -43,6 +43,7 @@ export async function POST(req: NextRequest) {
   // Resend can fire the webhook before the body is indexed, so retry once.
   let fetchedText = "";
   let fetchedHtml = "";
+  let fetchedHeaders: Record<string, string> = {};
   const emailId: string | undefined = data?.email_id || data?.id;
   async function fetchReceivedOnce() {
     const r = await fetch(`https://api.resend.com/emails/receiving/${emailId}`, {
@@ -50,7 +51,12 @@ export async function POST(req: NextRequest) {
     });
     if (!r.ok) return { ok: false, status: r.status, msg: await r.text() };
     const body = await r.json();
-    return { ok: true, text: (body?.text || "") as string, html: (body?.html || "") as string };
+    return {
+      ok: true,
+      text: (body?.text || "") as string,
+      html: (body?.html || "") as string,
+      headers: (body?.headers || {}) as Record<string, string>,
+    };
   }
   if (emailId && process.env.RESEND_API_KEY) {
     try {
@@ -60,8 +66,11 @@ export async function POST(req: NextRequest) {
         await new Promise((r) => setTimeout(r, 1500));
         res = await fetchReceivedOnce();
       }
-      if (res.ok) { fetchedText = res.text || ""; fetchedHtml = res.html || ""; }
-      else console.error("Resend receiving fetch failed", res.status, res.msg);
+      if (res.ok) {
+        fetchedText = res.text || "";
+        fetchedHtml = res.html || "";
+        fetchedHeaders = res.headers || {};
+      } else console.error("Resend receiving fetch failed", res.status, res.msg);
     } catch (err) {
       console.error("Resend receiving fetch threw", err);
     }
@@ -117,6 +126,65 @@ export async function POST(req: NextRequest) {
 
   const db = supabaseAdmin as any;
 
+  // ─── Threading: is this a reply to one of our outbound emails? ───────────
+  // We compare the In-Reply-To / References headers (case-insensitive lookup)
+  // against the provider_message_id we stored on outbound contact_replies.
+  // Resend's outbound id appears as a UUID inside the angle-bracketed
+  // Message-ID, so we extract every <...> and every bare UUID and try to
+  // match any of them. If matched, we APPEND to that thread instead of
+  // creating a new submission.
+  function pickHeader(h: Record<string, string>, name: string) {
+    const lower = name.toLowerCase();
+    for (const k of Object.keys(h || {})) if (k.toLowerCase() === lower) return h[k];
+    return "";
+  }
+  const inReplyTo = pickHeader(fetchedHeaders, "in-reply-to");
+  const references = pickHeader(fetchedHeaders, "references");
+  const candidateTokens = `${inReplyTo} ${references}`
+    .match(/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/gi) || [];
+
+  let threadedSubmissionId: string | null = null;
+  if (candidateTokens.length) {
+    const { data: matched } = await db
+      .from("contact_replies")
+      .select("submission_id")
+      .in("provider_message_id", candidateTokens)
+      .order("created_at", { ascending: false })
+      .limit(1);
+    if (matched && matched.length) threadedSubmissionId = matched[0].submission_id;
+  }
+
+  if (threadedSubmissionId) {
+    // Customer reply to an existing thread — append to contact_replies and
+    // bump the parent submission to needs-review so it surfaces in admin.
+    await db.from("contact_replies").insert({
+      submission_id: threadedSubmissionId,
+      direction: "inbound",
+      sent_by: "customer",
+      from_email: email,
+      from_name: name,
+      body: hasBody ? bodyFromPayload : `[Body not captured]\nSubject: ${subject}`,
+    });
+    await db.from("contact_submissions").update({
+      status: "needs-review",
+      ai_handled: false,
+    }).eq("id", threadedSubmissionId);
+
+    // Notify Adam there's a new customer reply on an existing thread (no AI)
+    try {
+      await resend.emails.send({
+        from: FROM_SUPPORT,
+        to: ADMIN_EMAIL,
+        subject: `Customer replied — ${subject}`,
+        text: `${name} <${email}> replied on an existing thread.\n\n${hasBody ? bodyFromPayload : "[Body not captured]"}\n\n— Open in admin: https://www.tequilafestusa.com/admin`,
+      });
+    } catch (err) {
+      console.error("Failed to send threaded-reply notification:", err);
+    }
+    return NextResponse.json({ received: true, note: "threaded into existing submission", submissionId: threadedSubmissionId });
+  }
+
+  // Not a reply we recognize — create a brand-new submission as before.
   const { data: inserted } = await db.from("contact_submissions").insert({
     name,
     email,
@@ -185,7 +253,7 @@ export async function POST(req: NextRequest) {
     const result = await generateAIReply(name, email, subject, message, orderInfo);
 
     if (result.confident) {
-      await resend.emails.send({
+      const sendRes = await resend.emails.send({
         from: FROM_SUPPORT,
         to: email,
         subject: subject.startsWith("Re:") ? subject : `Re: ${subject}`,
@@ -205,6 +273,7 @@ export async function POST(req: NextRequest) {
         from_email: "help@mail.tequilafestusa.com",
         from_name: "AI Assistant",
         body: result.reply,
+        provider_message_id: sendRes?.data?.id || null,
       });
     } else {
       await resend.emails.send({

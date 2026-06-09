@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
       const result = await generateAIReply(name, email, subject, message, orderInfo);
 
       if (result.confident) {
-        await resend.emails.send({
+        const sendRes = await resend.emails.send({
           from: FROM_SUPPORT,
           to: email,
           subject: `Re: ${subject}`,
@@ -67,6 +67,7 @@ export async function POST(req: NextRequest) {
           from_email: "help@mail.tequilafestusa.com",
           from_name: "AI Assistant",
           body: result.reply,
+          provider_message_id: sendRes?.data?.id || null,
         });
       } else {
         await resend.emails.send({

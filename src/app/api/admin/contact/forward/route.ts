@@ -64,6 +64,18 @@ ${noteHtml}
       text,
     });
     if (r.error) return NextResponse.json({ error: r.error.message }, { status: 500 });
+
+    // Log forward as an outbound entry on the thread so we can match
+    // replies back to it via In-Reply-To.
+    await db.from("contact_replies").insert({
+      submission_id: id,
+      direction: "outbound",
+      sent_by: "admin",
+      from_email: fromEmail.match(/<(.+?)>/)?.[1] || fromEmail,
+      from_name: "Forwarded",
+      body: `[Forwarded to ${String(to)}]${note?.trim() ? `\n\n${note.trim()}` : ""}`,
+      provider_message_id: r.data?.id || null,
+    });
   } catch (err: any) {
     return NextResponse.json({ error: err?.message || "send failed" }, { status: 500 });
   }

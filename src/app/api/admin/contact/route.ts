@@ -49,8 +49,9 @@ export async function POST(req: NextRequest) {
   }
 
   // Send reply email
+  let sentMessageId: string | null = null;
   try {
-    await resend.emails.send({
+    const sendRes = await resend.emails.send({
       from: fromEmail,
       to: replyTo,
       subject: subject || `Re: Your message to Tequila Fest USA`,
@@ -78,6 +79,7 @@ export async function POST(req: NextRequest) {
 </body>
 </html>`,
     });
+    sentMessageId = sendRes?.data?.id || null;
   } catch (err) {
     console.error("Failed to send reply:", err);
     return NextResponse.json({ error: "Failed to send email" }, { status: 500 });
@@ -100,6 +102,7 @@ export async function POST(req: NextRequest) {
       from_email: fromEmail.match(/<(.+?)>/)?.[1] || fromEmail,
       from_name: "Admin",
       body: message,
+      provider_message_id: sentMessageId,
     });
   }
 
