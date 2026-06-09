@@ -1558,7 +1558,8 @@ function ContactSection({ adminToken }: { adminToken: string }) {
       });
       if (res.ok) {
         setSent(true);
-        setSubmissions(prev => prev.map(s => s.id === selected.id ? { ...s, status: "replied", admin_reply: reply } : s));
+        setSubmissions(prev => prev.map(s => s.id === selected.id ? { ...s, status: "replied", admin_reply: reply, ai_handled: false } as any : s));
+        setSelected(s => s ? ({ ...s, status: "replied", admin_reply: reply, ai_handled: false } as any) : s);
         setTimeout(() => { setSent(false); setReply(""); }, 2500);
       }
     } catch { /* ignore */ }

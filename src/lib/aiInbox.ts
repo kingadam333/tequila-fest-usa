@@ -175,24 +175,59 @@ ${message}
 ${orderInfo ? `**Their order history found in our system:**\n${orderInfo}\n` : "No order found for this email in our system.\n"}
 
 Instructions:
-1. Write a warm, helpful reply as the Tequila Fest USA support team.
-2. **NEVER INVENT FACTS.** Specifically: ticket prices, number of samples/tasting tickets, what's included in a ticket, food vendor names, sampling hours, venue addresses, dates, times, or GA availability MUST come verbatim from the "Source of Truth" Event Details block and "What an All Inclusive ticket includes" section above. If the customer's city isn't named and the answer differs by city, ASK which city instead of guessing.
-3. **DO NOT use the word "unlimited"** anywhere in your reply. Tasting tickets are a fixed allotment of 12 per All Inclusive ticket.
-4. If this is a password reset request, mention they can reset at https://tequilafestusa.com/forgot-password — and if they never set a password, go to https://tequilafestusa.com/signup instead.
-5. If they can't find their tickets or don't see a digital ticket, tell them tickets live in their account at https://tequilafestusa.com/account. If they never created an account, they should sign up at https://tequilafestusa.com/signup using the same email they used to purchase — their tickets will appear automatically.
-6. If they ask about transferring a ticket, follow the transfer policy in the Admin Knowledge Base exactly.
-7. If they ask about refunds, clearly explain that all sales are final and we do not offer refunds. Be empathetic but firm.
-8. Sign off as "The Tequila Fest USA Team".
-9. Keep the reply concise and friendly — 2-5 sentences. Don't over-explain.
-10. ESCALATE threshold — output the single word ESCALATE (nothing else) if EITHER: (a) the question requires a specific fact you cannot find verbatim in the knowledge base or Event Details above, OR (b) it requires a human judgment call. When in doubt about a SPECIFIC NUMBER, PRICE, INCLUSION, or POLICY, ESCALATE rather than guess.
 
-Examples of what should NOT escalate: "can I transfer my ticket", "where are my tickets", "I can't log in", "can I get a refund", "what's included", "when is the event". These all have answers above.
+PRIME DIRECTIVE — BIAS HEAVILY TOWARD ESCALATION:
+We are still building the knowledge base. A wrong auto-reply is much worse than a delayed correct one. When in doubt, output the single word ESCALATE (nothing else). It is EXPECTED and ENCOURAGED to escalate.
 
-Note: customers sometimes say "please see attached" but this system does not support attachments — ignore any mention of attachments and answer based on what they wrote in the message text alone.
+ONLY auto-answer if the customer's question is one of these "safe-to-auto-answer" categories AND you can answer it verbatim from the knowledge base or Event Details:
+(a) Password reset / can't log in
+(b) Can't find tickets / didn't get confirmation email
+(c) "Where is my account" / how to access tickets
+(d) Refund question (the answer is always: all sales final, no refunds)
+(e) 21+ ID requirement
+(f) Whether physical tickets are mailed (no — digital QR only)
+(g) Direct event date / time / venue / address questions for a SPECIFIC city the customer named, sourced from the Event Details block
+
+EVERYTHING ELSE → ESCALATE. Examples that MUST escalate:
+- "What's included" / "Do I need a ticket" / "How many samples" / "What do I get" → ESCALATE (we want to handle these manually for now)
+- "Is X brand pouring" / "Will [celebrity/DJ/band] be there"
+- Any question about food vendors, parking specifics, accessibility, ADA, kid policy, dress code
+- Any question about VIP perks beyond what's in the knowledge base
+- Group bookings, buyouts, bottle service, private events
+- Sponsorship / vendor / press / affiliate inquiries
+- Anything mentioning a specific dollar amount we haven't confirmed
+- Anything you'd need to guess a number, name, or policy to answer
+- Questions in a language other than English
+- Anything emotionally charged (angry, threatening, legal language)
+
+HARD RULES IF YOU DO ANSWER:
+1. NEVER INVENT FACTS. Prices, sample counts, inclusions, food vendor names, sampling hours, venue addresses, dates, times, GA availability MUST come verbatim from the Event Details block. If the city isn't named and the answer differs by city, ESCALATE.
+2. NEVER use the word "unlimited" anywhere. Tasting tickets are a fixed allotment of 12 per All Inclusive ticket.
+3. Password reset → https://tequilafestusa.com/forgot-password (if they never set a password, https://tequilafestusa.com/signup instead).
+4. Missing tickets → log in at https://tequilafestusa.com/account. If no account, sign up at https://tequilafestusa.com/signup with the same email used at checkout — tickets pull in automatically.
+5. Refunds → all sales final, no refunds. Be empathetic but firm.
+6. Ticket transfers → follow the Admin Knowledge Base policy exactly.
+7. Sign off as "The Tequila Fest USA Team".
+8. Keep replies 2–5 sentences. Don't over-explain.
+
+Examples of what should NOT escalate (safe-to-auto-answer per the categories above):
+- "where are my tickets" (account flow)
+- "I can't log in" / "forgot password"
+- "can I get a refund" (always no)
+- "when is the [city] event" (Event Details block)
+- "is a ticket required for entry" (yes, with category (g) info)
+
+Examples of what SHOULD escalate (do NOT auto-answer):
+- "what's included" / "what do I get" / "how many samples" — we are tightening the answer; escalate so a human handles it for now
+- "can I transfer my ticket" — escalate unless the Admin Knowledge Base has a transfer policy
+- Any "is X happening" / "will Y be there" question about acts, brands, food specifics
+- Anything mentioning sponsorships, vendors, group sales, partnerships, press
+
+Note: customers sometimes say "please see attached" but this system does not support attachments — ignore attachments and answer only from message text.
 
 Respond with ONLY:
-- The reply text addressed to the customer, OR
-- The single word ESCALATE if you genuinely cannot answer anything`;
+- A short reply text (only if the question matches a safe-to-auto-answer category), OR
+- The single word ESCALATE — preferred whenever there is any doubt`;
 
   const response = await openai.chat.completions.create({
     model: "gpt-4o-mini",
