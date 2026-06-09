@@ -2076,7 +2076,16 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
     const res = await fetch("/api/admin/contact", { headers });
     if (res.ok) {
       const data = await res.json();
-      setBrandMessages((data.submissions || []).filter((s: ContactSubmission) => s.inbox === "Brands"));
+      // Sort by most recent activity (last reply, falling back to created_at)
+      // so a thread that was just replied to bubbles to the top.
+      const lastActivity = (s: ContactSubmission) => {
+        const lastReply = (s.replies || []).reduce<string>((acc, r) => r.created_at > acc ? r.created_at : acc, "");
+        return lastReply || s.created_at;
+      };
+      const filtered = (data.submissions || [])
+        .filter((s: ContactSubmission) => s.inbox === "Brands")
+        .sort((a: ContactSubmission, b: ContactSubmission) => lastActivity(b).localeCompare(lastActivity(a)));
+      setBrandMessages(filtered);
     }
     setLoadingInbox(false);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps

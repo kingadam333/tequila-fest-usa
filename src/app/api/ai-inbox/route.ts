@@ -14,6 +14,17 @@ export async function POST(req: NextRequest) {
 
   const db = supabaseAdmin as any;
 
+  // Brands inbox is human-only by policy — never let the AI auto-reply,
+  // even via the manual-trigger button.
+  const { data: sub } = await db
+    .from("contact_submissions")
+    .select("inbox")
+    .eq("id", submissionId)
+    .single();
+  if (sub?.inbox === "Brands") {
+    return NextResponse.json({ error: "AI auto-reply is disabled for Brands inbox — handle this thread manually." }, { status: 400 });
+  }
+
   const { data: orders } = await db
     .from("ticket_orders")
     .select("order_number, event_city, ticket_type, quantity, total, status, created_at")
