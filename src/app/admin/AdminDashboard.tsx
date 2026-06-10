@@ -9,9 +9,10 @@ import {
   MessageSquare, FileText, LogOut, Menu, X, TrendingUp, DollarSign,
   RefreshCw, Download, Send, CheckCircle, Search, Plus,
   Trash2, Edit2, Eye, AlertCircle, BarChart2, Mail, Utensils, Share2,
-  Star, Gift, UserCheck, ChevronRight, Megaphone,
+  Star, Gift, UserCheck, ChevronRight, Megaphone, ShieldCheck,
 } from "lucide-react";
 import SocialShareSection from "./SocialShareSection";
+import SecuritySection from "./SecuritySection";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Order {
@@ -3831,6 +3832,7 @@ const NAV_ITEMS = [
   { id: "newsletter", label: "Newsletter",  icon: <Mail size={17} /> },
   { id: "tools",      label: "Tools",       icon: <RefreshCw size={17} /> },
   { id: "blog",       label: "Blog",        icon: <FileText size={17} /> },
+  { id: "security",   label: "Security",    icon: <ShieldCheck size={17} /> },
 ];
 
 // ─── Admin login gate ─────────────────────────────────────────────────────────
@@ -3937,6 +3939,7 @@ export default function AdminDashboard() {
     newsletter: <NewsletterSection adminToken={adminToken} />,
     tools:     <ToolsSection adminToken={adminToken} />,
     blog:      <BlogAdminSection />,
+    security:  <SecuritySection adminToken={adminToken} />,
   };
 
   return (
