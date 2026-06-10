@@ -20,6 +20,15 @@ export async function POST(req: NextRequest) {
   const subject: string = data?.subject || "(no subject)";
   const to: string = Array.isArray(data?.to) ? data.to[0] : (data?.to || "");
 
+  // Defensive: drop self-sent mail (from our own outbound aliases). Without
+  // this, a notification email to vendors@/affiliates@/etc. would round-trip
+  // through Resend's inbound MX and create a duplicate contact_submissions
+  // row. The /api/contact route no longer self-mails, but this guard
+  // prevents any future regression or stray loop.
+  if (/@(mail\.)?tequilafestusa\.com/i.test(fromRaw)) {
+    return NextResponse.json({ skipped: "self-sent mail (own-domain From)" });
+  }
+
   // Route by local-part to the right inbox label
   const toLower = to.toLowerCase();
   const inboxByPrefix: Record<string, string> = {

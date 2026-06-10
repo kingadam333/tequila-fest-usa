@@ -96,11 +96,16 @@ export async function POST(req: NextRequest) {
       } catch {}
     }
   } else {
-    // Sponsors / Affiliates — notify the correct inbox directly
+    // Vendors / Sponsors / Affiliates / Brands — notify Adam directly.
+    // We previously sent this notification to routing.to (e.g. vendors@,
+    // affiliates@), but Resend's inbound MX then ingested the email and
+    // created a duplicate contact_submissions row for every form submit.
+    // The form already creates the inbox row, so this just needs to ping
+    // Adam — reply-to is the customer so Adam can also just hit reply.
     try {
       await resend.emails.send({
         from: routing.from,
-        to: routing.to,
+        to: ADMIN_EMAIL,
         replyTo: email,
         subject: `[${routing.label}] ${subject} — ${name}`,
         html: `
@@ -110,7 +115,7 @@ export async function POST(req: NextRequest) {
           <hr>
           <p>${message.replace(/\n/g, "<br>")}</p>
           <hr>
-          <p style="color:#888;font-size:12px">Reply directly to this email to respond to ${name}.</p>
+          <p style="color:#888;font-size:12px">This thread is in the ${routing.label} inbox at <a href="https://www.tequilafestusa.com/admin">admin</a>. You can also hit reply in this email to respond to ${name} directly.</p>
         `,
       });
     } catch (err) {
