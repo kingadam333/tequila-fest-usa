@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Plus, Minus, User, Mail, Phone, ArrowRight, Loader2, ShoppingCart } from "lucide-react";
+import { trackPixelEvent } from "@/components/MetaPixel";
 import type { TicketType } from "@/lib/ticket-config";
 import { TICKET_LABELS } from "@/lib/ticket-config";
 import { calculateFeesForCart } from "@/lib/fees";
@@ -104,6 +105,11 @@ export default function TicketCartModal({
       });
       const data = await res.json();
       if (data.url) {
+        // Fire Meta Pixel InitiateCheckout
+        trackPixelEvent("InitiateCheckout", {
+          currency: "USD",
+          num_items: totalTickets,
+        });
         window.location.href = data.url;
       } else {
         setError(data.error || "Something went wrong. Please try again.");

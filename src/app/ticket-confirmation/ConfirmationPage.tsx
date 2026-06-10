@@ -11,6 +11,7 @@ import OfficialBanner from "@/components/OfficialBanner";
 import Footer from "@/components/Footer";
 import { getEvent } from "@/lib/events";
 import Confetti from "@/components/Confetti";
+import { trackPixelEvent } from "@/components/MetaPixel";
 
 export default function ConfirmationPage() {
   const params = useSearchParams();
@@ -27,7 +28,17 @@ export default function ConfirmationPage() {
     if (sessionId) {
       fetch(`/api/session-email?session_id=${sessionId}`)
         .then(r => r.json())
-        .then(d => { if (d.email) setCustomerEmail(d.email); })
+        .then(d => {
+          if (d.email) setCustomerEmail(d.email);
+          // Fire Meta Pixel Purchase event
+          trackPixelEvent("Purchase", {
+            currency: "USD",
+            value: d.total ?? 0,
+            content_type: "product",
+            content_name: d.ticketType ? `Tequila Fest ${d.city} - ${d.ticketType}` : "Tequila Fest Ticket",
+            num_items: d.quantity ?? 1,
+          });
+        })
         .catch(() => {});
     }
   }, [sessionId]);

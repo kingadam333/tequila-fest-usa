@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import SupportChat from "@/components/SupportChat";
+import MetaPixel from "@/components/MetaPixel";
 
 export const metadata: Metadata = {
   title: "Tequila Fest USA — The National Tequila Festival Tour",
@@ -20,6 +21,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full">
       <body className="min-h-full flex flex-col antialiased">
+        <MetaPixel />
         {children}
         <SupportChat />
       </body>
