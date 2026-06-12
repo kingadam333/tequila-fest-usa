@@ -29,21 +29,54 @@ export async function POST(req: NextRequest) {
   if (routing.label === "Support" && inserted?.id) {
     // Run AI inline so Vercel doesn't kill it before it finishes
     try {
-      // Look up order history for context
+      // Look up order history for context — first by email, then by name as fallback
       const { data: orders } = await db
         .from("ticket_orders")
-        .select("order_number, event_city, ticket_type, quantity, total, status, created_at")
+        .select("order_number, event_city, ticket_type, quantity, total, status, created_at, customer_email")
         .ilike("customer_email", email)
         .eq("status", "paid")
         .limit(5);
 
-      const orderInfo = orders?.length
-        ? orders.map((o: any) =>
-            `Order #${o.order_number}: ${o.event_city} – ${o.ticket_type} x${o.quantity} ($${o.total}) on ${o.created_at?.slice(0, 10)}`
-          ).join("\n")
-        : null;
+      let orderInfo: string | null = null;
+      let emailMismatch = false;
 
-      const result = await generateAIReply(name, email, subject, message, orderInfo);
+      if (orders?.length) {
+        orderInfo = orders.map((o: any) =>
+          `Order #${o.order_number}: ${o.event_city} – ${o.ticket_type} x${o.quantity} ($${o.total}) on ${o.created_at?.slice(0, 10)}`
+        ).join("\n");
+      } else {
+        // Fallback: search by customer name (catches email typos at checkout)
+        const nameParts = name.trim().split(/\s+/);
+        const firstName = nameParts[0] || "";
+        const lastName = nameParts.slice(1).join(" ") || "";
+        const { data: nameOrders } = await db
+          .from("ticket_orders")
+          .select("order_number, event_city, ticket_type, quantity, total, status, created_at, customer_email")
+          .ilike("customer_name", `%${name}%`)
+          .eq("status", "paid")
+          .limit(5);
+
+        // Also try first+last separately if full name search returned nothing
+        let combined = nameOrders || [];
+        if (!combined.length && lastName) {
+          const { data: lastNameOrders } = await db
+            .from("ticket_orders")
+            .select("order_number, event_city, ticket_type, quantity, total, status, created_at, customer_email")
+            .ilike("customer_name", `%${lastName}%`)
+            .eq("status", "paid")
+            .limit(5);
+          combined = lastNameOrders || [];
+        }
+
+        if (combined.length) {
+          emailMismatch = true;
+          orderInfo = combined.map((o: any) =>
+            `Order #${o.order_number}: ${o.event_city} – ${o.ticket_type} x${o.quantity} ($${o.total}) on ${o.created_at?.slice(0, 10)} [NOTE: order email on file is ${o.customer_email} — may differ from contact email]`
+          ).join("\n");
+        }
+      }
+
+      const result = await generateAIReply(name, email, subject, message, orderInfo, emailMismatch);
 
       if (result.confident) {
         const sendRes = await resend.emails.send({

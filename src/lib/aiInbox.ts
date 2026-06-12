@@ -157,6 +157,7 @@ export async function generateAIReply(
   subject: string,
   message: string,
   orderInfo?: string | null,
+  emailMismatch?: boolean,
 ): Promise<AIInboxResult> {
   const dbKnowledge = await fetchDBKnowledge();
 
@@ -172,7 +173,7 @@ A customer has submitted the following support message. Your job is to reply hel
 **Message:**
 ${message}
 
-${orderInfo ? `**Their order history found in our system:**\n${orderInfo}\n` : "No order found for this email in our system.\n"}
+${orderInfo && !emailMismatch ? `**Their order history found in our system:**\n${orderInfo}\n` : ""}${orderInfo && emailMismatch ? `**Order found by name (email on file does NOT match their contact email — likely a typo at checkout):**\n${orderInfo}\n` : ""}${!orderInfo ? "No order found for this email or name in our system.\n" : ""}
 
 Instructions:
 
@@ -217,6 +218,8 @@ Examples (apply the Prime Directive above to all of these):
 - "can I transfer my ticket" → answer ONLY if the Admin Knowledge Base has a transfer policy; otherwise ESCALATE
 
 Note: customers sometimes say "please see attached" but this system does not support attachments — ignore attachments and answer only from message text.
+
+EMAIL MISMATCH RULE: If the order was found by name but the email on file differs from the customer's contact email, there was likely a typo at checkout. Do NOT auto-reply as if everything is fine or direct them to sign up. Instead, output ESCALATE so a human can correct the email and resend their tickets.
 
 Respond with ONLY:
 - A short reply text (only if every fact in your answer is sourced from the blocks above), OR
