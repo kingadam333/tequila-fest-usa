@@ -165,6 +165,23 @@ export default function VendorsPage() {
             </div>
           </motion.div>
 
+          {/* Vendor fee callout */}
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.22 }}>
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-yellow-500/10 border border-yellow-500/25 rounded-2xl px-7 py-5">
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">🏷️</span>
+                <div>
+                  <p className="text-yellow-400 font-bold text-base">Vendor Fee</p>
+                  <p className="text-white/50 text-sm">Secure your spot at each festival city</p>
+                </div>
+              </div>
+              <div className="text-center sm:text-right">
+                <p className="text-yellow-400 font-display text-3xl">$150</p>
+                <p className="text-white/40 text-xs uppercase tracking-wider">per city</p>
+              </div>
+            </div>
+          </motion.div>
+
           {/* Application form */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
             <h2 className="font-display text-white text-3xl mb-8 text-center">APPLY TO VEND</h2>
@@ -232,6 +249,12 @@ export default function VendorsPage() {
                         </button>
                       ))}
                     </div>
+                    {selectedCities.length > 0 && (
+                      <div className="flex items-center justify-between mt-3 px-1">
+                        <p className="text-white/40 text-xs">{selectedCities.length} city{selectedCities.length !== 1 ? "ies" : ""} selected · $150 each</p>
+                        <p className="text-yellow-400 font-bold text-sm">Total: ${selectedCities.length * 150}</p>
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Describe Your Products / Menu *</label>
