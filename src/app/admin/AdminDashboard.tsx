@@ -1783,36 +1783,57 @@ function ContactSection({ adminToken }: { adminToken: string }) {
                 )}
                 <p className="text-white/40 text-xs">{selected.email} · {new Date(selected.created_at).toLocaleDateString()}</p>
                 <p className="text-sm font-semibold mt-2" style={{ color: inbox.color }}>{selected.subject}</p>
-                <p className="text-white/60 text-sm mt-2 leading-relaxed whitespace-pre-wrap">{selected.message}</p>
-                {(selected.replies && selected.replies.length > 0) && (
-                  <div className="mt-4 space-y-3">
-                    {selected.replies.map(rep => {
-                      const isAI = rep.sent_by === "ai";
-                      const isAdmin = rep.sent_by === "admin";
-                      const isCustomer = rep.sent_by === "customer";
-                      const tone = isAI
-                        ? { bg: "bg-blue-900/20", border: "border-blue-500/20", label: "text-blue-400", title: "✨ Auto-replied by AI" }
-                        : isAdmin
-                          ? { bg: "bg-green-900/20", border: "border-green-500/20", label: "text-green-400", title: "You replied" }
-                          : { bg: "bg-white/[0.03]", border: "border-white/10", label: "text-white/60", title: `${rep.from_name || selected.name} replied` };
-                      return (
-                        <div key={rep.id} className={`p-3 rounded-xl border ${tone.bg} ${tone.border}`}>
-                          <p className={`text-xs font-semibold mb-1 ${tone.label}`}>
-                            {tone.title} <span className="text-white/30 font-normal">· {new Date(rep.created_at).toLocaleString()}</span>
-                          </p>
-                          <p className="text-white/70 text-xs whitespace-pre-wrap leading-relaxed">{rep.body}</p>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-                {/* Backward-compat: if there's an admin_reply but no replies[] (shouldn't happen post-backfill, but just in case) */}
-                {(!selected.replies || selected.replies.length === 0) && selected.admin_reply && (
-                  <div className="mt-3 p-3 rounded-xl border bg-white/[0.03] border-white/10">
-                    <p className="text-xs font-semibold mb-1 text-white/60">Previous reply</p>
-                    <p className="text-white/70 text-xs whitespace-pre-wrap">{selected.admin_reply}</p>
-                  </div>
-                )}
+                {(() => {
+                  // Unified conversation timeline: initial message + every
+                  // reply, sorted newest-first (Gmail-thread style).
+                  type TimelineItem = { id: string; sent_by: "customer" | "admin" | "ai"; from_name: string; body: string; created_at: string };
+                  const initial: TimelineItem = {
+                    id: `initial-${selected.id}`,
+                    sent_by: "customer",
+                    from_name: selected.name,
+                    body: selected.message || "",
+                    created_at: selected.created_at,
+                  };
+                  const extras: TimelineItem[] = (selected.replies || []).map((r) => ({
+                    id: r.id,
+                    sent_by: r.sent_by,
+                    from_name: r.from_name || (r.sent_by === "admin" ? "You" : r.sent_by === "ai" ? "AI Assistant" : selected.name),
+                    body: r.body,
+                    created_at: r.created_at,
+                  }));
+                  // Legacy fallback: if no replies[] but admin_reply is set
+                  if (!extras.length && selected.admin_reply) {
+                    extras.push({ id: `legacy-${selected.id}`, sent_by: "admin", from_name: "You", body: selected.admin_reply, created_at: selected.created_at });
+                  }
+                  const timeline = [initial, ...extras].sort((a, b) => b.created_at.localeCompare(a.created_at));
+                  return (
+                    <div className="mt-3 space-y-3">
+                      {timeline.map((item, idx) => {
+                        const isInitial = item.id === initial.id;
+                        const isAI = item.sent_by === "ai";
+                        const isAdmin = item.sent_by === "admin";
+                        const tone = isAI
+                          ? { bg: "bg-blue-900/20", border: "border-blue-500/20", label: "text-blue-400", title: "✨ AI replied" }
+                          : isAdmin
+                            ? { bg: "bg-green-900/20", border: "border-green-500/20", label: "text-green-400", title: "You replied" }
+                            : isInitial
+                              ? { bg: "bg-white/[0.05]", border: "border-white/15", label: "text-white/70", title: `${item.from_name} started the thread` }
+                              : { bg: "bg-white/[0.03]", border: "border-white/10", label: "text-white/70", title: `${item.from_name} replied` };
+                        const isLatest = idx === 0;
+                        return (
+                          <div key={item.id} className={`p-3 rounded-xl border ${tone.bg} ${tone.border} ${isLatest ? "ring-1 ring-yellow-500/20" : ""}`}>
+                            <p className={`text-xs font-semibold mb-1 ${tone.label} flex items-center gap-2 flex-wrap`}>
+                              <span>{tone.title}</span>
+                              <span className="text-white/30 font-normal">· {new Date(item.created_at).toLocaleString()}</span>
+                              {isLatest && <span className="text-[10px] uppercase tracking-widest text-yellow-400/80 bg-yellow-500/10 border border-yellow-500/30 rounded-full px-1.5 py-0.5">Latest</span>}
+                            </p>
+                            <p className="text-white/80 text-xs whitespace-pre-wrap leading-relaxed">{item.body}</p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
                 {/* Add historical / missing reply to thread (paste from Resend or email) */}
                 <div className="mt-3">
                   <button onClick={() => { setBackfillOpen(o => !o); setBackfillStatus(""); }}
@@ -2511,34 +2532,55 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
                     )}
                     <p className="text-white/40 text-xs">{selectedMsg.email} · {new Date(selectedMsg.created_at).toLocaleDateString()}</p>
                     <p className="text-sm font-semibold mt-2 text-yellow-400">{selectedMsg.subject}</p>
-                    <p className="text-white/60 text-sm mt-2 leading-relaxed whitespace-pre-wrap">{selectedMsg.message}</p>
-                    {(selectedMsg.replies && selectedMsg.replies.length > 0) && (
-                      <div className="mt-4 space-y-3">
-                        {selectedMsg.replies.map(rep => {
-                          const isAdmin = rep.sent_by === "admin";
-                          const isAI = rep.sent_by === "ai";
-                          const tone = isAI
-                            ? { bg: "bg-blue-900/20", border: "border-blue-500/20", label: "text-blue-400", title: "✨ Auto-replied by AI" }
-                            : isAdmin
-                              ? { bg: "bg-green-900/20", border: "border-green-500/20", label: "text-green-400", title: "You replied" }
-                              : { bg: "bg-white/[0.03]", border: "border-white/10", label: "text-white/60", title: `${rep.from_name || selectedMsg.name} replied` };
-                          return (
-                            <div key={rep.id} className={`p-3 rounded-xl border ${tone.bg} ${tone.border}`}>
-                              <p className={`text-xs font-semibold mb-1 ${tone.label}`}>
-                                {tone.title} <span className="text-white/30 font-normal">· {new Date(rep.created_at).toLocaleString()}</span>
-                              </p>
-                              <p className="text-white/70 text-xs whitespace-pre-wrap leading-relaxed">{rep.body}</p>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                    {(!selectedMsg.replies || selectedMsg.replies.length === 0) && selectedMsg.admin_reply && (
-                      <div className="mt-3 p-3 rounded-xl border bg-white/[0.03] border-white/10">
-                        <p className="text-xs font-semibold mb-1 text-white/60">Previous reply</p>
-                        <p className="text-white/70 text-xs whitespace-pre-wrap">{selectedMsg.admin_reply}</p>
-                      </div>
-                    )}
+                    {(() => {
+                      // Unified conversation timeline (newest-first).
+                      type TimelineItem = { id: string; sent_by: "customer" | "admin" | "ai"; from_name: string; body: string; created_at: string };
+                      const initial: TimelineItem = {
+                        id: `initial-${selectedMsg.id}`,
+                        sent_by: "customer",
+                        from_name: selectedMsg.name,
+                        body: selectedMsg.message || "",
+                        created_at: selectedMsg.created_at,
+                      };
+                      const extras: TimelineItem[] = (selectedMsg.replies || []).map((r) => ({
+                        id: r.id,
+                        sent_by: r.sent_by,
+                        from_name: r.from_name || (r.sent_by === "admin" ? "You" : r.sent_by === "ai" ? "AI Assistant" : selectedMsg.name),
+                        body: r.body,
+                        created_at: r.created_at,
+                      }));
+                      if (!extras.length && selectedMsg.admin_reply) {
+                        extras.push({ id: `legacy-${selectedMsg.id}`, sent_by: "admin", from_name: "You", body: selectedMsg.admin_reply, created_at: selectedMsg.created_at });
+                      }
+                      const timeline = [initial, ...extras].sort((a, b) => b.created_at.localeCompare(a.created_at));
+                      return (
+                        <div className="mt-3 space-y-3">
+                          {timeline.map((item, idx) => {
+                            const isInitial = item.id === initial.id;
+                            const isAI = item.sent_by === "ai";
+                            const isAdmin = item.sent_by === "admin";
+                            const tone = isAI
+                              ? { bg: "bg-blue-900/20", border: "border-blue-500/20", label: "text-blue-400", title: "✨ AI replied" }
+                              : isAdmin
+                                ? { bg: "bg-green-900/20", border: "border-green-500/20", label: "text-green-400", title: "You replied" }
+                                : isInitial
+                                  ? { bg: "bg-white/[0.05]", border: "border-white/15", label: "text-white/70", title: `${item.from_name} started the thread` }
+                                  : { bg: "bg-white/[0.03]", border: "border-white/10", label: "text-white/70", title: `${item.from_name} replied` };
+                            const isLatest = idx === 0;
+                            return (
+                              <div key={item.id} className={`p-3 rounded-xl border ${tone.bg} ${tone.border} ${isLatest ? "ring-1 ring-yellow-500/20" : ""}`}>
+                                <p className={`text-xs font-semibold mb-1 ${tone.label} flex items-center gap-2 flex-wrap`}>
+                                  <span>{tone.title}</span>
+                                  <span className="text-white/30 font-normal">· {new Date(item.created_at).toLocaleString()}</span>
+                                  {isLatest && <span className="text-[10px] uppercase tracking-widest text-yellow-400/80 bg-yellow-500/10 border border-yellow-500/30 rounded-full px-1.5 py-0.5">Latest</span>}
+                                </p>
+                                <p className="text-white/80 text-xs whitespace-pre-wrap leading-relaxed">{item.body}</p>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
                     {/* Add historical / missing reply to thread (paste from Resend or email) */}
                     <div className="mt-3">
                       <button onClick={() => { setBBackfillOpen(o => !o); setBBackfillStatus(""); }}
