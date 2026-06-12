@@ -1362,10 +1362,16 @@ function CouponsSection() {
   );
 }
 
-function CheckInSection() {
+function CheckInSection({ adminToken }: { adminToken: string }) {
   const [activeEvent, setActiveEvent] = useState(EVENTS_CONFIG[0]);
   const [scanInput, setScanInput] = useState("");
   const [scanResult, setScanResult] = useState<{ success: boolean; message: string } | null>(null);
+
+  // Door-staff invite
+  const [inviteName, setInviteName] = useState("");
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviting, setInviting] = useState(false);
+  const [inviteStatus, setInviteStatus] = useState<{ ok: boolean; msg: string } | null>(null);
 
   const handleScan = () => {
     if (!scanInput) return;
@@ -1378,6 +1384,35 @@ function CheckInSection() {
         : `✗ Invalid ticket: ${scanInput}`,
     });
     if (isValid) setScanInput("");
+  };
+
+  const handleInviteStaff = async () => {
+    setInviteStatus(null);
+    const email = inviteEmail.trim();
+    const name = inviteName.trim();
+    if (!email || !name) {
+      setInviteStatus({ ok: false, msg: "Name and email required" });
+      return;
+    }
+    setInviting(true);
+    try {
+      const res = await fetch("/api/admin/staff", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-token": adminToken },
+        body: JSON.stringify({ name, email, permissions: ["checkin"] }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setInviteStatus({ ok: true, msg: `Invite sent to ${email}` });
+        setInviteName(""); setInviteEmail("");
+        setTimeout(() => setInviteStatus(null), 4000);
+      } else {
+        setInviteStatus({ ok: false, msg: data.error || `Failed (${res.status})` });
+      }
+    } catch (e: any) {
+      setInviteStatus({ ok: false, msg: e?.message || "Network error" });
+    }
+    setInviting(false);
   };
 
   return (
@@ -1447,14 +1482,42 @@ function CheckInSection() {
       {/* Staff invite */}
       <div className="mt-6 bg-white/[0.03] border border-white/10 rounded-2xl p-5">
         <h3 className="text-white font-bold mb-2">Invite Door Staff</h3>
-        <p className="text-white/40 text-sm mb-4">Send a check-in link to staff members for {activeEvent.city}.</p>
-        <div className="flex gap-2">
-          <input placeholder="staff@email.com"
-            className="flex-1 bg-white/5 border border-white/15 rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-yellow-500/40 placeholder-white/30" />
-          <button className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-black font-bold text-sm px-5 py-2.5 rounded-xl transition-all cursor-pointer">
-            <Send size={13} /> Invite
+        <p className="text-white/40 text-sm mb-4">
+          Send a check-in link to staff members for {activeEvent.city}. They'll get an email invite and access to the check-in portal only.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-[1fr,1fr,auto] gap-2">
+          <input
+            value={inviteName}
+            onChange={e => setInviteName(e.target.value)}
+            placeholder="Name"
+            disabled={inviting}
+            className="bg-white/5 border border-white/15 rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-yellow-500/40 placeholder-white/30 disabled:opacity-50"
+          />
+          <input
+            value={inviteEmail}
+            onChange={e => setInviteEmail(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && !inviting && handleInviteStaff()}
+            placeholder="staff@email.com"
+            type="email"
+            disabled={inviting}
+            className="bg-white/5 border border-white/15 rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-yellow-500/40 placeholder-white/30 disabled:opacity-50"
+          />
+          <button
+            onClick={handleInviteStaff}
+            disabled={inviting || !inviteName.trim() || !inviteEmail.trim()}
+            className="flex items-center justify-center gap-2 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-40 disabled:cursor-not-allowed text-black font-bold text-sm px-5 py-2.5 rounded-xl transition-all cursor-pointer whitespace-nowrap"
+          >
+            <Send size={13} /> {inviting ? "Sending…" : "Invite"}
           </button>
         </div>
+        {inviteStatus && (
+          <p className={`mt-3 text-sm ${inviteStatus.ok ? "text-green-400" : "text-red-400"}`}>
+            {inviteStatus.ok ? "✓ " : "✗ "}{inviteStatus.msg}
+          </p>
+        )}
+        <p className="text-white/30 text-xs mt-3">
+          Tip: door-staff invitations are also managed in the <strong className="text-white/50">Staff</strong> tab — there you can grant other permissions, resend invites, or remove staff.
+        </p>
       </div>
     </div>
   );
@@ -3972,7 +4035,7 @@ export default function AdminDashboard() {
     customers: <UsersSection adminToken={adminToken} />,
     brands:    <BrandsSection adminToken={adminToken} />,
     coupons:   <CouponsSection />,
-    checkin:   <CheckInSection />,
+    checkin:   <CheckInSection adminToken={adminToken} />,
     contacts:  <ContactSection adminToken={adminToken} />,
     social:    <SocialClaimsSection adminToken={adminToken} />,
     "social-share": <SocialShareSection adminToken={adminToken} />,
