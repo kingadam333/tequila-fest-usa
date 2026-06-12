@@ -31,20 +31,29 @@ const CITIES = [
   { city: "Phoenix", date: "Nov 14, 2026", status: "Open" },
 ];
 
+const CITY_OPTIONS = ["Cincinnati", "Cleveland", "Columbus", "Phoenix"];
+
 export default function VendorsPage() {
-  const [form, setForm] = useState({ name: "", business: "", email: "", phone: "", type: "", cities: "", description: "" });
+  const [form, setForm] = useState({ name: "", business: "", email: "", phone: "", type: "", description: "" });
+  const [selectedCities, setSelectedCities] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
   const [captchaToken, setCaptchaToken] = useState("");
-  
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
     setForm(f => ({ ...f, [k]: e.target.value }));
 
+  const toggleCity = (city: string) =>
+    setSelectedCities(prev => prev.includes(city) ? prev.filter(c => c !== city) : [...prev, city]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    if (selectedCities.length === 0) {
+      setError("Please select at least one city.");
+      return;
+    }
     if (!captchaToken) {
       setError("Please complete the verification challenge.");
       return;
@@ -60,7 +69,7 @@ export default function VendorsPage() {
           email: form.email,
           phone: form.phone,
           type: form.type,
-          cities: form.cities ? [form.cities] : [],
+          cities: selectedCities,
           description: form.description,
           captchaToken,
         }),
@@ -123,7 +132,7 @@ export default function VendorsPage() {
 
           {/* Event dates */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-            <h2 className="font-display text-white text-3xl text-center mb-8">2026 EVENTS</h2>
+            <h2 className="font-display text-white text-3xl text-center mb-8">OUR UPCOMING EVENTS</h2>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               {CITIES.map((c, i) => (
                 <div key={i} className="bg-white/[0.03] border border-white/10 rounded-2xl p-5 text-center">
@@ -193,30 +202,35 @@ export default function VendorsPage() {
                         className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-3 text-white placeholder-white/30 outline-none transition-colors text-sm" />
                     </div>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Vendor Type *</label>
-                      <select value={form.type} onChange={set("type")} required
-                        className="w-full appearance-none bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-3 text-white outline-none transition-colors text-sm cursor-pointer">
-                        <option value="" className="bg-[#0d0500]">Select type</option>
-                        <option value="Food" className="bg-[#0d0500]">Food Vendor</option>
-                        <option value="Merchandise" className="bg-[#0d0500]">Merchandise</option>
-                        <option value="Specialty Product" className="bg-[#0d0500]">Specialty Product</option>
-                        <option value="Other" className="bg-[#0d0500]">Other</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Cities Interested In *</label>
-                      <select value={form.cities} onChange={set("cities")} required
-                        className="w-full appearance-none bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-3 text-white outline-none transition-colors text-sm cursor-pointer">
-                        <option value="" className="bg-[#0d0500]">Select cities</option>
-                        <option value="Cincinnati only" className="bg-[#0d0500]">Cincinnati only</option>
-                        <option value="Cleveland only" className="bg-[#0d0500]">Cleveland only</option>
-                        <option value="Columbus only" className="bg-[#0d0500]">Columbus only</option>
-                        <option value="Phoenix only" className="bg-[#0d0500]">Phoenix only</option>
-                        <option value="Multiple cities" className="bg-[#0d0500]">Multiple cities</option>
-                        <option value="All cities" className="bg-[#0d0500]">All cities</option>
-                      </select>
+                  <div>
+                    <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Vendor Type *</label>
+                    <select value={form.type} onChange={set("type")} required
+                      className="w-full appearance-none bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-3 text-white outline-none transition-colors text-sm cursor-pointer">
+                      <option value="" className="bg-[#0d0500]">Select type</option>
+                      <option value="Food" className="bg-[#0d0500]">Food Vendor</option>
+                      <option value="Merchandise" className="bg-[#0d0500]">Merchandise</option>
+                      <option value="Specialty Product" className="bg-[#0d0500]">Specialty Product</option>
+                      <option value="Other" className="bg-[#0d0500]">Other</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-white/30 text-xs uppercase tracking-wider mb-2 block">Cities Interested In * <span className="text-white/20 normal-case tracking-normal">(select all that apply)</span></label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      {CITY_OPTIONS.map(city => (
+                        <button
+                          key={city}
+                          type="button"
+                          onClick={() => toggleCity(city)}
+                          className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl border text-sm font-semibold transition-all duration-150 cursor-pointer ${
+                            selectedCities.includes(city)
+                              ? "bg-yellow-500/20 border-yellow-500/60 text-yellow-300"
+                              : "bg-white/5 border-white/15 text-white/50 hover:border-white/30 hover:text-white/80"
+                          }`}
+                        >
+                          {selectedCities.includes(city) && <span className="text-yellow-400">✓</span>}
+                          {city}
+                        </button>
+                      ))}
                     </div>
                   </div>
                   <div>
