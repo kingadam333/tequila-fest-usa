@@ -37,21 +37,25 @@ export async function PATCH(req: NextRequest) {
     const amount = 150 * cityCount; // $150 per city
 
     try {
+      // Build one line item per city at $150 each
+      const cityList: string[] = app.cities?.length ? app.cities : ["Festival"];
+      const lineItems = cityList.map((city: string) => ({
+        price_data: {
+          currency: "usd",
+          product_data: {
+            name: `Vendor - ${city}`,
+            description: `${app.business_name} · Tequila Fest USA ${city}`,
+          },
+          unit_amount: 15000, // $150 per city
+        },
+        quantity: 1,
+      }));
+
       // Create a Stripe Checkout Session (expires in 7 days)
       const session = await stripe.checkout.sessions.create({
         mode: "payment",
         payment_method_types: ["card"],
-        line_items: [{
-          price_data: {
-            currency: "usd",
-            product_data: {
-              name: `Tequila Fest USA — Vendor Fee`,
-              description: `${app.business_name} · ${app.cities?.join(", ") || "All Cities"} · ${cityCount} city${cityCount !== 1 ? " (×$150 each)" : ""}`,
-            },
-            unit_amount: amount * 100,
-          },
-          quantity: 1,
-        }],
+        line_items: lineItems,
         customer_email: app.email,
         metadata: { vendor_application_id: id, business_name: app.business_name },
         success_url: `${process.env.NEXT_PUBLIC_SITE_URL || "https://tequilafestusa.com"}/vendor-payment-success?session_id={CHECKOUT_SESSION_ID}`,
