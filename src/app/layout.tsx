@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import SupportChat from "@/components/SupportChat";
 import MetaPixel from "@/components/MetaPixel";
+import InstallBanner from "@/components/InstallBanner";
 
 export const viewport: Viewport = {
   themeColor: "#F5A623",
@@ -57,6 +58,7 @@ export default function RootLayout({
         <MetaPixel />
         {children}
         <SupportChat />
+        <InstallBanner />
       </body>
     </html>
   );
