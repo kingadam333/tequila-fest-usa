@@ -303,7 +303,7 @@ export default function EventPage({ event, ogImage, dbStatus }: { event: EventDa
                 { typeKey: "Late Registration", key: "late" as const,      price: PRICING.late.price,      note: "Final week only",   highlight: false, badge: "Final Week", unavailableNote: "Available Final Week" },
               ].map(({ typeKey, key, price, note, highlight, badge, unavailableNote }, i) => {
                 const live = liveTypes.find(t => t.name === typeKey);
-                const soldOut = live ? live.sold_count >= live.capacity : false;
+                const soldOut = live ? (live.is_active === false || live.sold_count >= live.capacity) : false;
                 const almostFull = live ? live.sold_count >= live.capacity * 0.9 && !soldOut : false;
                 const badgeLabel = soldOut ? "🚫 Sold Out" : almostFull ? "🔥 Almost Gone" : badge;
                 return (
@@ -384,15 +384,21 @@ export default function EventPage({ event, ogImage, dbStatus }: { event: EventDa
                       ))}
                     </ul>
                   </div>
-                  {isComingSoon ? (
-                    <div className="mt-auto block text-center text-yellow-400 font-bold text-base py-4 rounded-full border border-yellow-500/30 bg-yellow-500/10">COMING SOON</div>
-                  ) : (
-                    <button onClick={() => openCart("vip")}
-                      className="mt-auto w-full font-bold text-lg py-4 rounded-full transition-all duration-200 hover:scale-105 cursor-pointer"
-                      style={{ background: "linear-gradient(135deg, #888, #d4d4d4, #fff, #c0c0c0)", color: "#0d0500" }}>
-                      Get VIP — ${PRICING.vip.price}
-                    </button>
-                  )}
+                  {(() => {
+                    const liveVip = liveTypes.find(t => t.name === "VIP Experience");
+                    const vipSoldOut = liveVip ? (liveVip.is_active === false || liveVip.sold_count >= liveVip.capacity) : false;
+                    return isComingSoon ? (
+                      <div className="mt-auto block text-center text-yellow-400 font-bold text-base py-4 rounded-full border border-yellow-500/30 bg-yellow-500/10">COMING SOON</div>
+                    ) : vipSoldOut ? (
+                      <div className="mt-auto block text-center text-red-400 font-bold text-base py-4 rounded-full border border-red-500/30 bg-red-500/10">SOLD OUT</div>
+                    ) : (
+                      <button onClick={() => openCart("vip")}
+                        className="mt-auto w-full font-bold text-lg py-4 rounded-full transition-all duration-200 hover:scale-105 cursor-pointer"
+                        style={{ background: "linear-gradient(135deg, #888, #d4d4d4, #fff, #c0c0c0)", color: "#0d0500" }}>
+                        Get VIP — ${PRICING.vip.price}
+                      </button>
+                    );
+                  })()}
                 </div>
               </motion.div>
 
