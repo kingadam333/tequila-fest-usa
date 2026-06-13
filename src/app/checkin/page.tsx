@@ -109,6 +109,12 @@ export default function CheckinPortal() {
     else if (res.status === 401) { setToken(""); setTokenError("Session expired"); }
   }, []);
 
+  // Auto-login from localStorage staff token (set by main login page)
+  useEffect(() => {
+    const stored = localStorage.getItem("staff_token");
+    if (stored && !token) setToken(stored);
+  }, []);
+
   useEffect(() => {
     if (token) loadStats(token, selectedEvent);
   }, [token, selectedEvent, loadStats]);
@@ -299,7 +305,7 @@ export default function CheckinPortal() {
             </select>
             <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none" />
           </div>
-          <button onClick={() => setToken("")} className="text-white/30 hover:text-white/60 transition-colors cursor-pointer">
+          <button onClick={() => { setToken(""); localStorage.removeItem("staff_token"); }} className="text-white/30 hover:text-white/60 transition-colors cursor-pointer">
             <LogOut size={16} />
           </button>
         </div>

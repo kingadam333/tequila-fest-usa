@@ -44,7 +44,13 @@ export default function LoginPage() {
       });
       const data = await res.json();
       if (res.ok) {
-        window.location.href = redirectTo;
+        if (data.isStaff && data.staffToken) {
+          // Staff login — store token and go straight to check-in portal
+          localStorage.setItem("staff_token", `Bearer ${data.staffToken}`);
+          window.location.href = "/checkin";
+        } else {
+          window.location.href = redirectTo;
+        }
       } else {
         setError(data.error || "Invalid email or password.");
         setCaptchaToken("");
