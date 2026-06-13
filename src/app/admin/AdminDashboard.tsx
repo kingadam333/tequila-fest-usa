@@ -993,6 +993,131 @@ function LoyaltyModal({ userId, userName, adminToken, onClose }: { userId: strin
   );
 }
 
+// ─── User Dashboard Modal ─────────────────────────────────────────────────────
+function UserDashboardModal({ user, adminToken, onClose }: { user: UserRecord; adminToken: string; onClose: () => void }) {
+  const [tickets, setTickets] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [qrImages, setQrImages] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      const res = await fetch(`/api/admin/user-tickets?email=${encodeURIComponent(user.email)}`, {
+        headers: { "x-admin-token": adminToken },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setTickets(data.tickets || []);
+        // Generate QR images client-side
+        const QRCode = (await import("qrcode")).default;
+        const imgs: Record<string, string> = {};
+        for (const t of (data.tickets || [])) {
+          if (t.qr_code) {
+            try {
+              imgs[t.id] = await QRCode.toDataURL(t.qr_code, {
+                width: 200,
+                margin: 2,
+                color: { dark: "#000000", light: "#FFFFFF" },
+              });
+            } catch {}
+          }
+        }
+        setQrImages(imgs);
+      }
+      setLoading(false);
+    };
+    load();
+  }, [user.email, adminToken]);
+
+  const statusColor = (s: string) => s === "checked_in" ? "text-green-400 bg-green-500/10 border-green-500/30" : s === "valid" ? "text-yellow-400 bg-yellow-500/10 border-yellow-500/30" : "text-white/40 bg-white/5 border-white/15";
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-start justify-center p-4 overflow-y-auto"
+      onClick={onClose}>
+      <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95 }}
+        className="bg-[#120800] border border-white/15 rounded-3xl w-full max-w-2xl my-8"
+        onClick={e => e.stopPropagation()}>
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-5 border-b border-white/10">
+          <div>
+            <h2 className="font-display text-white text-2xl">{user.name.toUpperCase()}</h2>
+            <p className="text-white/40 text-sm mt-0.5">{user.email}</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="text-right">
+              <p className="text-yellow-400 font-bold text-lg">${user.totalSpent.toFixed(0)}</p>
+              <p className="text-white/30 text-xs">{user.ticketCount} ticket{user.ticketCount !== 1 ? "s" : ""}</p>
+            </div>
+            <button onClick={onClose} className="text-white/30 hover:text-white/70 transition-colors cursor-pointer p-1">
+              <X size={20} />
+            </button>
+          </div>
+        </div>
+
+        {/* Tickets */}
+        <div className="p-6">
+          {loading ? (
+            <div className="space-y-4">
+              {[1,2].map(i => <div key={i} className="h-32 bg-white/5 rounded-2xl animate-pulse" />)}
+            </div>
+          ) : tickets.length === 0 ? (
+            <p className="text-white/30 text-center py-10">No tickets found</p>
+          ) : (
+            <div className="space-y-4">
+              {tickets.map((t: any) => (
+                <div key={t.id} className="bg-white/[0.03] border border-white/10 rounded-2xl overflow-hidden">
+                  <div className="flex items-start gap-4 p-4">
+                    {/* QR Code */}
+                    <div className="flex-shrink-0">
+                      {qrImages[t.id] ? (
+                        <div className="bg-white p-2 rounded-xl">
+                          <img src={qrImages[t.id]} alt="QR" width={100} height={100} className="block" />
+                        </div>
+                      ) : (
+                        <div className="w-[116px] h-[116px] bg-white/5 border border-white/10 rounded-xl flex items-center justify-center">
+                          <QrCode size={28} className="text-white/20" />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Ticket info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className={`text-xs font-bold px-2.5 py-1 rounded-full border ${statusColor(t.status)}`}>
+                          {t.status === "checked_in" ? "✓ Checked In" : t.status === "valid" ? "Valid" : t.status}
+                        </span>
+                      </div>
+                      <p className="text-white font-bold text-base capitalize">{t.ticket_type}</p>
+                      <p className="text-yellow-400 font-semibold text-sm">{t.event_city}</p>
+                      <div className="mt-2 space-y-0.5">
+                        <p className="text-white/40 text-xs">Ticket #{t.ticket_number}</p>
+                        <p className="text-white/40 text-xs font-mono">{t.qr_code}</p>
+                        {t.checked_in_at && (
+                          <p className="text-green-400/70 text-xs">Checked in: {new Date(t.checked_in_at).toLocaleString()}</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Order info */}
+                  {t.ticket_orders && (
+                    <div className="border-t border-white/[0.06] px-4 py-2.5 flex items-center justify-between bg-white/[0.02]">
+                      <p className="text-white/30 text-xs font-mono">{t.ticket_orders.order_number}</p>
+                      <p className="text-white/30 text-xs">{new Date(t.created_at).toLocaleDateString()}</p>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 function UsersSection({ adminToken }: { adminToken: string }) {
   const [tab, setTab] = useState<"tickets" | "free">("tickets");
   const [users, setUsers] = useState<UserRecord[]>([]);
@@ -1002,6 +1127,7 @@ function UsersSection({ adminToken }: { adminToken: string }) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [compUserId, setCompUserId] = useState<string | null>(null);
   const [loyaltyUser, setLoyaltyUser] = useState<{ id: string; name: string } | null>(null);
+  const [dashboardUser, setDashboardUser] = useState<UserRecord | null>(null);
 
   // Add user form
   const [addForm, setAddForm] = useState({ firstName: "", lastName: "", email: "", phone: "", sendWelcome: true });
@@ -1171,6 +1297,17 @@ function UsersSection({ adminToken }: { adminToken: string }) {
         )}
       </AnimatePresence>
 
+      {/* User dashboard modal */}
+      <AnimatePresence>
+        {dashboardUser && (
+          <UserDashboardModal
+            user={dashboardUser}
+            adminToken={adminToken}
+            onClose={() => setDashboardUser(null)}
+          />
+        )}
+      </AnimatePresence>
+
       {/* Comp ticket modal */}
       <AnimatePresence>
         {compUserId && (
@@ -1245,8 +1382,15 @@ function UsersSection({ adminToken }: { adminToken: string }) {
                   {/* Action buttons */}
                   <div className="flex items-center gap-1.5">
                     {u.hasTickets && (
+                      <button onClick={() => setDashboardUser(u)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 hover:border-blue-500/40 text-blue-400 text-xs font-semibold rounded-lg transition-all cursor-pointer"
+                        title="View tickets & QR codes">
+                        <QrCode size={11} /> Dashboard
+                      </button>
+                    )}
+                    {u.hasTickets && (
                       <button onClick={() => { const key = u.id || u.email; setExpandedId(expandedId === key ? null : key); }}
-                        className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-lg text-white/40 hover:text-white transition-all cursor-pointer" title="View orders & tickets">
+                        className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-lg text-white/40 hover:text-white transition-all cursor-pointer" title="View orders">
                         <Eye size={13} />
                       </button>
                     )}
