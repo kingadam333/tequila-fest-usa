@@ -742,6 +742,22 @@ function EventEditor({ event, adminToken, onSaved }: { event: EventRow; adminTok
 function EventsSection({ adminToken, stats, editingId, setEditingId }: { adminToken: string; stats: StatsData | null; editingId: string | null; setEditingId: (id: string | null) => void }) {
   const [events, setEvents] = useState<EventRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [resendingQr, setResendingQr] = useState<string | null>(null);
+  const [resendResult, setResendResult] = useState<{ slug: string; sent: number; failed: number } | null>(null);
+
+  const resendOldQr = async (slug: string) => {
+    if (!confirm(`Resend updated QR emails to all old-format ticket holders for ${slug}? This cannot be undone.`)) return;
+    setResendingQr(slug);
+    setResendResult(null);
+    const res = await fetch("/api/admin/resend-old-qr", {
+      method: "POST",
+      headers: { "x-admin-token": adminToken, "Content-Type": "application/json" },
+      body: JSON.stringify({ event_slug: slug }),
+    });
+    const data = await res.json();
+    setResendResult({ slug, sent: data.sent ?? 0, failed: data.failed ?? 0 });
+    setResendingQr(null);
+  };
 
   const fetchEvents = async () => {
     const res = await fetch("/api/admin/events", { headers: { "x-admin-token": adminToken } });
@@ -822,6 +838,22 @@ function EventsSection({ adminToken, stats, editingId, setEditingId }: { adminTo
                       <Download size={12} /> Export
                     </button>
                   </div>
+                  {ev.slug === "cleveland" && (
+                    <div className="mt-3">
+                      <button
+                        onClick={() => resendOldQr("cleveland")}
+                        disabled={resendingQr === "cleveland"}
+                        className="w-full flex items-center justify-center gap-1.5 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 text-blue-400 text-xs font-semibold py-2 rounded-xl transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                        <Mail size={12} />
+                        {resendingQr === "cleveland" ? "Sending..." : "Resend QR Emails (Old Replit Tickets)"}
+                      </button>
+                      {resendResult?.slug === "cleveland" && (
+                        <p className="text-center text-xs mt-1.5 text-green-400">
+                          ✓ Sent {resendResult.sent} emails{resendResult.failed > 0 ? ` · ${resendResult.failed} failed` : ""}
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })}
