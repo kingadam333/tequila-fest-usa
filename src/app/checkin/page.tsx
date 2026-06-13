@@ -168,6 +168,13 @@ export default function CheckinPortal() {
     });
     const data = await res.json();
 
+    if (!res.ok) {
+      setConfirmStatus("error");
+      setConfirmMsg(data.error || `Error ${res.status} — try again`);
+      setTimeout(() => setConfirmStatus("idle"), 5000);
+      return;
+    }
+
     if (undo) {
       setActiveTicket(t => t ? { ...t, status: "valid", checked_in_at: null } : t);
       setOrderTickets(prev => prev.map(t => t.id === ticket.id ? { ...t, status: "valid", checked_in_at: null } : t));

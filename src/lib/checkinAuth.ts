@@ -13,12 +13,11 @@ export async function verifyCheckinAccess(req: NextRequest): Promise<boolean> {
   // Admin password shortcut
   if (token === process.env.ADMIN_PASSWORD) return true;
 
-  // Staff JWT
+  // Staff JWT — any valid JWT is allowed to access the check-in portal
   if (token.startsWith("Bearer ")) {
     const jwt = token.slice(7);
     const payload = await verifyStaffToken(jwt);
-    if (!payload) return false;
-    return payload.permissions.includes("checkin") || payload.permissions.includes("all");
+    return !!payload;
   }
 
   return false;
