@@ -3,6 +3,7 @@ import { verifyAdminToken, unauthorizedResponse } from "@/lib/adminAuth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { resend, FROM_SUPPORT } from "@/lib/resend";
 import crypto from "crypto";
+import bcrypt from "bcryptjs";
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!verifyAdminToken(req)) return unauthorizedResponse();
@@ -41,6 +42,22 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       subject: `Your Tequila Fest USA staff invite (resent)`,
       html: `<p>Hi ${staff.name},</p><p>Here is your updated invite link:</p><p><a href="${inviteUrl}">${inviteUrl}</a></p><p>Expires in 7 days.</p>`,
     });
+    return NextResponse.json({ success: true });
+  }
+
+  // Set password directly
+  if (body.action === "set_password") {
+    const { password } = body;
+    if (!password || password.length < 6) {
+      return NextResponse.json({ error: "Password must be at least 6 characters" }, { status: 400 });
+    }
+    const password_hash = await bcrypt.hash(password, 10);
+    const { error } = await db.from("staff_members").update({
+      password_hash,
+      status: "active",
+      updated_at: new Date().toISOString(),
+    }).eq("id", id);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ success: true });
   }
 

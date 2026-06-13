@@ -1376,6 +1376,35 @@ function CheckInSection({ adminToken }: { adminToken: string }) {
   const [inviting, setInviting] = useState(false);
   const [inviteStatus, setInviteStatus] = useState<{ ok: boolean; msg: string } | null>(null);
 
+  // Password editing
+  const [editingPwId, setEditingPwId] = useState<string | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [savingPw, setSavingPw] = useState(false);
+  const [pwStatus, setPwStatus] = useState<{ ok: boolean; msg: string } | null>(null);
+
+  const handleSetPassword = async (memberId: string) => {
+    if (!newPassword.trim() || newPassword.length < 6) {
+      setPwStatus({ ok: false, msg: "Password must be at least 6 characters" });
+      return;
+    }
+    setSavingPw(true);
+    setPwStatus(null);
+    const res = await fetch(`/api/admin/staff/${memberId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", "x-admin-token": adminToken },
+      body: JSON.stringify({ action: "set_password", password: newPassword }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) {
+      setPwStatus({ ok: true, msg: "Password updated!" });
+      setNewPassword("");
+      setTimeout(() => { setEditingPwId(null); setPwStatus(null); }, 2000);
+    } else {
+      setPwStatus({ ok: false, msg: data.error || "Failed to update" });
+    }
+    setSavingPw(false);
+  };
+
   const headers = { "x-admin-token": adminToken };
 
   const loadStats = async (city: string) => {
@@ -1582,24 +1611,67 @@ function CheckInSection({ adminToken }: { adminToken: string }) {
         ) : (
           <div className="space-y-2 mb-5">
             {stats.staff.map((member: any) => (
-              <div key={member.id} className="flex items-center justify-between bg-white/[0.03] border border-white/8 rounded-xl px-4 py-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white/60 text-xs font-bold flex-shrink-0">
-                    {member.name?.charAt(0).toUpperCase()}
+              <div key={member.id} className="bg-white/[0.03] border border-white/8 rounded-xl overflow-hidden">
+                {/* Main row */}
+                <div className="flex items-center justify-between px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white/60 text-xs font-bold flex-shrink-0">
+                      {member.name?.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <p className="text-white text-sm font-semibold leading-tight">{member.name}</p>
+                      <p className="text-white/35 text-xs">{member.email}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-white text-sm font-semibold leading-tight">{member.name}</p>
-                    <p className="text-white/35 text-xs">{member.email}</p>
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      {staffStatusBadge(member)}
+                      {member.last_login_at && (
+                        <p className="text-white/20 text-xs mt-0.5">{new Date(member.last_login_at).toLocaleDateString()}</p>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => { setEditingPwId(editingPwId === member.id ? null : member.id); setNewPassword(""); setPwStatus(null); }}
+                      className="text-xs text-white/30 hover:text-yellow-400 border border-white/10 hover:border-yellow-500/40 px-2.5 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap"
+                    >
+                      🔑 Password
+                    </button>
                   </div>
                 </div>
-                <div className="text-right">
-                  {staffStatusBadge(member)}
-                  {member.last_login_at && (
-                    <p className="text-white/20 text-xs mt-0.5">
-                      {new Date(member.last_login_at).toLocaleDateString()}
-                    </p>
-                  )}
-                </div>
+                {/* Inline password editor */}
+                {editingPwId === member.id && (
+                  <div className="border-t border-white/8 px-4 py-3 bg-white/[0.02]">
+                    <p className="text-white/40 text-xs mb-2">Set new password for {member.name}</p>
+                    <div className="flex gap-2">
+                      <input
+                        type="password"
+                        value={newPassword}
+                        onChange={e => setNewPassword(e.target.value)}
+                        onKeyDown={e => e.key === "Enter" && !savingPw && handleSetPassword(member.id)}
+                        placeholder="New password (min 6 chars)"
+                        className="flex-1 bg-white/5 border border-white/15 focus:border-yellow-500/40 rounded-xl px-3 py-2 text-white text-sm outline-none placeholder-white/20"
+                      />
+                      <button
+                        onClick={() => handleSetPassword(member.id)}
+                        disabled={savingPw || !newPassword.trim()}
+                        className="bg-yellow-500 hover:bg-yellow-400 disabled:opacity-40 text-black font-bold text-xs px-4 py-2 rounded-xl transition-all cursor-pointer whitespace-nowrap"
+                      >
+                        {savingPw ? "Saving…" : "Save"}
+                      </button>
+                      <button
+                        onClick={() => { setEditingPwId(null); setNewPassword(""); setPwStatus(null); }}
+                        className="text-white/30 hover:text-white/70 border border-white/10 px-3 py-2 rounded-xl text-xs cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                    {pwStatus && (
+                      <p className={`mt-2 text-xs ${pwStatus.ok ? "text-green-400" : "text-red-400"}`}>
+                        {pwStatus.ok ? "✓ " : "✗ "}{pwStatus.msg}
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
           </div>
