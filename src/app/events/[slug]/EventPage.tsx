@@ -97,7 +97,7 @@ function useCartModal(event: EventData, liveTypes: LiveTicketType[]) {
       ...tt,
       platformFee: live?.platform_fee ?? (tt.key === "ga" ? 1.00 : tt.key === "vip" ? 5.00 : 3.00),
       soldOut: live ? live.sold_count >= live.capacity : false,
-      available: true,
+      available: live ? live.is_active !== false : true,
     };
   });
 
