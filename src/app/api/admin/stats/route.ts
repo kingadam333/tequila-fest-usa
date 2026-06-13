@@ -1,96 +1,77 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAdminToken, unauthorizedResponse } from "@/lib/adminAuth";
+import { normalizeTicketType, TICKET_TYPE_ORDER, sortByType } from "@/lib/normalizeTicketType";
 
 export async function GET(req: NextRequest) {
   if (!verifyAdminToken(req)) return unauthorizedResponse();
-
-  // Use Supabase if configured, fall back to Stripe
-  if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    return getSupabaseStats();
-  }
-  return getStripeStats();
+  return getSupabaseStats();
 }
 
 async function getSupabaseStats() {
   const { supabaseAdmin } = await import("@/lib/supabase");
+  const db = supabaseAdmin as any;
 
-  const { data: orders, error } = await supabaseAdmin
+  // Use ticket_instances as the source of truth (one row per actual ticket)
+  const { data: instances, error } = await db
+    .from("ticket_instances")
+    .select("ticket_type, event_slug, event_city, order_id");
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Fetch paid orders for revenue + date info
+  const { data: orders } = await db
     .from("ticket_orders")
-    .select("event_city, ticket_type, quantity, total, status, created_at")
+    .select("id, event_city, event_slug, total, created_at, status")
     .eq("status", "paid");
 
-  if (error) {
-    console.error("Supabase stats error:", error);
-    return getStripeStats();
+  const orderMap = new Map<string, { total: number; created_at: string; event_city: string }>();
+  for (const o of orders || []) {
+    orderMap.set(o.id, { total: Number(o.total), created_at: o.created_at, event_city: o.event_city });
   }
 
-  const rows = (orders || []) as Array<{ event_city: string; ticket_type: string; quantity: number; total: string | number; created_at: string; }>;
   const today = new Date().toISOString().split("T")[0];
-  const totalRevenue = rows.reduce((s, o) => s + Number(o.total), 0);
-  const totalTickets = rows.reduce((s, o) => s + Number(o.quantity), 0);
-  const ordersToday = rows.filter(o => String(o.created_at).startsWith(today)).length;
+  const totalTickets = (instances || []).length;
 
-  // Normalize ticket type slugs → canonical display names
-  const SLUG_TO_DISPLAY: Record<string, string> = {
-    "regular":           "Regular Rate",
-    "vip":               "VIP Experience",
-    "ga":                "GA",
-    "early bird":        "Early Bird",
-    "early_bird":        "Early Bird",
-    "late registration": "Late Registration",
-    "late_registration": "Late Registration",
-    // Display names map to themselves (case-insensitive lookup below)
-    "early bird rate":   "Early Bird",
-    "regular rate":      "Regular Rate",
-    "vip experience":    "VIP Experience",
-    "late registration rate": "Late Registration",
-  };
-  const TICKET_TYPE_ORDER = ["Early Bird", "Regular Rate", "Late Registration", "VIP Experience", "GA"];
+  // Only count revenue from paid orders once each
+  const paidOrderIds = new Set((orders || []).map((o: any) => o.id));
+  const totalRevenue = (orders || []).reduce((s: number, o: any) => s + Number(o.total), 0);
+  const ordersToday = (orders || []).filter((o: any) => String(o.created_at).startsWith(today)).length;
+  const totalOrders = (orders || []).length;
 
-  const normalizeType = (raw: string): string => {
-    const key = (raw || "").toLowerCase().trim();
-    return SLUG_TO_DISPLAY[key] ?? raw;
-  };
+  // Per-city breakdown from ticket_instances
+  const byCity: Record<string, { revenue: number; tickets: number; byType: Record<string, number> }> = {};
 
-  // Per-city breakdown with ticket type split
-  const byCity: Record<string, {
-    revenue: number;
-    tickets: number;
-    byType: Record<string, number>;
-  }> = {};
+  for (const ti of instances || []) {
+    const order = orderMap.get(ti.order_id);
+    if (!order) continue; // skip unpaid
+    const city = order.event_city || ti.event_city || "Unknown";
+    if (!byCity[city]) byCity[city] = { revenue: 0, tickets: 0, byType: {} };
+    byCity[city].tickets++;
+    const type = normalizeTicketType(ti.ticket_type);
+    byCity[city].byType[type] = (byCity[city].byType[type] || 0) + 1;
+  }
 
-  for (const o of rows) {
+  // Revenue per city — split evenly from order total across tickets in that order
+  // (simpler: attribute full order revenue to its city once)
+  const cityRevenueAdded = new Set<string>();
+  for (const o of orders || []) {
     const city = o.event_city || "Unknown";
     if (!byCity[city]) byCity[city] = { revenue: 0, tickets: 0, byType: {} };
     byCity[city].revenue += Number(o.total);
-    byCity[city].tickets += o.quantity;
-    const type = normalizeType(o.ticket_type);
-    byCity[city].byType[type] = (byCity[city].byType[type] || 0) + o.quantity;
   }
 
-  // Sort each city's byType into canonical order
+  // Sort byType into canonical order for each city
   for (const city of Object.keys(byCity)) {
-    const raw = byCity[city].byType;
-    const sorted: Record<string, number> = {};
-    for (const name of TICKET_TYPE_ORDER) {
-      if (raw[name]) sorted[name] = raw[name];
-    }
-    // Append any unknown types at the end
-    for (const name of Object.keys(raw)) {
-      if (!sorted[name]) sorted[name] = raw[name];
-    }
-    byCity[city].byType = sorted;
+    byCity[city].byType = sortByType(byCity[city].byType);
   }
 
   // Fee analytics
   const { calculateFees } = await import("@/lib/fees");
   let totalServiceFees = 0;
   let totalTicketRevenue = 0;
-  for (const o of rows) {
-    const qty = Number(o.quantity);
-    const total = Number(o.total);
-    // Estimate ticket subtotal (total includes fees for new orders, may not for migrated ones)
-    const f = calculateFees(total, qty);
+  for (const o of orders || []) {
+    const qty = (instances || []).filter((ti: any) => ti.order_id === o.id).length || 1;
+    const f = calculateFees(Number(o.total), qty);
     totalServiceFees += f.serviceFee;
     totalTicketRevenue += f.subtotal;
   }
@@ -99,41 +80,10 @@ async function getSupabaseStats() {
     source: "supabase",
     totalRevenue,
     totalTickets,
-    totalOrders: rows.length,
+    totalOrders,
     ordersToday,
     byCity,
     totalServiceFees: parseFloat(totalServiceFees.toFixed(2)),
     totalTicketRevenue: parseFloat(totalTicketRevenue.toFixed(2)),
   });
-}
-
-async function getStripeStats() {
-  const { stripe } = await import("@/lib/stripe");
-
-  try {
-    const sessions = await stripe.checkout.sessions.list({ limit: 100 });
-    const ticketSessions = sessions.data.filter(
-      s => s.metadata?.type === "ticket_purchase" && s.payment_status === "paid"
-    );
-
-    const totalRevenue = ticketSessions.reduce((s, o) => s + (o.amount_total || 0) / 100, 0);
-    const totalTickets = ticketSessions.reduce((s, o) => s + parseInt(o.metadata?.quantity || "1"), 0);
-    const today = new Date().toISOString().split("T")[0];
-    const ordersToday = ticketSessions.filter(s => new Date(s.created * 1000).toISOString().startsWith(today)).length;
-
-    const byCity: Record<string, { revenue: number; tickets: number; byType: Record<string, number> }> = {};
-    for (const s of ticketSessions) {
-      const city = s.metadata?.eventCity || "Unknown";
-      if (!byCity[city]) byCity[city] = { revenue: 0, tickets: 0, byType: {} };
-      byCity[city].revenue += (s.amount_total || 0) / 100;
-      const qty = parseInt(s.metadata?.quantity || "1");
-      byCity[city].tickets += qty;
-      const type = s.metadata?.ticketType || "unknown";
-      byCity[city].byType[type] = (byCity[city].byType[type] || 0) + qty;
-    }
-
-    return NextResponse.json({ source: "stripe", totalRevenue, totalTickets, totalOrders: ticketSessions.length, ordersToday, byCity });
-  } catch (err) {
-    return NextResponse.json({ error: "Failed to fetch stats" }, { status: 500 });
-  }
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { verifyCheckinAccess } from "@/lib/checkinAuth";
+import { normalizeTicketType, sortByType } from "@/lib/normalizeTicketType";
 
 export async function GET(req: NextRequest) {
   if (!await verifyCheckinAccess(req)) {
@@ -12,7 +13,7 @@ export async function GET(req: NextRequest) {
 
   const db = supabaseAdmin as any;
 
-  let query = db.from("ticket_instances").select("status, ticket_type, event_slug, event_city");
+  let query = db.from("ticket_instances").select("status, ticket_type, event_slug");
   if (eventSlug) query = query.eq("event_slug", eventSlug);
 
   const { data } = await query;
@@ -21,25 +22,13 @@ export async function GET(req: NextRequest) {
   const total = data.length;
   const checkedIn = data.filter((t: any) => t.status === "used").length;
 
-  // Normalize variant type names → canonical display names
-  const normalize = (raw: string): string => {
-    const s = (raw || "").toLowerCase().trim();
-    if (s === "regular" || s === "regular rate") return "Regular Rate";
-    if (s === "vip" || s === "vip experience") return "VIP Experience";
-    if (s === "earlybird" || s === "early bird") return "Early Bird";
-    if (s === "late" || s === "late registration" || s === "late_registration") return "Late Registration";
-    if (s === "ga" || s === "ga entry") return "GA";
-    return raw;
-  };
-
-  // Breakdown by ticket type (merged)
-  const byType: Record<string, { total: number; checkedIn: number }> = {};
+  const byTypeRaw: Record<string, { total: number; checkedIn: number }> = {};
   for (const t of data) {
-    const key = normalize(t.ticket_type);
-    if (!byType[key]) byType[key] = { total: 0, checkedIn: 0 };
-    byType[key].total++;
-    if (t.status === "used") byType[key].checkedIn++;
+    const key = normalizeTicketType(t.ticket_type);
+    if (!byTypeRaw[key]) byTypeRaw[key] = { total: 0, checkedIn: 0 };
+    byTypeRaw[key].total++;
+    if (t.status === "used") byTypeRaw[key].checkedIn++;
   }
 
-  return NextResponse.json({ total, checkedIn, byType });
+  return NextResponse.json({ total, checkedIn, byType: sortByType(byTypeRaw) });
 }
