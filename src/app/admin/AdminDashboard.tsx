@@ -4456,7 +4456,20 @@ export default function AdminDashboard() {
           <p className="font-display text-white/60 text-lg capitalize lg:hidden">{activeSection}</p>
           <div className="hidden lg:flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-            <span className="text-white/40 text-xs">Cincinnati · 7 days away</span>
+            <span className="text-white/40 text-xs">
+              {(() => {
+                const now = new Date();
+                const upcoming = EVENTS_CONFIG
+                  .map(ev => ({ ...ev, d: new Date(ev.date) }))
+                  .filter(ev => ev.d >= new Date(now.toDateString()))
+                  .sort((a, b) => a.d.getTime() - b.d.getTime())[0];
+                if (!upcoming) return "All events complete";
+                const diffMs = upcoming.d.getTime() - new Date(now.toDateString()).getTime();
+                const days = Math.round(diffMs / 86400000);
+                const label = days === 0 ? "Today" : days === 1 ? "Tomorrow" : `${days} days away`;
+                return `${upcoming.city} · ${label}`;
+              })()}
+            </span>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-white/30 text-xs hidden sm:block">Admin</span>
