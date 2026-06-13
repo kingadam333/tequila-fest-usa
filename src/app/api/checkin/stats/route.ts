@@ -19,14 +19,14 @@ export async function GET(req: NextRequest) {
   if (!data) return NextResponse.json({ total: 0, checkedIn: 0, byType: {} });
 
   const total = data.length;
-  const checkedIn = data.filter((t: any) => t.status === "checked_in").length;
+  const checkedIn = data.filter((t: any) => t.status === "used").length;
 
   // Breakdown by ticket type
   const byType: Record<string, { total: number; checkedIn: number }> = {};
   for (const t of data) {
     if (!byType[t.ticket_type]) byType[t.ticket_type] = { total: 0, checkedIn: 0 };
     byType[t.ticket_type].total++;
-    if (t.status === "checked_in") byType[t.ticket_type].checkedIn++;
+    if (t.status === "used") byType[t.ticket_type].checkedIn++;
   }
 
   return NextResponse.json({ total, checkedIn, byType });

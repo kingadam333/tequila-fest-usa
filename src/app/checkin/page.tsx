@@ -190,8 +190,8 @@ export default function CheckinPortal() {
       setConfirmMsg(`Already checked in at ${time}`);
     } else if (data.success) {
       const now = new Date().toISOString();
-      setActiveTicket(t => t ? { ...t, status: "checked_in", checked_in_at: now } : t);
-      setOrderTickets(prev => prev.map(t => t.id === ticket.id ? { ...t, status: "checked_in", checked_in_at: now } : t));
+      setActiveTicket(t => t ? { ...t, status: "used", checked_in_at: now } : t);
+      setOrderTickets(prev => prev.map(t => t.id === ticket.id ? { ...t, status: "used", checked_in_at: now } : t));
       setConfirmStatus("success");
       setConfirmMsg("✓ Checked in!");
       loadStats(token, selectedEvent);
@@ -231,7 +231,7 @@ export default function CheckinPortal() {
             setActiveTicket(ticket);
             setSearchQ(decodedText);
             // Auto check-in immediately
-            if (ticket.status !== "checked_in") {
+            if (ticket.status !== "used") {
               await doCheckIn(ticket);
             } else {
               setConfirmStatus("already");
@@ -475,7 +475,7 @@ export default function CheckinPortal() {
           {activeTicket && (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
               className={`border rounded-2xl overflow-hidden ${
-                activeTicket.status === "checked_in" ? "bg-green-950/30 border-green-500/40" : "bg-white/[0.04] border-white/15"
+                activeTicket.status === "used" ? "bg-green-950/30 border-green-500/40" : "bg-white/[0.04] border-white/15"
               }`}>
 
               {/* Name / close */}
@@ -512,7 +512,7 @@ export default function CheckinPortal() {
                   <p className="text-white/30 text-[10px] uppercase tracking-wider mb-2.5 flex items-center justify-between">
                     <span>All Tickets in this Order</span>
                     <span className="text-white/50">
-                      {orderTickets.filter(t => t.status === "checked_in").length} / {orderTickets.length} checked in
+                      {orderTickets.filter(t => t.status === "used").length} / {orderTickets.length} checked in
                     </span>
                   </p>
                   <div className="space-y-1.5">
@@ -521,7 +521,7 @@ export default function CheckinPortal() {
                         t.id === activeTicket.id ? "bg-white/10 border border-white/15" : "bg-white/[0.02]"
                       }`}>
                         <div className="flex items-center gap-2">
-                          {t.status === "checked_in"
+                          {t.status === "used"
                             ? <CheckCircle size={14} className="text-green-400 flex-shrink-0" />
                             : <div className="w-3.5 h-3.5 rounded-full border border-white/20 flex-shrink-0" />
                           }
@@ -529,7 +529,7 @@ export default function CheckinPortal() {
                           {t.id === activeTicket.id && <span className="text-yellow-400 text-[10px] font-bold">← this one</span>}
                         </div>
                         <div className="text-right">
-                          {t.status === "checked_in"
+                          {t.status === "used"
                             ? <span className="text-green-400 text-xs">{t.checked_in_at ? new Date(t.checked_in_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "In"}</span>
                             : <span className="text-white/25 text-xs">Remaining</span>
                           }
@@ -548,7 +548,7 @@ export default function CheckinPortal() {
 
               {/* Action button */}
               <div className="px-5 pb-5 flex gap-2">
-                {activeTicket.status !== "checked_in" ? (
+                {activeTicket.status !== "used" ? (
                   <button onClick={() => doCheckIn(activeTicket)}
                     className="flex-1 bg-green-500 hover:bg-green-400 text-black font-bold py-4 rounded-xl transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer text-base flex items-center justify-center gap-2">
                     <CheckCircle size={20} /> CHECK IN
@@ -585,7 +585,7 @@ export default function CheckinPortal() {
                   }
                 }}
                 className={`w-full text-left border rounded-xl px-4 py-3.5 transition-all cursor-pointer hover:border-white/25 ${
-                  ticket.status === "checked_in" ? "bg-green-950/20 border-green-500/30" : "bg-white/[0.03] border-white/10"
+                  ticket.status === "used" ? "bg-green-950/20 border-green-500/30" : "bg-white/[0.03] border-white/10"
                 }`}>
                 <div className="flex items-center justify-between">
                   <div className="flex-1 min-w-0">
@@ -598,7 +598,7 @@ export default function CheckinPortal() {
                     <span className="text-xs font-semibold capitalize" style={{ color: TYPE_COLORS[ticket.ticket_type] || "#F5A623" }}>
                       {ticket.ticket_type}
                     </span>
-                    {ticket.status === "checked_in"
+                    {ticket.status === "used"
                       ? <span className="text-green-400 text-[10px] flex items-center gap-0.5"><CheckCircle size={10} /> In</span>
                       : <span className="text-white/20 text-[10px]">Ticket #{ticket.ticket_number}</span>
                     }

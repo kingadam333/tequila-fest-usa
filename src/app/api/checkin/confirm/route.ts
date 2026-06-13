@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
     .eq("id", ticketId)
     .single();
 
-  if (ticket?.status === "checked_in") {
+  if (ticket?.status === "used") {
     return NextResponse.json({
       success: false,
       alreadyCheckedIn: true,
@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
 
   const { error } = await db
     .from("ticket_instances")
-    .update({ status: "checked_in", checked_in_at: new Date().toISOString() })
+    .update({ status: "used", checked_in_at: new Date().toISOString() })
     .eq("id", ticketId);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
