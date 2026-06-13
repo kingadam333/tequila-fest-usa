@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerClient } from "@supabase/ssr";
 import { verifyTurnstile } from "@/lib/turnstile";
 
 export async function POST(req: NextRequest) {
@@ -17,31 +16,34 @@ export async function POST(req: NextRequest) {
   const captchaOk = await verifyTurnstile(captchaToken || "", ip);
   if (!captchaOk) return NextResponse.json({ error: "CAPTCHA verification failed" }, { status: 400 });
 
-  const res = NextResponse.json({ success: true });
-
-  const supabase = createServerClient(
+  const { createClient } = await import("@supabase/supabase-js");
+  const adminAuth = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll: () => req.cookies.getAll(),
-        setAll: (cookies) => cookies.forEach(({ name, value, options }) => res.cookies.set(name, value, options)),
-      },
-    }
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
   );
 
-  // Create Supabase Auth user
-  const { data, error } = await supabase.auth.signUp({
+  // Check if account already exists
+  const { data: existing } = await adminAuth
+    .from("customer_accounts")
+    .select("id")
+    .eq("email", email.toLowerCase())
+    .maybeSingle();
+
+  if (existing) {
+    return NextResponse.json({ error: "An account with this email already exists." }, { status: 400 });
+  }
+
+  // Use admin API so email is confirmed immediately — no confirmation email loop
+  const { data, error } = await adminAuth.auth.admin.createUser({
     email,
     password,
-    options: {
-      data: { first_name: firstName, last_name: lastName, phone },
-      emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/account`,
-    },
+    email_confirm: true,
+    user_metadata: { first_name: firstName, last_name: lastName || "", phone: phone || "" },
   });
 
   if (error) {
-    if (error.message.includes("already registered")) {
+    if (error.message.toLowerCase().includes("already registered") || error.message.toLowerCase().includes("already been registered")) {
       return NextResponse.json({ error: "An account with this email already exists." }, { status: 400 });
     }
     return NextResponse.json({ error: error.message }, { status: 400 });
@@ -49,16 +51,15 @@ export async function POST(req: NextRequest) {
 
   // Also create a row in customer_accounts for our own data
   if (data.user) {
-    const { supabaseAdmin } = await import("@/lib/supabase");
-    const db = supabaseAdmin as any;
+    const db = adminAuth as any;
     await db.from("customer_accounts").upsert({
       id: data.user.id,
-      email,
+      email: email.toLowerCase(),
       first_name: firstName,
       last_name: lastName || null,
       phone: phone || null,
     }, { onConflict: "id" });
   }
 
-  return res;
+  return NextResponse.json({ success: true });
 }
