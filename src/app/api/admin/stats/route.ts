@@ -68,11 +68,15 @@ async function getSupabaseStats() {
   // Fee analytics
   const { calculateFees } = await import("@/lib/fees");
   let totalServiceFees = 0;
+  let totalPlatformFees = 0;
+  let totalStripeFees = 0;
   let totalTicketRevenue = 0;
   for (const o of orders || []) {
     const qty = (instances || []).filter((ti: any) => ti.order_id === o.id).length || 1;
     const f = calculateFees(Number(o.total), qty);
     totalServiceFees += f.serviceFee;
+    totalPlatformFees += f.platformFee;
+    totalStripeFees += f.stripeFee;
     totalTicketRevenue += f.subtotal;
   }
 
@@ -84,6 +88,8 @@ async function getSupabaseStats() {
     ordersToday,
     byCity,
     totalServiceFees: parseFloat(totalServiceFees.toFixed(2)),
+    totalPlatformFees: parseFloat(totalPlatformFees.toFixed(2)),
+    totalStripeFees: parseFloat(totalStripeFees.toFixed(2)),
     totalTicketRevenue: parseFloat(totalTicketRevenue.toFixed(2)),
   });
 }

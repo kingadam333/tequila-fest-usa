@@ -37,6 +37,8 @@ interface StatsData {
   ordersToday: number;
   source?: string;
   totalServiceFees?: number;
+  totalPlatformFees?: number;
+  totalStripeFees?: number;
   totalTicketRevenue?: number;
   byCity: Record<string, { revenue: number; tickets: number; byType?: Record<string, number> }>;
 }
@@ -161,7 +163,25 @@ function OverviewSection({ stats, orders, events, loading }: { stats: StatsData 
           <StatCard icon={<DollarSign size={18} />} label="Gross Revenue" value={`$${(stats?.totalRevenue || 0).toLocaleString()}`} sub="Tickets + fees" color="#F5A623" />
           <StatCard icon={<Ticket size={18} />} label="Tickets Sold" value={(stats?.totalTickets || 0).toString()} sub="Across all cities" color="#00A878" />
           <StatCard icon={<TrendingUp size={18} />} label="Orders Today" value={(stats?.ordersToday || 0).toString()} color="#7B2FBE" />
-          <StatCard icon={<CheckCircle size={18} />} label="Service Fees" value={`$${(stats?.totalServiceFees || 0).toFixed(2)}`} sub="Platform + processing" color="#C8102E" />
+          <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-5">
+            <div className="flex items-start justify-between mb-3">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "#C8102E20", color: "#C8102E" }}>
+                <CheckCircle size={18} />
+              </div>
+            </div>
+            <p className="font-display text-white text-3xl">${(stats?.totalServiceFees || 0).toFixed(2)}</p>
+            <p className="text-white/50 text-sm mt-0.5">Service Fees</p>
+            <div className="mt-2 space-y-0.5">
+              <div className="flex justify-between text-xs">
+                <span className="text-white/40">Platform</span>
+                <span className="text-white/60">${(stats?.totalPlatformFees || 0).toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-white/40">Processing</span>
+                <span className="text-white/60">${(stats?.totalStripeFees || 0).toFixed(2)}</span>
+              </div>
+            </div>
+          </div>
         </div>
         )}
       </div>
