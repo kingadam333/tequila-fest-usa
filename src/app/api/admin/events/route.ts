@@ -23,8 +23,8 @@ export async function GET(req: NextRequest) {
     const s = (raw || "").toLowerCase().trim();
     if (s === "regular" || s === "regular rate") return "regular rate";
     if (s === "vip" || s === "vip experience") return "vip experience";
-    if (s === "early bird" || s === "earlybird") return "early bird";
-    if (s === "late registration" || s === "late_registration") return "late registration";
+    if (s === "early bird" || s === "earlybird" || s === "earlybird") return "early bird";
+    if (s === "late" || s === "late registration" || s === "late_registration") return "late registration";
     if (s === "ga" || s === "ga entry") return "ga";
     return s;
   };

@@ -5,8 +5,8 @@ const normalize = (raw: string): string => {
   const s = (raw || "").toLowerCase().trim();
   if (s === "regular" || s === "regular rate") return "Regular Rate";
   if (s === "vip" || s === "vip experience") return "VIP Experience";
-  if (s === "early bird" || s === "earlybird") return "Early Bird";
-  if (s === "late registration" || s === "late_registration") return "Late Registration";
+  if (s === "earlybird" || s === "early bird") return "Early Bird";
+  if (s === "late" || s === "late registration" || s === "late_registration") return "Late Registration";
   if (s === "ga" || s === "ga entry") return "GA";
   return raw;
 };
