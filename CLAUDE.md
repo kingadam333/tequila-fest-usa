@@ -92,6 +92,8 @@ Event data is defined in `src/lib/events.ts`. VIP ticket available at all events
 | `coupons` | Discount codes |
 | `brand_contacts` | Tequila brand contacts — contact_name, contact_email, contact_phone, contact_type (distributor/supplier/self_distributed), brands (JSONB: [{name, price_per_bottle}]), distributor, supplier, notes |
 | `brand_invoices` | Brand invoices — linked to brand_contacts, line_items JSONB, total, status (draft/sent/paid/cancelled), stripe_payment_link_id/url |
+| `staff_members` | Check-in staff — id, name, email, password_hash (bcrypt), permissions (array), status, last_login_at |
+| `vendor_applications` | Vendor form submissions — business_name, cities (array), stripe_session_id, status (pending/approved/paid) |
 
 ---
 
@@ -110,12 +112,28 @@ Event data is defined in `src/lib/events.ts`. VIP ticket available at all events
 | `src/app/api/admin/resend-email/route.ts` | Admin: resend ticket email for any order (uses qrTicketHtml) |
 | `src/app/api/admin/contact/route.ts` | Admin: GET submissions, POST reply |
 | `src/app/api/session-email/route.ts` | Fetches customer email from Stripe session (for post-purchase flow) |
-| `src/app/admin/AdminDashboard.tsx` | Full admin dashboard (orders, events, users, inbox, AI, staff) |
+| `src/app/admin/AdminDashboard.tsx` | Full admin dashboard (orders, events, users, inbox, AI, staff, check-in) |
 | `src/components/EventCards.tsx` | Homepage city event cards — hardcoded data, includes status field per city |
 | `src/components/TicketCartModal.tsx` | Ticket purchase modal on city event pages |
 | `src/components/PreCheckoutModal.tsx` | Pre-checkout info collection modal |
-| `src/app/login/LoginPage.tsx` | Login page (supports ?email= and ?redirect= URL params) |
+| `src/app/login/LoginPage.tsx` | Login page — detects staff accounts and redirects to /checkin with JWT |
 | `src/app/ticket-confirmation/ConfirmationPage.tsx` | Post-Stripe success page |
+| `src/app/checkin/page.tsx` | Staff check-in portal — fullscreen QR scanner, auto check-in, order progress |
+| `src/app/vendors/page.tsx` | Vendor application form — multi-select cities, $150/city pricing |
+| `src/components/MetaPixel.tsx` | Meta Pixel tracking (PageView, InitiateCheckout, Purchase) |
+| `src/components/InstallBanner.tsx` | PWA install banner — Android native prompt, iOS instructions |
+| `src/lib/checkinAuth.ts` | Verifies check-in requests — admin password OR any valid staff JWT |
+| `src/lib/staffAuth.ts` | Staff JWT sign/verify (jose, HS256, 12h expiry) |
+| `src/app/api/checkin/lookup/route.ts` | Ticket lookup by QR/name/email/order — returns orderTickets siblings |
+| `src/app/api/checkin/confirm/route.ts` | Sets ticket status to 'used' + checked_in_at timestamp |
+| `src/app/api/checkin/stats/route.ts` | Live check-in stats by event — total, used count, by type breakdown |
+| `src/app/api/staff/login/route.ts` | Staff login — bcrypt verify, returns JWT |
+| `src/app/api/admin/staff/[id]/route.ts` | Staff CRUD + set_password action |
+| `src/app/api/admin/checkin-stats/route.ts` | Admin check-in stats + staff roster with status |
+| `src/app/api/admin/user-tickets/route.ts` | Fetch all tickets+QR codes for a customer email |
+| `src/app/api/admin/vendors/route.ts` | Vendor application — creates Stripe line items per city ($150 each) |
+| `public/manifest.json` | PWA manifest — name "Tequila Fest USA", theme #F5A623 |
+| `public/icons/` | PWA icons — 11 sizes (72–512px) + 2 maskable, radial gradient + skull logo |
 
 ---
 
@@ -321,6 +339,45 @@ OPENAI_API_KEY=...
 - [x] DB check constraint updated to allow `coming_soon`
 - [x] Admin event save now shows error alert on failure
 
+### Staff Check-In System (`/checkin`)
+- [x] `staff_members` table with bcrypt passwords + JWT auth (jose)
+- [x] `/api/staff/login` — staff-only login endpoint
+- [x] Main login (`/login`) detects staff emails → stores `Bearer <jwt>` in localStorage → redirects to `/checkin` (solves PWA no-URL-bar problem)
+- [x] Check-in portal auto-loads staff JWT from localStorage on mount
+- [x] **Fullscreen QR scanner overlay** — covers entire screen, gold viewfinder, flash on scan
+- [x] **Auto check-in on scan** — immediately calls confirm API, no extra tap
+- [x] **Order progress card** — shows all tickets in same order, ✓ checked / remaining
+- [x] Undo check-in button
+- [x] Live stats with per-type breakdown bars
+- [x] Admin can set/change staff passwords from admin dashboard
+- [x] Admin check-in section shows live DB stats + staff roster with online/active/pending/expired status badges
+- [x] "View Dashboard" button in Users section shows customer tickets + QR codes
+
+### Ticket Check-In Status
+- `ticket_instances.status` check constraint (`ticket_instances_status_check`) allows: `valid`, `used`, `cancelled`, `refunded`, `pending`, `transferred`
+- **Checked-in tickets are set to `status = 'used'`** (NOT "checked_in" — that violates the constraint)
+- `checked_in_at` column stores the timestamp
+
+### PWA
+- [x] `@ducanh2912/next-pwa` installed — service worker auto-generated
+- [x] `public/manifest.json` — name "Tequila Fest USA", theme #F5A623, shortcuts to /events and /account
+- [x] 11 icon sizes generated (72–512px) + 2 maskable — Python/Pillow, radial gradient + skull logo
+- [x] Install banner (`InstallBanner.tsx`) — Android native prompt, iOS 3-step instructions, shows immediately, dismisses 7 days
+- [x] `next.config.ts` — added `turbopack: {}` to silence webpack/Turbopack conflict from next-pwa
+
+### Meta Pixel
+- [x] `MetaPixel.tsx` component fires PageView on every route change
+- [x] `NEXT_PUBLIC_META_PIXEL_ID=1968617953699126` set in Vercel env (baked at build time)
+- [x] `trackPixelEvent()` helper exported for InitiateCheckout / Purchase events
+
+### Vendor Flow
+- [x] Vendor form: multi-select city checkboxes (Cincinnati / Cleveland / Columbus / Phoenix)
+- [x] Live total displayed under checkboxes
+- [x] Heading changed to "OUR UPCOMING EVENTS" (removed "2026")
+- [x] "$150 per city" fee banner above form
+- [x] Stripe checkout: one line item per city — "Vendor - Cincinnati", "Vendor - Cleveland", etc. at $150 each
+- [x] Vendor applications in `vendor_applications` DB table
+
 ### Bug Fixes
 - [x] Cloudflare Turnstile spinning loop — fixed via refs in Turnstile.tsx
 - [x] Stripe webhook 308 redirect — webhook URL updated to www
@@ -335,10 +392,6 @@ OPENAI_API_KEY=...
 ## What Still Needs to Be Done
 
 ### High Priority
-- [ ] **Send ticket emails to 2 VIP customers** — emails never sent while system was broken:
-  - `TF-MQ4J7CXY` — Dalton Lobenstein — `daltonobenstein@gmail.com` — Cincinnati VIP — $131.92
-  - `TF-MQ4J86AD` — Jon Osman — `jonnyosman98@gmail.com` — Cincinnati VIP — $131.92
-  - **Use the Send icon (→) in Admin → Orders**
 - [ ] **Coupon/promo codes** at checkout — `coupons` table exists in DB, UI and API not built
 - [ ] **Supabase RLS security audit** — Row Level Security policies need review on all tables
 
@@ -346,7 +399,7 @@ OPENAI_API_KEY=...
 - [ ] **Stripe receipt link** on account page — not currently shown
 - [ ] **Email blast to Cincinnati ticket holders** — event details / day-of info
 - [ ] **City-specific logos** on each event page — using generic logo currently
-- [ ] **Check-in / QR scanner page** (`/check-in`) — for door staff to scan tickets at entry
+- [x] ~~**Check-in / QR scanner page**~~ — **DONE** — `/checkin` is fully built and working
 - [ ] **Loyalty/points system** — DB table exists, no UI or award logic
 - [ ] **Vendor application admin workflow** — form submits but no review/approval in admin
 - [ ] **Blog CMS** — page scaffolded, needs admin editing and real content
@@ -475,3 +528,11 @@ Sonnet 4.6 kept retrying `/emails/{id}` with workarounds (delays, different ID f
 7. **Homepage event cards are hardcoded** (`src/components/EventCards.tsx`) — admin status changes only affect individual event pages, not the homepage cards. Update the `status` field in `EventCards.tsx` directly to change homepage display.
 
 8. **DB events status constraint** — allowed values: `draft`, `on_sale`, `sold_out`, `cancelled`, `coming_soon`. Adding any new status requires an `ALTER TABLE` to update the check constraint first.
+
+9. **`ticket_instances` status constraint** — `ticket_instances_status_check` allows: `valid`, `used`, `cancelled`, `refunded`, `pending`, `transferred`. Checked-in tickets must be set to `"used"` — `"checked_in"` is **NOT** an allowed value and will throw a constraint violation error.
+
+10. **Staff JWT permissions** — `verifyCheckinAccess()` allows any valid staff JWT (no specific permission required). Staff members may have empty `permissions: []` arrays in DB — this is fine, they can still access `/checkin`.
+
+11. **Supabase project ID** — `igktkkjnyxeiflnvfzdw` (confirmed via `list_projects` MCP). The old ID `ycyxswsubxigpkehuqcf` was wrong — always use `igktkkjnyxeiflnvfzdw`.
+
+12. **`.env.local` values are dotenvx-encrypted** — `cat .env.local` shows empty strings. The actual secrets are encrypted in the file. Vercel CLI `env pull` also shows empty strings. To read actual values, use `npx @dotenvx/dotenvx run -- node -e "..."` or query the live DB via the Supabase MCP with project ID `igktkkjnyxeiflnvfzdw`.
