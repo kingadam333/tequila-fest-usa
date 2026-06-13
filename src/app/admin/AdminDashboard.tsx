@@ -1364,8 +1364,11 @@ function CouponsSection() {
 
 function CheckInSection({ adminToken }: { adminToken: string }) {
   const [activeEvent, setActiveEvent] = useState(EVENTS_CONFIG[0]);
+  const [stats, setStats] = useState<{ total: number; checkedIn: number; remaining: number; byType: Record<string, { total: number; checkedIn: number }>; staff: any[] } | null>(null);
+  const [statsLoading, setStatsLoading] = useState(true);
   const [scanInput, setScanInput] = useState("");
   const [scanResult, setScanResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [scanning, setScanning] = useState(false);
 
   // Door-staff invite
   const [inviteName, setInviteName] = useState("");
@@ -1373,27 +1376,67 @@ function CheckInSection({ adminToken }: { adminToken: string }) {
   const [inviting, setInviting] = useState(false);
   const [inviteStatus, setInviteStatus] = useState<{ ok: boolean; msg: string } | null>(null);
 
-  const handleScan = () => {
-    if (!scanInput) return;
-    // Mock scan result
-    const isValid = scanInput.startsWith("TKT-");
-    setScanResult({
-      success: isValid,
-      message: isValid
-        ? `✓ Checked in: ${scanInput} — Sarah Mitchell · All Inclusive`
-        : `✗ Invalid ticket: ${scanInput}`,
-    });
-    if (isValid) setScanInput("");
+  const headers = { "x-admin-token": adminToken };
+
+  const loadStats = async (city: string) => {
+    setStatsLoading(true);
+    const res = await fetch(`/api/admin/checkin-stats?city=${encodeURIComponent(city)}`, { headers: headers as any });
+    if (res.ok) setStats(await res.json());
+    setStatsLoading(false);
+  };
+
+  useEffect(() => { loadStats(activeEvent.city); }, [activeEvent.city]);
+
+  // Auto-refresh every 15 seconds
+  useEffect(() => {
+    const interval = setInterval(() => loadStats(activeEvent.city), 15000);
+    return () => clearInterval(interval);
+  }, [activeEvent.city]);
+
+  const handleScan = async () => {
+    const val = scanInput.trim();
+    if (!val) return;
+    setScanning(true);
+    setScanResult(null);
+    try {
+      // Look up ticket by QR code or ticket_number
+      const res = await fetch("/api/admin/checkin-lookup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...headers },
+        body: JSON.stringify({ query: val, eventCity: activeEvent.city }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ticket) {
+        setScanResult({ success: false, message: data.error || `Ticket not found: ${val}` });
+      } else if (data.ticket.status === "checked_in") {
+        setScanResult({ success: false, message: `⚠ Already checked in at ${new Date(data.ticket.checked_in_at).toLocaleTimeString()} — ${data.ticket.holder_name}` });
+      } else {
+        // Confirm check-in
+        const confirmRes = await fetch("/api/admin/checkin-confirm", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...headers },
+          body: JSON.stringify({ ticketId: data.ticket.id }),
+        });
+        const confirmData = await confirmRes.json();
+        if (confirmData.success) {
+          setScanResult({ success: true, message: `✓ Checked in: ${data.ticket.holder_name} · ${data.ticket.ticket_type?.toUpperCase()}` });
+          setScanInput("");
+          loadStats(activeEvent.city);
+        } else {
+          setScanResult({ success: false, message: confirmData.error || "Check-in failed" });
+        }
+      }
+    } catch {
+      setScanResult({ success: false, message: "Network error" });
+    }
+    setScanning(false);
   };
 
   const handleInviteStaff = async () => {
     setInviteStatus(null);
     const email = inviteEmail.trim();
     const name = inviteName.trim();
-    if (!email || !name) {
-      setInviteStatus({ ok: false, msg: "Name and email required" });
-      return;
-    }
+    if (!email || !name) { setInviteStatus({ ok: false, msg: "Name and email required" }); return; }
     setInviting(true);
     try {
       const res = await fetch("/api/admin/staff", {
@@ -1405,6 +1448,7 @@ function CheckInSection({ adminToken }: { adminToken: string }) {
       if (res.ok) {
         setInviteStatus({ ok: true, msg: `Invite sent to ${email}` });
         setInviteName(""); setInviteEmail("");
+        loadStats(activeEvent.city);
         setTimeout(() => setInviteStatus(null), 4000);
       } else {
         setInviteStatus({ ok: false, msg: data.error || `Failed (${res.status})` });
@@ -1414,6 +1458,22 @@ function CheckInSection({ adminToken }: { adminToken: string }) {
     }
     setInviting(false);
   };
+
+  const staffStatusBadge = (member: any) => {
+    if (member.status === "active" && member.last_login_at) {
+      const mins = Math.floor((Date.now() - new Date(member.last_login_at).getTime()) / 60000);
+      if (mins < 30) return <span className="flex items-center gap-1 text-xs font-semibold text-green-400"><span className="w-2 h-2 rounded-full bg-green-400 animate-pulse inline-block" />Online now</span>;
+      return <span className="text-xs text-blue-400 font-semibold">Active · last seen {mins < 60 ? `${mins}m ago` : `${Math.floor(mins/60)}h ago`}</span>;
+    }
+    if (member.status === "active") return <span className="text-xs text-blue-400 font-semibold">Account created</span>;
+    if (member.status === "invited") {
+      const expired = member.invite_expires_at && new Date(member.invite_expires_at) < new Date();
+      return <span className={`text-xs font-semibold ${expired ? "text-red-400" : "text-yellow-400"}`}>{expired ? "Invite expired" : "Invite pending"}</span>;
+    }
+    return <span className="text-xs text-white/30">{member.status}</span>;
+  };
+
+  const checkinPct = stats && stats.total > 0 ? Math.round((stats.checkedIn / stats.total) * 100) : 0;
 
   return (
     <div>
@@ -1430,22 +1490,22 @@ function CheckInSection({ adminToken }: { adminToken: string }) {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Manual scan */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        {/* Manual scan / check-in */}
         <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-5">
-          <h3 className="text-white font-bold mb-4">Manual Check-In</h3>
-          <p className="text-white/40 text-sm mb-4">Enter ticket ID or scan QR code</p>
+          <h3 className="text-white font-bold mb-1">Manual Check-In</h3>
+          <p className="text-white/40 text-sm mb-4">Enter a QR code value or ticket number</p>
           <div className="flex gap-2">
             <input
               value={scanInput}
               onChange={e => setScanInput(e.target.value)}
-              onKeyDown={e => e.key === "Enter" && handleScan()}
-              placeholder="TKT-CIN-001A"
+              onKeyDown={e => e.key === "Enter" && !scanning && handleScan()}
+              placeholder="QR code or ticket number"
               className="flex-1 bg-white/5 border border-white/15 rounded-xl px-4 py-3 text-white font-mono text-sm outline-none focus:border-yellow-500/40"
             />
-            <button onClick={handleScan}
-              className="bg-yellow-500 hover:bg-yellow-400 text-black font-bold px-5 py-3 rounded-xl transition-all cursor-pointer">
-              Check In
+            <button onClick={handleScan} disabled={scanning || !scanInput.trim()}
+              className="bg-yellow-500 hover:bg-yellow-400 disabled:opacity-50 text-black font-bold px-5 py-3 rounded-xl transition-all cursor-pointer whitespace-nowrap">
+              {scanning ? "…" : "Check In"}
             </button>
           </div>
           {scanResult && (
@@ -1454,70 +1514,120 @@ function CheckInSection({ adminToken }: { adminToken: string }) {
               {scanResult.message}
             </motion.div>
           )}
+          <p className="text-white/20 text-xs mt-3">Use the <a href="/checkin" target="_blank" className="text-yellow-500/60 underline">door staff portal</a> for full QR camera scanning</p>
         </div>
 
-        {/* Stats */}
+        {/* Live Stats */}
         <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-5">
-          <h3 className="text-white font-bold mb-4">{activeEvent.city} — Live Stats</h3>
-          <div className="space-y-3">
-            {[
-              { label: "Tickets Sold", value: 0, color: "#F5A623" },
-              { label: "Checked In", value: 0, color: "#00A878" },
-              { label: "Remaining", value: 0, color: "#C8102E" },
-            ].map(stat => (
-              <div key={stat.label} className="flex items-center justify-between">
-                <span className="text-white/50 text-sm">{stat.label}</span>
-                <span className="font-display text-2xl" style={{ color: stat.color }}>{stat.value}</span>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-white font-bold">{activeEvent.city} — Live Stats</h3>
+            <button onClick={() => loadStats(activeEvent.city)} className="text-white/30 hover:text-white/70 text-xs cursor-pointer">↻ Refresh</button>
+          </div>
+          {statsLoading && !stats ? (
+            <div className="space-y-3 animate-pulse">
+              {[1,2,3].map(i => <div key={i} className="h-8 bg-white/5 rounded-lg" />)}
+            </div>
+          ) : (
+            <>
+              <div className="space-y-3">
+                {[
+                  { label: "Tickets Sold", value: stats?.total ?? 0, color: "#F5A623" },
+                  { label: "Checked In",   value: stats?.checkedIn ?? 0, color: "#00A878" },
+                  { label: "Remaining",    value: stats?.remaining ?? 0, color: "#C8102E" },
+                ].map(stat => (
+                  <div key={stat.label} className="flex items-center justify-between">
+                    <span className="text-white/50 text-sm">{stat.label}</span>
+                    <span className="font-display text-2xl" style={{ color: stat.color }}>{stat.value}</span>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-          <div className="mt-4 pt-4 border-t border-white/10">
-            <button className="w-full flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 border border-white/15 text-white/60 hover:text-white text-sm py-2.5 rounded-xl transition-all cursor-pointer">
-              <Users size={14} /> View Full Attendee List
-            </button>
-          </div>
+              {/* Progress bar */}
+              {(stats?.total ?? 0) > 0 && (
+                <div className="mt-4">
+                  <div className="flex justify-between text-xs text-white/30 mb-1">
+                    <span>Check-in progress</span>
+                    <span>{checkinPct}%</span>
+                  </div>
+                  <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                    <div className="h-full bg-green-500 rounded-full transition-all duration-500"
+                      style={{ width: `${checkinPct}%` }} />
+                  </div>
+                </div>
+              )}
+              {/* Breakdown by type */}
+              {stats?.byType && Object.keys(stats.byType).length > 0 && (
+                <div className="mt-4 pt-4 border-t border-white/10 space-y-1.5">
+                  {Object.entries(stats.byType).map(([type, counts]: [string, any]) => (
+                    <div key={type} className="flex items-center justify-between text-xs">
+                      <span className="text-white/40 capitalize">{type}</span>
+                      <span className="text-white/60">{counts.checkedIn} / {counts.total} checked in</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
         </div>
       </div>
 
-      {/* Staff invite */}
-      <div className="mt-6 bg-white/[0.03] border border-white/10 rounded-2xl p-5">
-        <h3 className="text-white font-bold mb-2">Invite Door Staff</h3>
-        <p className="text-white/40 text-sm mb-4">
-          Send a check-in link to staff members for {activeEvent.city}. They'll get an email invite and access to the check-in portal only.
-        </p>
-        <div className="grid grid-cols-1 sm:grid-cols-[1fr,1fr,auto] gap-2">
-          <input
-            value={inviteName}
-            onChange={e => setInviteName(e.target.value)}
-            placeholder="Name"
-            disabled={inviting}
-            className="bg-white/5 border border-white/15 rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-yellow-500/40 placeholder-white/30 disabled:opacity-50"
-          />
-          <input
-            value={inviteEmail}
-            onChange={e => setInviteEmail(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && !inviting && handleInviteStaff()}
-            placeholder="staff@email.com"
-            type="email"
-            disabled={inviting}
-            className="bg-white/5 border border-white/15 rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-yellow-500/40 placeholder-white/30 disabled:opacity-50"
-          />
-          <button
-            onClick={handleInviteStaff}
-            disabled={inviting || !inviteName.trim() || !inviteEmail.trim()}
-            className="flex items-center justify-center gap-2 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-40 disabled:cursor-not-allowed text-black font-bold text-sm px-5 py-2.5 rounded-xl transition-all cursor-pointer whitespace-nowrap"
-          >
-            <Send size={13} /> {inviting ? "Sending…" : "Invite"}
-          </button>
+      {/* Door Staff roster */}
+      <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-5 mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-white font-bold">Door Staff</h3>
+          <span className="text-white/30 text-xs">{stats?.staff?.length ?? 0} invited</span>
         </div>
-        {inviteStatus && (
-          <p className={`mt-3 text-sm ${inviteStatus.ok ? "text-green-400" : "text-red-400"}`}>
-            {inviteStatus.ok ? "✓ " : "✗ "}{inviteStatus.msg}
-          </p>
+
+        {!stats?.staff?.length ? (
+          <p className="text-white/30 text-sm py-2">No staff invited yet</p>
+        ) : (
+          <div className="space-y-2 mb-5">
+            {stats.staff.map((member: any) => (
+              <div key={member.id} className="flex items-center justify-between bg-white/[0.03] border border-white/8 rounded-xl px-4 py-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white/60 text-xs font-bold flex-shrink-0">
+                    {member.name?.charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <p className="text-white text-sm font-semibold leading-tight">{member.name}</p>
+                    <p className="text-white/35 text-xs">{member.email}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  {staffStatusBadge(member)}
+                  {member.last_login_at && (
+                    <p className="text-white/20 text-xs mt-0.5">
+                      {new Date(member.last_login_at).toLocaleDateString()}
+                    </p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
         )}
-        <p className="text-white/30 text-xs mt-3">
-          Tip: door-staff invitations are also managed in the <strong className="text-white/50">Staff</strong> tab — there you can grant other permissions, resend invites, or remove staff.
-        </p>
+
+        {/* Invite form */}
+        <div className="border-t border-white/10 pt-4">
+          <p className="text-white/40 text-xs mb-3">Invite a new staff member — they'll get an email with a link to the check-in portal</p>
+          <div className="grid grid-cols-1 sm:grid-cols-[1fr,1fr,auto] gap-2">
+            <input value={inviteName} onChange={e => setInviteName(e.target.value)}
+              placeholder="Name" disabled={inviting}
+              className="bg-white/5 border border-white/15 rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-yellow-500/40 placeholder-white/30 disabled:opacity-50" />
+            <input value={inviteEmail} onChange={e => setInviteEmail(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && !inviting && handleInviteStaff()}
+              placeholder="staff@email.com" type="email" disabled={inviting}
+              className="bg-white/5 border border-white/15 rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-yellow-500/40 placeholder-white/30 disabled:opacity-50" />
+            <button onClick={handleInviteStaff}
+              disabled={inviting || !inviteName.trim() || !inviteEmail.trim()}
+              className="flex items-center justify-center gap-2 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-40 text-black font-bold text-sm px-5 py-2.5 rounded-xl transition-all cursor-pointer whitespace-nowrap">
+              <Send size={13} /> {inviting ? "Sending…" : "Invite"}
+            </button>
+          </div>
+          {inviteStatus && (
+            <p className={`mt-2 text-sm ${inviteStatus.ok ? "text-green-400" : "text-red-400"}`}>
+              {inviteStatus.ok ? "✓ " : "✗ "}{inviteStatus.msg}
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );
