@@ -21,12 +21,24 @@ export async function GET(req: NextRequest) {
   const total = data.length;
   const checkedIn = data.filter((t: any) => t.status === "used").length;
 
-  // Breakdown by ticket type
+  // Normalize variant type names → canonical display names
+  const normalize = (raw: string): string => {
+    const s = (raw || "").toLowerCase().trim();
+    if (s === "regular" || s === "regular rate") return "Regular Rate";
+    if (s === "vip" || s === "vip experience") return "VIP Experience";
+    if (s === "early bird" || s === "earlybird") return "Early Bird";
+    if (s === "late registration" || s === "late_registration") return "Late Registration";
+    if (s === "ga" || s === "ga entry") return "GA";
+    return raw;
+  };
+
+  // Breakdown by ticket type (merged)
   const byType: Record<string, { total: number; checkedIn: number }> = {};
   for (const t of data) {
-    if (!byType[t.ticket_type]) byType[t.ticket_type] = { total: 0, checkedIn: 0 };
-    byType[t.ticket_type].total++;
-    if (t.status === "used") byType[t.ticket_type].checkedIn++;
+    const key = normalize(t.ticket_type);
+    if (!byType[key]) byType[key] = { total: 0, checkedIn: 0 };
+    byType[key].total++;
+    if (t.status === "used") byType[key].checkedIn++;
   }
 
   return NextResponse.json({ total, checkedIn, byType });

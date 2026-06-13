@@ -13,37 +13,34 @@ export async function GET(req: NextRequest) {
     .order("sort_order");
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  // Fetch live sold counts from ticket_orders (paid only)
-  const { data: liveCounts } = await db
-    .from("ticket_orders")
-    .select("event_city, ticket_type, quantity")
-    .eq("status", "paid");
+  // Count directly from ticket_instances (one row per ticket) — the real source of truth
+  const { data: instanceCounts } = await db
+    .from("ticket_instances")
+    .select("ticket_type, event_slug");
 
-  // Normalize slug ticket types → display names so old and new orders both match
-  const SLUG_TO_DISPLAY: Record<string, string> = {
-    "regular":           "regular rate",
-    "vip":               "vip experience",
-    "ga":                "ga",
-    "early bird":        "early bird",
-    "early_bird":        "early bird",
-    "late registration": "late registration",
-    "late_registration": "late registration",
+  // Normalize variant type names → canonical display names
+  const normalize = (raw: string): string => {
+    const s = (raw || "").toLowerCase().trim();
+    if (s === "regular" || s === "regular rate") return "regular rate";
+    if (s === "vip" || s === "vip experience") return "vip experience";
+    if (s === "early bird" || s === "earlybird") return "early bird";
+    if (s === "late registration" || s === "late_registration") return "late registration";
+    if (s === "ga" || s === "ga entry") return "ga";
+    return s;
   };
 
-  // Build lookup map: "city:normalized_type" → total quantity sold
+  // Build lookup map: "slug:normalized_type" → count
   const countMap = new Map<string, number>();
-  for (const row of liveCounts || []) {
-    const rawType = (row.ticket_type || "").toLowerCase();
-    const normalizedType = SLUG_TO_DISPLAY[rawType] ?? rawType;
-    const key = `${(row.event_city || "").toLowerCase()}:${normalizedType}`;
-    countMap.set(key, (countMap.get(key) || 0) + (row.quantity || 1));
+  for (const row of instanceCounts || []) {
+    const key = `${(row.event_slug || "").toLowerCase()}:${normalize(row.ticket_type)}`;
+    countMap.set(key, (countMap.get(key) || 0) + 1);
   }
 
   // Inject live counts into ticket_types
   const enriched = (events || []).map((event: any) => ({
     ...event,
     ticket_types: (event.ticket_types || []).map((tt: any) => {
-      const key = `${(event.city || "").toLowerCase()}:${(tt.name || "").toLowerCase()}`;
+      const key = `${(event.slug || "").toLowerCase()}:${normalize(tt.name)}`;
       return {
         ...tt,
         sold_count: countMap.get(key) ?? tt.sold_count ?? 0,
