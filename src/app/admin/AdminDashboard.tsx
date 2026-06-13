@@ -495,11 +495,17 @@ function EventEditor({ event, adminToken, onSaved }: { event: EventRow; adminTok
 
   const updateTicketType = async (ttId: string, updates: Partial<TicketType>) => {
     setEv(prev => ({ ...prev, ticket_types: prev.ticket_types.map(t => t.id === ttId ? { ...t, ...updates } : t) }));
-    await fetch(`/api/admin/ticket-types/${ttId}`, {
+    const res = await fetch(`/api/admin/ticket-types/${ttId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json", "x-admin-token": adminToken },
       body: JSON.stringify(updates),
     });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      alert(`Failed to save ticket type: ${err.error || res.status}`);
+      // Revert optimistic update
+      setEv(prev => ({ ...prev, ticket_types: prev.ticket_types.map(t => t.id === ttId ? { ...t, ...Object.fromEntries(Object.keys(updates).map(k => [k, (t as any)[k]])) } : t) }));
+    }
   };
 
   const deleteTicketType = async (ttId: string) => {
