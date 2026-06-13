@@ -268,7 +268,7 @@ export default function CheckinPortal() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-sm">
           <div className="text-center mb-8">
             <p className="font-display text-yellow-400 text-2xl tracking-widest mb-1">TEQUILA FEST USA</p>
-            <p className="text-white/30 text-sm">Door Staff Check-In</p>
+            <p className="text-white/70 text-sm">Door Staff Check-In</p>
           </div>
           <div className="flex bg-white/[0.04] border border-white/10 rounded-xl p-1 mb-4">
             {(["staff", "admin"] as const).map(mode => (
@@ -283,13 +283,13 @@ export default function CheckinPortal() {
             {loginMode === "staff" ? (
               <>
                 <div>
-                  <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Email</label>
+                  <label className="text-white/70 text-xs uppercase tracking-wider mb-1.5 block">Email</label>
                   <input type="email" value={loginEmail} onChange={e => setLoginEmail(e.target.value)}
                     onKeyDown={e => e.key === "Enter" && loginAsStaff()} placeholder="your@email.com" autoFocus
                     className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-3 text-white placeholder-white/20 outline-none text-sm" />
                 </div>
                 <div>
-                  <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Password</label>
+                  <label className="text-white/70 text-xs uppercase tracking-wider mb-1.5 block">Password</label>
                   <input type="password" value={loginPassword} onChange={e => setLoginPassword(e.target.value)}
                     onKeyDown={e => e.key === "Enter" && loginAsStaff()} placeholder="Your password"
                     className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-3 text-white placeholder-white/20 outline-none text-sm" />
@@ -302,7 +302,7 @@ export default function CheckinPortal() {
             ) : (
               <>
                 <div>
-                  <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Admin Password</label>
+                  <label className="text-white/70 text-xs uppercase tracking-wider mb-1.5 block">Admin Password</label>
                   <input type="password" value={adminPwInput} onChange={e => setAdminPwInput(e.target.value)}
                     onKeyDown={e => e.key === "Enter" && loginAsAdmin()} placeholder="Admin password" autoFocus
                     className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-3 text-white placeholder-white/20 outline-none text-sm" />
@@ -356,7 +356,7 @@ export default function CheckinPortal() {
               {!scannerReady && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
                   <div className="w-8 h-8 border-2 border-yellow-400 border-t-transparent rounded-full animate-spin" />
-                  <p className="text-white/50 text-sm">Starting camera...</p>
+                  <p className="text-white/80 text-sm">Starting camera...</p>
                 </div>
               )}
             </div>
@@ -377,7 +377,7 @@ export default function CheckinPortal() {
       <div className="bg-black/60 border-b border-white/10 px-4 py-3 flex items-center justify-between sticky top-0 z-40">
         <div>
           <p className="font-display text-yellow-400 text-sm tracking-widest">TEQUILA FEST</p>
-          <p className="text-white/30 text-xs">{staffName ? `Hi, ${staffName}` : "Check-In Portal"}</p>
+          <p className="text-white/70 text-xs">{staffName ? `Hi, ${staffName}` : "Check-In Portal"}</p>
         </div>
         <div className="flex items-center gap-3">
           <div className="relative">
@@ -389,7 +389,7 @@ export default function CheckinPortal() {
             <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none" />
           </div>
           <button onClick={() => { setToken(""); localStorage.removeItem("staff_token"); }}
-            className="text-white/30 hover:text-white/60 transition-colors cursor-pointer">
+            className="text-white/70 hover:text-white/60 transition-colors cursor-pointer">
             <LogOut size={16} />
           </button>
         </div>
@@ -402,17 +402,17 @@ export default function CheckinPortal() {
           <div className="grid grid-cols-3 gap-3">
             <div className="bg-white/[0.04] border border-white/10 rounded-xl p-3 text-center">
               <p className="font-display text-yellow-400 text-2xl">{stats.checkedIn}</p>
-              <p className="text-white/30 text-xs mt-0.5">Checked In</p>
+              <p className="text-white/70 text-xs mt-0.5">Checked In</p>
             </div>
             <div className="bg-white/[0.04] border border-white/10 rounded-xl p-3 text-center">
               <p className="font-display text-white text-2xl">{stats.total}</p>
-              <p className="text-white/30 text-xs mt-0.5">Total</p>
+              <p className="text-white/70 text-xs mt-0.5">Total</p>
             </div>
             <div className="bg-white/[0.04] border border-white/10 rounded-xl p-3 text-center">
               <p className="font-display text-green-400 text-2xl">
                 {stats.total > 0 ? Math.round((stats.checkedIn / stats.total) * 100) : 0}%
               </p>
-              <p className="text-white/30 text-xs mt-0.5">Arrived</p>
+              <p className="text-white/70 text-xs mt-0.5">Arrived</p>
             </div>
           </div>
         )}
@@ -422,7 +422,7 @@ export default function CheckinPortal() {
             {Object.entries(stats.byType).map(([type, counts]) => (
               <div key={type} className="flex items-center gap-3">
                 <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: TYPE_COLORS[type] || "#F5A623" }} />
-                <span className="text-white/50 text-xs flex-1 capitalize">{type}</span>
+                <span className="text-white/80 text-xs flex-1 capitalize">{type}</span>
                 <span className="text-white/70 text-xs tabular-nums">{counts.checkedIn}/{counts.total}</span>
                 <div className="w-20 h-1 bg-white/10 rounded-full overflow-hidden">
                   <div className="h-full rounded-full transition-all duration-500"
@@ -436,12 +436,12 @@ export default function CheckinPortal() {
         {/* Search + Scan button */}
         <div className="flex gap-2">
           <div className="relative flex-1">
-            <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30" />
+            <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/70" />
             <input type="text" value={searchQ} onChange={e => onSearchChange(e.target.value)}
               placeholder="Name, email, or order #..."
               className="w-full bg-white/[0.06] border border-white/15 focus:border-yellow-500/50 rounded-xl pl-9 pr-4 py-3 text-white placeholder-white/25 outline-none text-sm" />
             {searching && (
-              <svg className="animate-spin absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" viewBox="0 0 24 24" fill="none">
+              <svg className="animate-spin absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/70" viewBox="0 0 24 24" fill="none">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
               </svg>
@@ -479,29 +479,29 @@ export default function CheckinPortal() {
               }`}>
 
               {/* Name / close */}
-              <div className="flex items-start justify-between px-5 pt-5 pb-3">
+              <div className="flex items-start justify-between px-5 pt-4 pb-3">
                 <div>
                   <p className="text-white font-bold text-xl leading-tight">
                     {activeTicket.ticket_orders?.customer_name || activeTicket.holder_name}
                   </p>
-                  <p className="text-white/40 text-xs mt-0.5">{activeTicket.ticket_orders?.customer_email}</p>
+                  <p className="text-white/60 text-xs mt-0.5">{activeTicket.ticket_orders?.customer_email}</p>
                 </div>
                 <button onClick={() => { setActiveTicket(null); setOrderTickets([]); setConfirmStatus("idle"); }}
-                  className="text-white/20 hover:text-white/50 transition-colors cursor-pointer p-1">
-                  <X size={18} />
+                  className="flex items-center gap-1.5 bg-white/15 hover:bg-white/25 border border-white/30 text-white font-bold text-sm px-3 py-1.5 rounded-lg transition-all cursor-pointer">
+                  <X size={15} /> BACK
                 </button>
               </div>
 
               {/* Ticket detail grid */}
               <div className="grid grid-cols-2 gap-2 px-5 pb-3">
                 <div className="bg-white/[0.04] rounded-xl px-3 py-2.5">
-                  <p className="text-white/30 text-[10px] uppercase tracking-wider mb-0.5">Ticket Type</p>
+                  <p className="text-white/70 text-[10px] uppercase tracking-wider mb-0.5">Ticket Type</p>
                   <p className="font-bold text-sm" style={{ color: TYPE_COLORS[activeTicket.ticket_type] || "#F5A623" }}>
                     {activeTicket.ticket_type}
                   </p>
                 </div>
                 <div className="bg-white/[0.04] rounded-xl px-3 py-2.5">
-                  <p className="text-white/30 text-[10px] uppercase tracking-wider mb-0.5">Order</p>
+                  <p className="text-white/70 text-[10px] uppercase tracking-wider mb-0.5">Order</p>
                   <p className="text-white/70 text-sm font-mono">{activeTicket.ticket_orders?.order_number}</p>
                 </div>
               </div>
@@ -509,7 +509,7 @@ export default function CheckinPortal() {
               {/* ── Order ticket progress ── */}
               {orderTickets.length > 0 && (
                 <div className="mx-5 mb-4 bg-white/[0.04] border border-white/10 rounded-xl p-3">
-                  <p className="text-white/30 text-[10px] uppercase tracking-wider mb-2.5 flex items-center justify-between">
+                  <p className="text-white/70 text-[10px] uppercase tracking-wider mb-2.5 flex items-center justify-between">
                     <span>All Tickets in this Order</span>
                     <span className="text-white/50">
                       {orderTickets.filter(t => t.status === "used").length} / {orderTickets.length} checked in
@@ -531,7 +531,7 @@ export default function CheckinPortal() {
                         <div className="text-right">
                           {t.status === "used"
                             ? <span className="text-green-400 text-xs">{t.checked_in_at ? new Date(t.checked_in_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "In"}</span>
-                            : <span className="text-white/25 text-xs">Remaining</span>
+                            : <span className="text-white/70 text-xs">Remaining</span>
                           }
                         </div>
                       </div>
@@ -567,7 +567,7 @@ export default function CheckinPortal() {
         {/* Search results */}
         {results.length > 0 && !activeTicket && (
           <div className="space-y-2">
-            <p className="text-white/30 text-xs uppercase tracking-wider px-1">
+            <p className="text-white/70 text-xs uppercase tracking-wider px-1">
               {results.length} result{results.length !== 1 ? "s" : ""}
             </p>
             {results.map(ticket => (
@@ -592,7 +592,7 @@ export default function CheckinPortal() {
                     <p className="text-white font-semibold text-sm truncate">
                       {ticket.ticket_orders?.customer_name || ticket.holder_name}
                     </p>
-                    <p className="text-white/35 text-xs truncate mt-0.5">{ticket.ticket_orders?.customer_email}</p>
+                    <p className="text-white/70 text-xs truncate mt-0.5">{ticket.ticket_orders?.customer_email}</p>
                   </div>
                   <div className="flex flex-col items-end gap-1 ml-3 flex-shrink-0">
                     <span className="text-xs font-semibold capitalize" style={{ color: TYPE_COLORS[ticket.ticket_type] || "#F5A623" }}>
@@ -600,7 +600,7 @@ export default function CheckinPortal() {
                     </span>
                     {ticket.status === "used"
                       ? <span className="text-green-400 text-[10px] flex items-center gap-0.5"><CheckCircle size={10} /> In</span>
-                      : <span className="text-white/20 text-[10px]">Ticket #{ticket.ticket_number}</span>
+                      : <span className="text-white/60 text-[10px]">Ticket #{ticket.ticket_number}</span>
                     }
                   </div>
                 </div>
@@ -612,9 +612,9 @@ export default function CheckinPortal() {
         {/* Empty / idle states */}
         {searchQ && !searching && results.length === 0 && !activeTicket && (
           <div className="text-center py-10">
-            <Users size={32} className="text-white/10 mx-auto mb-3" />
-            <p className="text-white/30 text-sm">No tickets found for &ldquo;{searchQ}&rdquo;</p>
-            <p className="text-white/15 text-xs mt-1">Try name, email, or order number</p>
+            <Users size={32} className="text-white/40 mx-auto mb-3" />
+            <p className="text-white/70 text-sm">No tickets found for &ldquo;{searchQ}&rdquo;</p>
+            <p className="text-white/60 text-xs mt-1">Try name, email, or order number</p>
           </div>
         )}
         {!searchQ && results.length === 0 && !activeTicket && (
@@ -622,8 +622,8 @@ export default function CheckinPortal() {
             <div className="w-16 h-16 rounded-2xl bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center mx-auto mb-4">
               <Zap size={28} className="text-yellow-400" />
             </div>
-            <p className="text-white/40 text-sm">Tap <span className="text-yellow-400 font-bold">Scan</span> to check in with camera</p>
-            <p className="text-white/20 text-xs mt-1">or search by name / email / order #</p>
+            <p className="text-white/70 text-sm">Tap <span className="text-yellow-400 font-bold">Scan</span> to check in with camera</p>
+            <p className="text-white/60 text-xs mt-1">or search by name / email / order #</p>
           </div>
         )}
       </div>
