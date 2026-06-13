@@ -541,8 +541,8 @@ export default function CheckinPortal() {
               )}
 
               {activeTicket.checked_in_at && (
-                <p className="text-white/25 text-xs text-center pb-3">
-                  Checked in at {new Date(activeTicket.checked_in_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                <p className="text-green-400 text-base font-bold text-center pb-3">
+                  ✓ Checked in at {new Date(activeTicket.checked_in_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                 </p>
               )}
 
