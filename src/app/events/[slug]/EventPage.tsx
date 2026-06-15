@@ -495,6 +495,66 @@ export default function EventPage({ event, ogImage, dbStatus }: { event: EventDa
           </div>
         </section>
 
+        {/* Tequila brand scroller */}
+        <section className="py-16 px-4 bg-[#0d0500] overflow-hidden">
+          <div className="max-w-6xl mx-auto mb-10 text-center">
+            <p className="text-yellow-500 text-xs font-bold tracking-[0.3em] uppercase mb-2">Sample The Best</p>
+            <h2 className="font-display text-white" style={{ fontSize: "clamp(2rem, 5vw, 3.5rem)" }}>
+              50+ <span className="text-shimmer">TEQUILAS</span>
+            </h2>
+          </div>
+          <div className="relative overflow-hidden mb-4">
+            <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-[#0d0500] to-transparent z-10 pointer-events-none" />
+            <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-[#0d0500] to-transparent z-10 pointer-events-none" />
+            <div className="flex gap-4 w-max animate-marquee" style={{ animationDuration: "80s" }}>
+              {[...["Camerena","Avión","Gran Coramino","1800","Jose Cuervo","Gran Centenario","Dobel","Milagro","Del Maguey","Olmeca Altos","Codigo 1530","El Jimador","Hornitos","El Tesoro","Sauza","Ghost","G4","Los Linderos","Suavecito","Teremana","Viva Agave","Dolce Vida","Corazon","Authentico"],...["Camerena","Avión","Gran Coramino","1800","Jose Cuervo","Gran Centenario","Dobel","Milagro","Del Maguey","Olmeca Altos","Codigo 1530","El Jimador","Hornitos","El Tesoro","Sauza","Ghost","G4","Los Linderos","Suavecito","Teremana","Viva Agave","Dolce Vida","Corazon","Authentico"]].map((brand, i) => (
+                <div key={i} className="flex-shrink-0 bg-white/5 border border-white/10 rounded-2xl px-7 py-4">
+                  <p className="font-display text-yellow-400 text-xl whitespace-nowrap">{brand}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="relative overflow-hidden">
+            <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-[#0d0500] to-transparent z-10 pointer-events-none" />
+            <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-[#0d0500] to-transparent z-10 pointer-events-none" />
+            <div className="flex gap-4 w-max animate-marquee-reverse" style={{ animationDuration: "80s" }}>
+              {[...["Authentico","Corazon","Dolce Vida","Viva Agave","Teremana","Suavecito","Los Linderos","G4","Ghost","Sauza","El Tesoro","Hornitos","El Jimador","Codigo 1530","Olmeca Altos","Del Maguey","Milagro","Dobel","Gran Centenario","Jose Cuervo","1800","Gran Coramino","Avión","Camerena"],...["Authentico","Corazon","Dolce Vida","Viva Agave","Teremana","Suavecito","Los Linderos","G4","Ghost","Sauza","El Tesoro","Hornitos","El Jimador","Codigo 1530","Olmeca Altos","Del Maguey","Milagro","Dobel","Gran Centenario","Jose Cuervo","1800","Gran Coramino","Avión","Camerena"]].map((brand, i) => (
+                <div key={i} className="flex-shrink-0 bg-white/5 border border-white/10 rounded-2xl px-7 py-4">
+                  <p className="font-display text-white/50 text-xl whitespace-nowrap">{brand}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* VIP tequila scroller */}
+        <section className="py-14 px-4 bg-[#0a0300] overflow-hidden">
+          <div className="max-w-6xl mx-auto">
+            <p className="text-center text-[#888] text-xs font-bold tracking-[0.4em] uppercase mb-6">VIP Exclusive Pours</p>
+            <div className="relative overflow-hidden rounded-2xl py-6"
+              style={{ background: "linear-gradient(145deg,rgba(25,25,25,0.95),rgba(12,12,12,0.98))", border: "1px solid rgba(192,192,192,0.15)" }}>
+              <div className="absolute left-0 top-0 bottom-0 w-20 z-10 pointer-events-none"
+                style={{ background: "linear-gradient(to right,rgba(12,12,12,1),transparent)" }} />
+              <div className="absolute right-0 top-0 bottom-0 w-20 z-10 pointer-events-none"
+                style={{ background: "linear-gradient(to left,rgba(12,12,12,1),transparent)" }} />
+              <div className="flex gap-6 w-max animate-marquee">
+                {[...["Clase Azul·Reposado","Don Julio·1942","Avión·Extra Añejo 44","Jose Cuervo·La Familia","Suavecito·Extra Añejo","Código 1530·Añejo","Gran Coramino·Añejo","Clase Azul·Reposado","Don Julio·1942","Avión·Extra Añejo 44","Jose Cuervo·La Familia","Suavecito·Extra Añejo","Código 1530·Añejo","Gran Coramino·Añejo"]].map((item, i) => {
+                  const [name, sub] = item.split("·");
+                  return (
+                    <div key={i} className="flex-shrink-0 flex items-center gap-4 px-6">
+                      <div className="w-1.5 h-1.5 rotate-45 flex-shrink-0" style={{ background: "linear-gradient(135deg,#C0C0C0,#E8E8E8)" }} />
+                      <div className="text-center">
+                        <p className="font-display text-2xl text-shimmer-platinum whitespace-nowrap">{name}</p>
+                        <p className="text-[#666] text-xs tracking-widest uppercase mt-0.5">{sub}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* Bottom CTA */}
         <section className="py-16 px-4 bg-[#0a0300] text-center">
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>

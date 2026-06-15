@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
       slug: newSlug,
       title: `${srcFields.title || srcFields.city} (Copy)`,
       date: "",
-      date_iso: null,
+      date_iso: new Date("2027-01-01").toISOString(),
       status: "draft",
       sort_order: (srcFields.sort_order || 0) + 100,
     }).select().single();
@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
     state: "",
     title: "New Event",
     date: "",
-    date_iso: null,
+    date_iso: new Date("2027-01-01").toISOString(),
     time: "3:00 PM – 9:00 PM",
     venue: "",
     venue_detail: "",
