@@ -141,6 +141,7 @@ export default function EventPage({ event, ogImage, dbStatus }: { event: EventDa
   const liveTypes = useLiveTicketTypes(event.slug);
   const { openCart, modal } = useCartModal(event, liveTypes);
   const isComingSoon = dbStatus === "coming_soon";
+  const isCompleted = dbStatus === "completed";
 
   // Capture referral code from URL and store in localStorage
   useEffect(() => {
@@ -329,7 +330,9 @@ export default function EventPage({ event, ogImage, dbStatus }: { event: EventDa
                       <p className="text-white/40 text-xs mb-6">
                         {soldOut ? "This tier is sold out" : live ? `${live.sold_count} of ${live.capacity} sold` : note}
                       </p>
-                      {isComingSoon ? (
+                      {isCompleted ? (
+                        <div className="mt-auto block text-center text-white/30 font-bold text-base py-3 rounded-full border border-white/10">EVENT COMPLETED</div>
+                      ) : isComingSoon ? (
                         <div className="mt-auto block text-center text-yellow-400 font-bold text-base py-3 rounded-full border border-yellow-500/30 bg-yellow-500/10">COMING SOON</div>
                       ) : soldOut ? (
                         <div className="mt-auto block text-center text-red-400 font-bold text-base py-3 rounded-full border border-red-500/30 bg-red-500/10">SOLD OUT</div>
@@ -387,7 +390,9 @@ export default function EventPage({ event, ogImage, dbStatus }: { event: EventDa
                   {(() => {
                     const liveVip = liveTypes.find(t => t.name === "VIP Experience");
                     const vipSoldOut = liveVip ? (liveVip.is_active === false || liveVip.sold_count >= liveVip.capacity) : false;
-                    return isComingSoon ? (
+                    return isCompleted ? (
+                      <div className="mt-auto block text-center text-white/30 font-bold text-base py-4 rounded-full border border-white/10">EVENT COMPLETED</div>
+                    ) : isComingSoon ? (
                       <div className="mt-auto block text-center text-yellow-400 font-bold text-base py-4 rounded-full border border-yellow-500/30 bg-yellow-500/10">COMING SOON</div>
                     ) : vipSoldOut ? (
                       <div className="mt-auto block text-center text-red-400 font-bold text-base py-4 rounded-full border border-red-500/30 bg-red-500/10">SOLD OUT</div>
@@ -431,7 +436,9 @@ export default function EventPage({ event, ogImage, dbStatus }: { event: EventDa
                       ))}
                       <li className="text-white/30 text-xs pt-1">* Tasting tickets not included</li>
                     </ul>
-                    {isComingSoon ? (
+                    {isCompleted ? (
+                      <div className="block text-center text-white/30 font-bold text-base py-3 rounded-full border border-white/10">EVENT COMPLETED</div>
+                    ) : isComingSoon ? (
                       <div className="block text-center text-yellow-400 font-bold text-base py-3 rounded-full border border-yellow-500/30 bg-yellow-500/10">COMING SOON</div>
                     ) : (
                       <button onClick={() => openCart("ga")}

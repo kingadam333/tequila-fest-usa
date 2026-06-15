@@ -653,7 +653,7 @@ function EventEditor({ event, adminToken, onSaved }: { event: EventRow; adminTok
             <label className="text-white/40 text-xs uppercase tracking-wider block mb-1">Status</label>
             <select value={ev.status} onChange={field("status")}
               className="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2.5 text-white text-sm outline-none cursor-pointer appearance-none">
-              {["on_sale","coming_soon","sold_out","draft","cancelled"].map(s => <option key={s} value={s} className="bg-[#0d0500]">{s.replace(/_/g," ")}</option>)}
+              {["on_sale","coming_soon","sold_out","completed","draft","cancelled"].map(s => <option key={s} value={s} className="bg-[#0d0500]">{s.replace(/_/g," ")}</option>)}
             </select>
           </div>
           <div>
