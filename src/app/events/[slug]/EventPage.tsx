@@ -503,31 +503,47 @@ export default function EventPage({ event, ogImage, dbStatus }: { event: EventDa
         </section>
 
         {/* Tequila brand scroller */}
-        <section className="py-16 px-4 bg-[#0d0500] overflow-hidden">
-          <div className="max-w-6xl mx-auto mb-10 text-center">
-            <p className="text-yellow-500 text-xs font-bold tracking-[0.3em] uppercase mb-2">Sample The Best</p>
-            <h2 className="font-display text-white" style={{ fontSize: "clamp(2rem, 5vw, 3.5rem)" }}>
+        <section className="py-16 bg-[#0d0500] overflow-hidden">
+          {/* Header — contained */}
+          <div className="px-4 text-center mb-10">
+            <p className="text-yellow-500 text-xs font-bold tracking-[0.3em] uppercase mb-3">Sample The Best</p>
+            <h2 className="font-display text-white" style={{ fontSize: "clamp(2.5rem, 6vw, 4.5rem)" }}>
               50+ <span className="text-shimmer">TEQUILAS</span>
             </h2>
+            <p className="text-white/50 mt-4 max-w-xl mx-auto">
+              From smooth blancos to complex añejos — explore the full spectrum of agave spirits from the world&apos;s finest distillers.
+            </p>
+            <div className="w-24 h-1 bg-yellow-500 mx-auto mt-4 rounded-full" />
           </div>
-          <div className="relative overflow-hidden mb-4">
-            <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-[#0d0500] to-transparent z-10 pointer-events-none" />
-            <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-[#0d0500] to-transparent z-10 pointer-events-none" />
-            <div className="flex gap-4 w-max animate-marquee" style={{ animationDuration: "80s" }}>
-              {[...["Camerena","Avión","Gran Coramino","1800","Jose Cuervo","Gran Centenario","Dobel","Milagro","Del Maguey","Olmeca Altos","Codigo 1530","El Jimador","Hornitos","El Tesoro","Sauza","Ghost","G4","Los Linderos","Suavecito","Teremana","Viva Agave","Dolce Vida","Corazon","Authentico"],...["Camerena","Avión","Gran Coramino","1800","Jose Cuervo","Gran Centenario","Dobel","Milagro","Del Maguey","Olmeca Altos","Codigo 1530","El Jimador","Hornitos","El Tesoro","Sauza","Ghost","G4","Los Linderos","Suavecito","Teremana","Viva Agave","Dolce Vida","Corazon","Authentico"]].map((brand, i) => (
-                <div key={i} className="flex-shrink-0 bg-white/5 border border-white/10 rounded-2xl px-7 py-4">
-                  <p className="font-display text-yellow-400 text-xl whitespace-nowrap">{brand}</p>
+
+          {/* Single full-width scroller row — no px padding so it bleeds to edges */}
+          <div className="relative overflow-hidden mb-10">
+            <div className="absolute left-0 top-0 bottom-0 w-16 bg-gradient-to-r from-[#0d0500] to-transparent z-10 pointer-events-none" />
+            <div className="absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-[#0d0500] to-transparent z-10 pointer-events-none" />
+            <div className="flex gap-4 w-max animate-marquee" style={{ animationDuration: "70s" }}>
+              {[...Array(3)].flatMap(() =>
+                ["Camerena","Avión","Gran Coramino","1800","Jose Cuervo","Gran Centenario","Dobel","Milagro","Del Maguey","Olmeca Altos","Codigo 1530","El Jimador","Hornitos","El Tesoro","Sauza","Ghost","G4","Los Linderos","Suavecito","Teremana","Viva Agave","Dolce Vida","Corazon","Authentico"]
+              ).map((brand, i) => (
+                <div key={i} className="flex-shrink-0 bg-white/5 border border-white/10 hover:border-yellow-500/40 hover:bg-white/10 rounded-2xl px-8 py-5 transition-all duration-200">
+                  <p className="font-display text-yellow-400 text-2xl whitespace-nowrap">{brand}</p>
                 </div>
               ))}
             </div>
           </div>
-          <div className="relative overflow-hidden">
-            <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-[#0d0500] to-transparent z-10 pointer-events-none" />
-            <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-[#0d0500] to-transparent z-10 pointer-events-none" />
-            <div className="flex gap-4 w-max animate-marquee-reverse" style={{ animationDuration: "80s" }}>
-              {[...["Authentico","Corazon","Dolce Vida","Viva Agave","Teremana","Suavecito","Los Linderos","G4","Ghost","Sauza","El Tesoro","Hornitos","El Jimador","Codigo 1530","Olmeca Altos","Del Maguey","Milagro","Dobel","Gran Centenario","Jose Cuervo","1800","Gran Coramino","Avión","Camerena"],...["Authentico","Corazon","Dolce Vida","Viva Agave","Teremana","Suavecito","Los Linderos","G4","Ghost","Sauza","El Tesoro","Hornitos","El Jimador","Codigo 1530","Olmeca Altos","Del Maguey","Milagro","Dobel","Gran Centenario","Jose Cuervo","1800","Gran Coramino","Avión","Camerena"]].map((brand, i) => (
-                <div key={i} className="flex-shrink-0 bg-white/5 border border-white/10 rounded-2xl px-7 py-4">
-                  <p className="font-display text-white/50 text-xl whitespace-nowrap">{brand}</p>
+
+          {/* Agave type cards */}
+          <div className="px-4">
+            <div className="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-4">
+              {[
+                { type: "Blanco",      desc: "Crisp & pure",       color: "#fff8f0" },
+                { type: "Reposado",    desc: "Aged 2–12 months",   color: "#F5A623" },
+                { type: "Añejo",       desc: "Aged 1–3 years",     color: "#C8102E" },
+                { type: "Extra Añejo", desc: "Aged 3+ years",      color: "#7B2FBE" },
+              ].map(t => (
+                <div key={t.type} className="text-center p-5 rounded-xl border border-white/10 bg-white/5">
+                  <div className="w-3 h-3 rounded-full mx-auto mb-3" style={{ backgroundColor: t.color }} />
+                  <p className="font-display text-xl text-white">{t.type.toUpperCase()}</p>
+                  <p className="text-white/40 text-sm mt-1">{t.desc}</p>
                 </div>
               ))}
             </div>
