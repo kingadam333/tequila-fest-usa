@@ -53,7 +53,7 @@ export default function Hero() {
           className="inline-flex items-center gap-2 bg-yellow-500/10 border border-yellow-500/30 rounded-full px-5 py-2 mb-8"
         >
           <span className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse" />
-          <span className="text-yellow-400 text-sm font-bold tracking-[0.2em] uppercase">2026 National Tour · 4 Cities</span>
+          <span className="text-yellow-400 text-sm font-bold tracking-[0.2em] uppercase">National Tour · 4 Cities</span>
         </motion.div>
 
         {/* Main headline */}
