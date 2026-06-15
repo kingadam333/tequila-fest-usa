@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Ticket, CalendarDays, Users, Tag, QrCode,
   MessageSquare, FileText, LogOut, Menu, X, TrendingUp, DollarSign,
   RefreshCw, Download, Send, CheckCircle, Search, Plus,
-  Trash2, Edit2, Eye, AlertCircle, BarChart2, Mail, Utensils, Share2,
+  Trash2, Edit2, Eye, AlertCircle, BarChart2, Mail, Utensils, Share2, Copy,
   Star, Gift, UserCheck, ChevronRight, Megaphone, ShieldCheck,
 } from "lucide-react";
 import SocialShareSection from "./SocialShareSection";
@@ -802,11 +802,37 @@ function EventsSection({ adminToken, stats, editingId, setEditingId }: { adminTo
     setResendingQr(null);
   };
 
+  const [creatingEvent, setCreatingEvent] = useState(false);
+
   const fetchEvents = async () => {
     const res = await fetch("/api/admin/events", { headers: { "x-admin-token": adminToken } });
     const data = await res.json();
-    setEvents(data.events || []);
+    // Sort: upcoming/active first by date, then past events after
+    const sorted = (data.events || []).sort((a: EventRow, b: EventRow) => {
+      const da = a.date_iso ? new Date(a.date_iso).getTime() : 0;
+      const db2 = b.date_iso ? new Date(b.date_iso).getTime() : 0;
+      return db2 - da; // most recent date first
+    });
+    setEvents(sorted);
     setLoading(false);
+  };
+
+  const createEvent = async (copyFromId?: string) => {
+    setCreatingEvent(true);
+    const body = copyFromId ? { copy_from_id: copyFromId } : {};
+    const res = await fetch("/api/admin/events", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-admin-token": adminToken },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (data.event) {
+      await fetchEvents();
+      setEditingId(data.event.id);
+    } else {
+      alert(data.error || "Failed to create event");
+    }
+    setCreatingEvent(false);
   };
 
   useEffect(() => { fetchEvents(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -815,103 +841,118 @@ function EventsSection({ adminToken, stats, editingId, setEditingId }: { adminTo
 
   const editing = editingId ? events.find(e => e.id === editingId) : null;
 
+  // Group events by year for display
+  const eventsByYear: Record<string, EventRow[]> = {};
+  for (const ev of events) {
+    const year = ev.date_iso ? new Date(ev.date_iso).getFullYear().toString() : ev.date ? ev.date.slice(-4) : "TBD";
+    if (!eventsByYear[year]) eventsByYear[year] = [];
+    eventsByYear[year].push(ev);
+  }
+  const years = Object.keys(eventsByYear).sort((a, b) => Number(b) - Number(a));
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
         <h2 className="font-display text-white text-3xl">EVENTS</h2>
-        {editing && (
-          <button onClick={() => setEditingId(null)}
-            className="flex items-center gap-2 text-white/40 hover:text-white text-sm border border-white/15 px-4 py-2 rounded-xl transition-all cursor-pointer">
-            ← Back to Events
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {editing ? (
+            <button onClick={() => setEditingId(null)}
+              className="flex items-center gap-2 text-white/40 hover:text-white text-sm border border-white/15 px-4 py-2 rounded-xl transition-all cursor-pointer">
+              ← Back to Events
+            </button>
+          ) : (
+            <button onClick={() => createEvent()} disabled={creatingEvent}
+              className="flex items-center gap-1.5 bg-yellow-500/15 hover:bg-yellow-500/25 border border-yellow-500/30 text-yellow-400 text-sm font-semibold px-4 py-2 rounded-xl transition-all cursor-pointer disabled:opacity-50">
+              <Plus size={14} /> New Event
+            </button>
+          )}
+        </div>
       </div>
 
       {editing ? (
         <EventEditor event={editing} adminToken={adminToken} onSaved={fetchEvents} />
       ) : (
-        <>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            {events.map(ev => {
-              const totalCapacity = ev.ticket_types.reduce((s, t) => s + t.capacity, 0) || ev.capacity;
-              const sold = ev.ticket_types.reduce((s, t) => s + t.sold_count, 0);
-              const pct = totalCapacity > 0 ? Math.min((sold / totalCapacity) * 100, 100) : 0;
-              return (
-                <div key={ev.id} className="bg-white/[0.03] border border-white/10 rounded-2xl p-6 hover:border-white/20 transition-all">
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <StatusBadge status={ev.status} />
-                      <h3 className="font-display text-2xl mt-1" style={{ color: ev.color }}>{ev.city.toUpperCase()}</h3>
-                      <p className="text-white/50 text-sm">{ev.date} · {ev.time}</p>
-                      <p className="text-white/40 text-xs">{ev.venue}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-display text-white text-3xl">{sold}</p>
-                      <p className="text-white/30 text-xs">of {totalCapacity} sold</p>
-                      {pct >= 100 && <p className="text-red-400 text-xs font-bold mt-0.5">SOLD OUT</p>}
-                      {pct >= 90 && pct < 100 && <p className="text-orange-400 text-xs font-semibold mt-0.5">Almost Full</p>}
-                    </div>
-                  </div>
-                  <div className="h-2 bg-white/10 rounded-full overflow-hidden mb-3">
-                    <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: pct >= 90 ? "#ef4444" : ev.color }} />
-                  </div>
-                  {/* Ticket type summary with sold out indicators */}
-                  <div className="flex flex-wrap gap-1.5 mb-4">
-                    {[...ev.ticket_types].sort((a, b) => a.sort_order - b.sort_order).map(tt => {
-                      const isFull = tt.sold_count >= tt.capacity;
-                      return (
-                      <span key={tt.id} className={`text-xs px-2 py-0.5 rounded-full border ${isFull ? "bg-red-500/15 border-red-500/30 text-red-400" : "bg-white/5 border-white/10 text-white/50"}`}>
-                        {tt.name}: <span className={`font-semibold ${isFull ? "text-red-300" : "text-white/80"}`}>{tt.sold_count}</span>
-                        <span className="text-white/20">/{tt.capacity}</span>
-                        {isFull && <span className="ml-1 font-bold">SOLD OUT</span>}
-                      </span>
-                      );
-                    })}
-                  </div>
-                  <div className="flex gap-2">
-                    <button onClick={() => setEditingId(ev.id)}
-                      className="flex-1 flex items-center justify-center gap-1.5 bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/30 text-yellow-400 text-xs font-semibold py-2 rounded-xl transition-all cursor-pointer">
-                      <Edit2 size={12} /> Edit Event
-                    </button>
-                    <Link href={`/events/${ev.slug}`} target="_blank"
-                      className="flex-1 flex items-center justify-center gap-1.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white/60 hover:text-white text-xs font-semibold py-2 rounded-xl transition-all cursor-pointer">
-                      <Eye size={12} /> View Page
-                    </Link>
-                    <button className="flex-1 flex items-center justify-center gap-1.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white/60 hover:text-white text-xs font-semibold py-2 rounded-xl transition-all cursor-pointer">
-                      <Download size={12} /> Export
-                    </button>
-                  </div>
-                  {ev.slug === "cleveland" && (
-                    <div className="mt-3">
-                      <button
-                        onClick={() => resendOldQr("cleveland")}
-                        disabled={resendingQr === "cleveland"}
-                        className="w-full flex items-center justify-center gap-1.5 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 text-blue-400 text-xs font-semibold py-2 rounded-xl transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
-                        <Mail size={12} />
-                        {resendingQr === "cleveland" ? "Sending..." : "Resend QR Emails (Old Replit Tickets)"}
-                      </button>
-                      {resendResult?.slug === "cleveland" && (
-                        <p className="text-center text-xs mt-1.5 text-green-400">
-                          ✓ Sent {resendResult.sent} emails{resendResult.failed > 0 ? ` · ${resendResult.failed} failed` : ""}
-                        </p>
+        <div className="space-y-8">
+          {years.map(year => (
+            <div key={year}>
+              <p className="text-white/30 text-xs font-bold uppercase tracking-wider mb-3">{year} Events</p>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                {eventsByYear[year].map(ev => {
+                  const totalCapacity = ev.ticket_types.reduce((s, t) => s + t.capacity, 0) || ev.capacity;
+                  const sold = ev.ticket_types.reduce((s, t) => s + t.sold_count, 0);
+                  const pct = totalCapacity > 0 ? Math.min((sold / totalCapacity) * 100, 100) : 0;
+                  const evYear = ev.date_iso ? new Date(ev.date_iso).getFullYear() : ev.date ? ev.date.slice(-4) : "";
+                  return (
+                    <div key={ev.id} className="bg-white/[0.03] border border-white/10 rounded-2xl p-6 hover:border-white/20 transition-all">
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <StatusBadge status={ev.status} />
+                          <h3 className="font-display text-2xl mt-1" style={{ color: ev.color }}>
+                            {ev.city.toUpperCase()}
+                            {evYear && <span className="text-white/25 ml-2 text-lg">{evYear}</span>}
+                          </h3>
+                          <p className="text-white/50 text-sm">{ev.date} · {ev.time}</p>
+                          <p className="text-white/40 text-xs">{ev.venue}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-display text-white text-3xl">{sold}</p>
+                          <p className="text-white/30 text-xs">of {totalCapacity} sold</p>
+                          {pct >= 100 && <p className="text-red-400 text-xs font-bold mt-0.5">SOLD OUT</p>}
+                          {pct >= 90 && pct < 100 && <p className="text-orange-400 text-xs font-semibold mt-0.5">Almost Full</p>}
+                        </div>
+                      </div>
+                      <div className="h-2 bg-white/10 rounded-full overflow-hidden mb-3">
+                        <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: pct >= 90 ? "#ef4444" : ev.color }} />
+                      </div>
+                      <div className="flex flex-wrap gap-1.5 mb-4">
+                        {[...ev.ticket_types].sort((a, b) => a.sort_order - b.sort_order).map(tt => {
+                          const isFull = tt.sold_count >= tt.capacity;
+                          return (
+                            <span key={tt.id} className={`text-xs px-2 py-0.5 rounded-full border ${isFull ? "bg-red-500/15 border-red-500/30 text-red-400" : "bg-white/5 border-white/10 text-white/50"}`}>
+                              {tt.name}: <span className={`font-semibold ${isFull ? "text-red-300" : "text-white/80"}`}>{tt.sold_count}</span>
+                              <span className="text-white/20">/{tt.capacity}</span>
+                              {isFull && <span className="ml-1 font-bold">SOLD OUT</span>}
+                            </span>
+                          );
+                        })}
+                      </div>
+                      <div className="flex gap-2">
+                        <button onClick={() => setEditingId(ev.id)}
+                          className="flex-1 flex items-center justify-center gap-1.5 bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/30 text-yellow-400 text-xs font-semibold py-2 rounded-xl transition-all cursor-pointer">
+                          <Edit2 size={12} /> Edit
+                        </button>
+                        <button onClick={() => createEvent(ev.id)} disabled={creatingEvent}
+                          className="flex-1 flex items-center justify-center gap-1.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white/60 hover:text-white text-xs font-semibold py-2 rounded-xl transition-all cursor-pointer disabled:opacity-50">
+                          <Copy size={12} /> Copy
+                        </button>
+                        <Link href={`/events/${ev.slug}`} target="_blank"
+                          className="flex-1 flex items-center justify-center gap-1.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white/60 hover:text-white text-xs font-semibold py-2 rounded-xl transition-all cursor-pointer">
+                          <Eye size={12} /> View
+                        </Link>
+                      </div>
+                      {ev.slug === "cleveland" && (
+                        <div className="mt-3">
+                          <button
+                            onClick={() => resendOldQr("cleveland")}
+                            disabled={resendingQr === "cleveland"}
+                            className="w-full flex items-center justify-center gap-1.5 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 text-blue-400 text-xs font-semibold py-2 rounded-xl transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                            <Mail size={12} />
+                            {resendingQr === "cleveland" ? "Sending..." : "Resend QR Emails (Old Replit Tickets)"}
+                          </button>
+                          {resendResult?.slug === "cleveland" && (
+                            <p className="text-center text-xs mt-1.5 text-green-400">
+                              ✓ Sent {resendResult.sent} emails{resendResult.failed > 0 ? ` · ${resendResult.failed} failed` : ""}
+                            </p>
+                          )}
+                        </div>
                       )}
                     </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="mt-8 bg-yellow-500/10 border border-yellow-500/20 rounded-2xl p-5">
-            <div className="flex items-start gap-3">
-              <AlertCircle size={18} className="text-yellow-400 flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="text-yellow-400 font-semibold text-sm">Cincinnati is in 1 week</p>
-                <p className="text-white/50 text-sm mt-1">Make sure check-in portals are set up and staff have been invited before June 13.</p>
+                  );
+                })}
               </div>
             </div>
-          </div>
-        </>
+          ))}
+        </div>
       )}
     </div>
   );
