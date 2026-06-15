@@ -615,7 +615,6 @@ function EventEditor({ event, adminToken, onSaved }: { event: EventRow; adminTok
           {[
             { label: "City", key: "city" as const },
             { label: "State", key: "state" as const },
-            { label: "Date (display)", key: "date" as const },
             { label: "Time", key: "time" as const },
             { label: "Venue", key: "venue" as const },
             { label: "Venue Detail", key: "venue_detail" as const },
@@ -628,6 +627,23 @@ function EventEditor({ event, adminToken, onSaved }: { event: EventRow; adminTok
                 className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-3 py-2.5 text-white text-sm outline-none" />
             </div>
           ))}
+          {/* Date picker — updates date_iso and auto-formats the display date string */}
+          <div>
+            <label className="text-white/40 text-xs uppercase tracking-wider block mb-1">Event Date</label>
+            <input
+              type="date"
+              value={ev.date_iso ? ev.date_iso.slice(0, 10) : ""}
+              onChange={e => {
+                const iso = e.target.value; // "YYYY-MM-DD"
+                if (!iso) return;
+                const d = new Date(iso + "T12:00:00");
+                const display = d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+                setEv(p => ({ ...p, date_iso: new Date(iso + "T12:00:00").toISOString(), date: display }));
+              }}
+              className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-3 py-2.5 text-white text-sm outline-none cursor-pointer [color-scheme:dark]"
+            />
+            {ev.date && <p className="text-white/30 text-xs mt-1">{ev.date}</p>}
+          </div>
           <div className="sm:col-span-2">
             <label className="text-white/40 text-xs uppercase tracking-wider block mb-1">Description</label>
             <textarea value={ev.description || ""} onChange={field("description")} rows={3}

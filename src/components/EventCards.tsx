@@ -65,7 +65,7 @@ const EVENTS = [
   {
     city: "Cincinnati",
     state: "OH",
-    date: "June 13, 2026",
+    date: "2027 — Date TBD",
     time: "3–9 PM",
     venue: "Fountain Square",
     venueDetail: "Downtown Cincinnati",
@@ -73,6 +73,7 @@ const EVENTS = [
     gaTicket: null,
     freeParking: false,
     slug: "cincinnati",
+    status: "coming_soon",
     color: "#F5A623",
     gradient: "from-yellow-900/40 to-orange-950/40",
     border: "border-yellow-500/30",
