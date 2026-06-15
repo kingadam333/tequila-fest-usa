@@ -104,7 +104,7 @@ export default function EventCards() {
           transition={{ duration: 0.6 }}
           className="text-center mb-16"
         >
-          <p className="text-yellow-500 text-sm font-bold tracking-[0.3em] uppercase mb-3">2026 Tour Dates</p>
+          <p className="text-yellow-500 text-sm font-bold tracking-[0.3em] uppercase mb-3">Tour Dates</p>
           <h2
             className="font-display text-shimmer"
             style={{ fontSize: "clamp(3rem, 8vw, 6rem)" }}

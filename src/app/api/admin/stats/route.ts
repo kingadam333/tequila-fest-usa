@@ -1,28 +1,57 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAdminToken, unauthorizedResponse } from "@/lib/adminAuth";
-import { normalizeTicketType, TICKET_TYPE_ORDER, sortByType } from "@/lib/normalizeTicketType";
+import { normalizeTicketType, sortByType } from "@/lib/normalizeTicketType";
 
 export async function GET(req: NextRequest) {
   if (!verifyAdminToken(req)) return unauthorizedResponse();
-  return getSupabaseStats();
+
+  const { searchParams } = new URL(req.url);
+  const cityFilter = searchParams.get("city") || ""; // e.g. "Cincinnati"
+  const yearFilter = searchParams.get("year") || ""; // e.g. "2026"
+
+  return getSupabaseStats(cityFilter, yearFilter);
 }
 
-async function getSupabaseStats() {
+async function getSupabaseStats(cityFilter: string, yearFilter: string) {
   const { supabaseAdmin } = await import("@/lib/supabase");
   const db = supabaseAdmin as any;
 
-  // Use ticket_instances as the source of truth (one row per actual ticket)
-  const { data: instances, error } = await db
-    .from("ticket_instances")
-    .select("ticket_type, event_slug, event_city, order_id");
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-  // Fetch paid orders for revenue + date info
-  const { data: orders } = await db
+  // Build order query with optional city/year filters
+  let orderQuery = db
     .from("ticket_orders")
     .select("id, event_city, event_slug, total, created_at, status")
     .eq("status", "paid");
+
+  if (cityFilter) orderQuery = orderQuery.ilike("event_city", `%${cityFilter}%`);
+  if (yearFilter) {
+    orderQuery = orderQuery
+      .gte("created_at", `${yearFilter}-01-01`)
+      .lte("created_at", `${yearFilter}-12-31T23:59:59`);
+  }
+
+  const { data: orders } = await orderQuery;
+
+  const orderIds = (orders || []).map((o: any) => o.id);
+
+  // Fetch ticket_instances filtered to matching orders
+  let instanceQuery = db
+    .from("ticket_instances")
+    .select("ticket_type, event_slug, event_city, order_id");
+
+  if (orderIds.length > 0) {
+    instanceQuery = instanceQuery.in("order_id", orderIds);
+  } else if (cityFilter || yearFilter) {
+    // Filters active but no matching orders — return zeros
+    return NextResponse.json({
+      source: "supabase",
+      totalRevenue: 0, totalTickets: 0, totalOrders: 0, ordersToday: 0,
+      byCity: {}, totalServiceFees: 0, totalPlatformFees: 0,
+      totalStripeFees: 0, totalTicketRevenue: 0,
+    });
+  }
+
+  const { data: instances, error } = await instanceQuery;
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   const orderMap = new Map<string, { total: number; created_at: string; event_city: string }>();
   for (const o of orders || []) {
@@ -31,19 +60,16 @@ async function getSupabaseStats() {
 
   const today = new Date().toISOString().split("T")[0];
   const totalTickets = (instances || []).length;
-
-  // Only count revenue from paid orders once each
-  const paidOrderIds = new Set((orders || []).map((o: any) => o.id));
   const totalRevenue = (orders || []).reduce((s: number, o: any) => s + Number(o.total), 0);
   const ordersToday = (orders || []).filter((o: any) => String(o.created_at).startsWith(today)).length;
   const totalOrders = (orders || []).length;
 
-  // Per-city breakdown from ticket_instances
+  // Per-city breakdown
   const byCity: Record<string, { revenue: number; tickets: number; byType: Record<string, number> }> = {};
 
   for (const ti of instances || []) {
     const order = orderMap.get(ti.order_id);
-    if (!order) continue; // skip unpaid
+    if (!order) continue;
     const city = order.event_city || ti.event_city || "Unknown";
     if (!byCity[city]) byCity[city] = { revenue: 0, tickets: 0, byType: {} };
     byCity[city].tickets++;
@@ -51,16 +77,12 @@ async function getSupabaseStats() {
     byCity[city].byType[type] = (byCity[city].byType[type] || 0) + 1;
   }
 
-  // Revenue per city — split evenly from order total across tickets in that order
-  // (simpler: attribute full order revenue to its city once)
-  const cityRevenueAdded = new Set<string>();
   for (const o of orders || []) {
     const city = o.event_city || "Unknown";
     if (!byCity[city]) byCity[city] = { revenue: 0, tickets: 0, byType: {} };
     byCity[city].revenue += Number(o.total);
   }
 
-  // Sort byType into canonical order for each city
   for (const city of Object.keys(byCity)) {
     byCity[city].byType = sortByType(byCity[city].byType);
   }

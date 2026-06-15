@@ -149,11 +149,54 @@ function StatusBadge({ status }: { status: string }) {
 
 // ─── Sections ────────────────────────────────────────────────────────────────
 
-function OverviewSection({ stats, orders, events, loading }: { stats: StatsData | null; orders: Order[]; events: EventRow[]; loading: boolean }) {
+const OVERVIEW_CITIES = ["All Cities", "Cincinnati", "Cleveland", "Columbus", "Phoenix"];
+const OVERVIEW_YEARS = ["All Years", "2026", "2027"];
+
+function OverviewSection({ stats: globalStats, orders, events, loading: globalLoading, adminToken }: { stats: StatsData | null; orders: Order[]; events: EventRow[]; loading: boolean; adminToken: string }) {
+  const [filterCity, setFilterCity] = useState("All Cities");
+  const [filterYear, setFilterYear] = useState("All Years");
+  const [filteredStats, setFilteredStats] = useState<StatsData | null>(null);
+  const [filtering, setFiltering] = useState(false);
+
+  const isFiltered = filterCity !== "All Cities" || filterYear !== "All Years";
+  const stats = isFiltered ? filteredStats : globalStats;
+  const loading = isFiltered ? filtering : globalLoading;
+
+  useEffect(() => {
+    if (!isFiltered) { setFilteredStats(null); return; }
+    setFiltering(true);
+    const params = new URLSearchParams();
+    if (filterCity !== "All Cities") params.set("city", filterCity);
+    if (filterYear !== "All Years") params.set("year", filterYear);
+    fetch(`/api/admin/stats?${params}`, { headers: { "x-admin-token": adminToken } })
+      .then(r => r.json())
+      .then(d => { setFilteredStats(d); setFiltering(false); });
+  }, [filterCity, filterYear, adminToken, isFiltered]);
+
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="font-display text-white text-3xl mb-6">OVERVIEW</h2>
+        <div className="flex items-center gap-3 mb-6 flex-wrap">
+          <h2 className="font-display text-white text-3xl">OVERVIEW</h2>
+          <select
+            value={filterCity}
+            onChange={e => setFilterCity(e.target.value)}
+            className="bg-white/[0.06] border border-white/15 text-white text-sm rounded-xl px-3 py-1.5 cursor-pointer focus:outline-none focus:border-yellow-500/50">
+            {OVERVIEW_CITIES.map(c => <option key={c} value={c} className="bg-[#1a0e00]">{c}</option>)}
+          </select>
+          <select
+            value={filterYear}
+            onChange={e => setFilterYear(e.target.value)}
+            className="bg-white/[0.06] border border-white/15 text-white text-sm rounded-xl px-3 py-1.5 cursor-pointer focus:outline-none focus:border-yellow-500/50">
+            {OVERVIEW_YEARS.map(y => <option key={y} value={y} className="bg-[#1a0e00]">{y}</option>)}
+          </select>
+          {isFiltered && (
+            <button onClick={() => { setFilterCity("All Cities"); setFilterYear("All Years"); }}
+              className="text-white/40 hover:text-white text-xs border border-white/10 px-2 py-1 rounded-lg transition-all cursor-pointer">
+              Clear
+            </button>
+          )}
+        </div>
         {loading ? (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {[...Array(4)].map((_, i) => <div key={i} className="h-28 bg-white/5 rounded-2xl animate-pulse" />)}
@@ -4413,7 +4456,7 @@ export default function AdminDashboard() {
   if (!adminToken) return <AdminLogin onLogin={handleLogin} />;
 
   const SECTION_MAP: Record<string, React.ReactNode> = {
-    overview:  <OverviewSection stats={stats} orders={orders} events={events} loading={loading} />,
+    overview:  <OverviewSection stats={stats} orders={orders} events={events} loading={loading} adminToken={adminToken} />,
     orders:    <OrdersSection orders={orders} loading={loading} adminToken={adminToken} onRefetch={refetch} />,
     events:    <EventsSection adminToken={adminToken} stats={stats} editingId={editingEventId} setEditingId={setEditingEventId} />,
     customers: <UsersSection adminToken={adminToken} />,

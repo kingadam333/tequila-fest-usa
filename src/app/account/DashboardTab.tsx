@@ -98,7 +98,7 @@ export default function DashboardTab({ firstName, loyaltyPoints, ticketCount, on
       {/* Upcoming events */}
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
         <div className="flex items-center justify-between mb-4">
-          <p className="text-white/30 text-xs font-bold tracking-[0.2em] uppercase">2026 Tour</p>
+          <p className="text-white/30 text-xs font-bold tracking-[0.2em] uppercase">Tour</p>
           <Link href="/#events" className="text-yellow-400 text-xs hover:text-yellow-300 transition-colors">View all →</Link>
         </div>
         <div className="space-y-2">
