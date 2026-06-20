@@ -40,6 +40,11 @@ export async function POST(req: NextRequest) {
     "vendors@": "Vendors",
     "press@": "Press",
   };
+  // Only process emails addressed to our domain — ignore tastecleveland.net and any other domain
+  if (!toLower.includes("tequilafestusa.com")) {
+    return NextResponse.json({ skipped: `wrong domain: ${to}` });
+  }
+
   const matchedPrefix = Object.keys(inboxByPrefix).find((p) => toLower.includes(p));
   if (!matchedPrefix) {
     return NextResponse.json({ skipped: `unrouted recipient: ${to}` });
