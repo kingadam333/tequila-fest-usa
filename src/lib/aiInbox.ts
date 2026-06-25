@@ -178,7 +178,7 @@ ${orderInfo && !emailMismatch ? `**Their order history found in our system:**\n$
 Instructions:
 
 PRIME DIRECTIVE — DON'T INVENT FACTS, AND WHEN IN DOUBT, ESCALATE:
-Your answer can ONLY use facts that appear verbatim in:
+Your answer can ONLY use facts that are clearly covered by:
 - The "Event Details" block (auto-generated from the canonical event data)
 - The "What an All Inclusive ticket includes" / "What a GA Entry ticket includes" sections
 - The "Ticket Types & Pricing" section
