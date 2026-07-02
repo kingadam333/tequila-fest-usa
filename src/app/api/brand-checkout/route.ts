@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { supabaseAdmin } from "@/lib/supabase";
 import { verifyTurnstile } from "@/lib/turnstile";
+import { normalizeBrandName } from "@/lib/normalizeBrandName";
 
 const TIER_PRICES: Record<string, number> = {
   Value: 250,
@@ -18,16 +19,17 @@ const CITY_LABELS: Record<string, string> = {
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { brandName, contactName, contactEmail, contactPhone, tier, cities, captchaToken } = body || {};
+  const { brandName: rawBrandName, contactName, contactEmail, contactPhone, tier, cities, captchaToken } = body || {};
 
   // Turnstile
   const ok = await verifyTurnstile(captchaToken);
   if (!ok) return NextResponse.json({ error: "Captcha failed" }, { status: 400 });
 
   // Validate
-  if (!brandName?.trim() || !contactName?.trim() || !contactEmail?.trim()) {
+  if (!rawBrandName?.trim() || !contactName?.trim() || !contactEmail?.trim()) {
     return NextResponse.json({ error: "Brand, contact name, and email required" }, { status: 400 });
   }
+  const brandName = normalizeBrandName(rawBrandName);
   if (!tier || !(tier in TIER_PRICES)) {
     return NextResponse.json({ error: "Invalid tier" }, { status: 400 });
   }

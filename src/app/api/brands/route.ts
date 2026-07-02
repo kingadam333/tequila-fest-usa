@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
+import { normalizeBrandName } from "@/lib/normalizeBrandName";
 
 // Public — powers the rolling brand scroller on city pages. Only shows
 // brands with a *paid* package order — optionally scoped to one city.
@@ -16,7 +17,7 @@ export async function GET(req: NextRequest) {
   for (const o of orders || []) {
     const cities: string[] = Array.isArray(o.cities) ? o.cities : [];
     if (city && !cities.map((c: string) => c.toLowerCase()).includes(city)) continue;
-    const name = (o.brand_name || "").trim();
+    const name = normalizeBrandName(o.brand_name || "");
     if (name) names.add(name);
   }
 
