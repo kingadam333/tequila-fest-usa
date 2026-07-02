@@ -143,6 +143,21 @@ export default function EventPage({ event, ogImage, dbStatus }: { event: EventDa
   const isComingSoon = dbStatus === "coming_soon";
   const isCompleted = dbStatus === "completed";
 
+  const STATIC_BRANDS = ["Camerena","Avión","Gran Coramino","1800","Jose Cuervo","Gran Centenario","Dobel","Milagro","Del Maguey","Olmeca Altos","Codigo 1530","El Jimador","Hornitos","El Tesoro","Sauza","Ghost","G4","Los Linderos","Suavecito","Teremana","Viva Agave","Dolce Vida","Corazon","Authentico"];
+  const [brandNames, setBrandNames] = useState<string[]>(STATIC_BRANDS);
+  useEffect(() => {
+    fetch("/api/brands")
+      .then(r => r.json())
+      .then(d => {
+        const signedUp: string[] = Array.isArray(d.brands) ? d.brands : [];
+        if (signedUp.length) {
+          const merged = Array.from(new Set([...signedUp, ...STATIC_BRANDS]));
+          setBrandNames(merged);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   // Capture referral code from URL and store in localStorage
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -522,9 +537,7 @@ export default function EventPage({ event, ogImage, dbStatus }: { event: EventDa
               <div className="absolute left-0 top-0 bottom-0 w-16 bg-gradient-to-r from-[#0d0500] to-transparent z-10 pointer-events-none" />
               <div className="absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-[#0d0500] to-transparent z-10 pointer-events-none" />
               <div className="flex gap-4 w-max animate-marquee" style={{ animationDuration: "70s" }}>
-                {[...Array(3)].flatMap(() =>
-                  ["Camerena","Avión","Gran Coramino","1800","Jose Cuervo","Gran Centenario","Dobel","Milagro","Del Maguey","Olmeca Altos","Codigo 1530","El Jimador","Hornitos","El Tesoro","Sauza","Ghost","G4","Los Linderos","Suavecito","Teremana","Viva Agave","Dolce Vida","Corazon","Authentico"]
-                ).map((brand, i) => (
+                {[...Array(3)].flatMap(() => brandNames).map((brand, i) => (
                   <div key={i} className="flex-shrink-0 bg-white/5 border border-white/10 hover:border-yellow-500/40 hover:bg-white/10 rounded-2xl px-8 py-5 transition-all duration-200">
                     <p className="font-display text-yellow-400 text-2xl whitespace-nowrap">{brand}</p>
                   </div>
@@ -548,6 +561,12 @@ export default function EventPage({ event, ogImage, dbStatus }: { event: EventDa
                   <p className="text-white/40 text-sm mt-1">{t.desc}</p>
                 </div>
               ))}
+            </div>
+            <div className="text-center mt-8">
+              <a href="https://www.tequilafestusa.com/brand-packages"
+                className="inline-block border border-yellow-500/40 text-yellow-400 hover:bg-yellow-500 hover:text-black text-xs font-bold tracking-[0.2em] uppercase px-6 py-3 rounded-full transition-all duration-200">
+                Add Your Tequila Brand
+              </a>
             </div>
           </div>
         </section>
