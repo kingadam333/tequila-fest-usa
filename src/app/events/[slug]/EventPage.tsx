@@ -146,7 +146,7 @@ export default function EventPage({ event, ogImage, dbStatus }: { event: EventDa
   const STATIC_BRANDS = ["Camerena","Avión","Gran Coramino","1800","Jose Cuervo","Gran Centenario","Dobel","Milagro","Del Maguey","Olmeca Altos","Codigo 1530","El Jimador","Hornitos","El Tesoro","Sauza","Ghost","G4","Los Linderos","Suavecito","Teremana","Viva Agave","Dolce Vida","Corazon","Authentico"];
   const [brandNames, setBrandNames] = useState<string[]>(STATIC_BRANDS);
   useEffect(() => {
-    fetch("/api/brands")
+    fetch(`/api/brands?city=${encodeURIComponent(event.city)}`)
       .then(r => r.json())
       .then(d => {
         const signedUp: string[] = Array.isArray(d.brands) ? d.brands : [];
