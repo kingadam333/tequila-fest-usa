@@ -1,8 +1,9 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 
-const brands = [
+const STATIC_BRANDS = [
   "Camerena", "Avión", "Gran Coramino", "1800", "Jose Cuervo",
   "Gran Centenario", "Dobel", "Milagro", "Del Maguey", "Olmeca Altos",
   "Codigo 1530", "El Jimador", "Hornitos", "El Tesoro", "Sauza",
@@ -11,6 +12,20 @@ const brands = [
 ];
 
 export default function TequilaSpotlight() {
+  const [brands, setBrands] = useState<string[]>(STATIC_BRANDS);
+
+  useEffect(() => {
+    fetch("/api/brands")
+      .then(r => r.json())
+      .then(d => {
+        const signedUp: string[] = Array.isArray(d.brands) ? d.brands : [];
+        if (signedUp.length) {
+          setBrands(Array.from(new Set([...signedUp, ...STATIC_BRANDS])));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   const doubled = [...brands, ...brands];
 
   return (
@@ -90,6 +105,13 @@ export default function TequilaSpotlight() {
             </div>
           ))}
         </motion.div>
+
+        <div className="text-center mt-8">
+          <a href="https://www.tequilafestusa.com/brand-packages"
+            className="inline-block border border-yellow-500/40 text-yellow-400 hover:bg-yellow-500 hover:text-black text-xs font-bold tracking-[0.2em] uppercase px-6 py-3 rounded-full transition-all duration-200">
+            Add Your Tequila Brand
+          </a>
+        </div>
       </div>
     </section>
   );
