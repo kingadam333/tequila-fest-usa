@@ -2554,6 +2554,9 @@ interface BrandOrder {
   status: string;
   created_at: string;
   paid_at?: string;
+  brand_contact_id?: string;
+  stripe_session_id?: string;
+  stripe_payment_intent_id?: string;
 }
 
 const CITY_LABELS_BRAND: Record<string, string> = {
@@ -2755,9 +2758,9 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { fetchContacts(); }, [fetchContacts]);
+  useEffect(() => { fetchOrders(); }, [fetchOrders]); // load up-front so Contacts cards can show each contact's orders
   useEffect(() => { if (view === "invoices") fetchInvoices(); }, [view, fetchInvoices]);
   useEffect(() => { if (view === "inbox") fetchInbox(); }, [view, fetchInbox]);
-  useEffect(() => { if (view === "orders") fetchOrders(); }, [view, fetchOrders]);
 
   const openAdd = () => { setContactForm({ ...BLANK_CONTACT, brands: [{ ...BLANK_BRAND }] }); setEditContact(null); setShowAddContact(true); };
   const openEdit = (c: BrandContact) => { setEditContact(c); setContactForm({ contact_name: c.contact_name, contact_email: c.contact_email, contact_phone: c.contact_phone || "", contact_type: c.contact_type as typeof BLANK_CONTACT.contact_type, brands: c.brands.length ? c.brands : [{ ...BLANK_BRAND }], distributor: c.distributor || "", supplier: c.supplier || "", notes: c.notes || "" }); setShowAddContact(true); };
@@ -2916,6 +2919,36 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
                       ))}
                     </div>
                   )}
+                  {(() => {
+                    const contactOrders = orders.filter(o => o.brand_contact_id === c.id || o.contact_email.toLowerCase() === c.contact_email.toLowerCase());
+                    if (!contactOrders.length) return null;
+                    return (
+                      <div className="mt-4 pt-4 border-t border-white/10">
+                        <p className="text-white/30 text-xs font-semibold uppercase tracking-wider mb-2">Package Orders</p>
+                        <div className="space-y-2">
+                          {contactOrders.map(o => (
+                            <div key={o.id} className="bg-black/20 border border-white/5 rounded-xl px-3 py-2.5 flex items-center justify-between gap-3 flex-wrap">
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-mono text-yellow-400 text-xs">{o.order_number}</span>
+                                  <span className={`text-[10px] rounded-full px-2 py-0.5 border capitalize ${o.status === "paid" ? "bg-green-500/15 text-green-400 border-green-500/20" : o.status === "pending" ? "bg-yellow-500/15 text-yellow-400 border-yellow-500/20" : o.status === "refunded" ? "bg-red-500/15 text-red-400 border-red-500/20" : "bg-white/5 text-white/40 border-white/10"}`}>{o.status}</span>
+                                  <span className="text-[10px] bg-white/5 border border-white/10 rounded-full px-2 py-0.5 text-white/50">{o.tier}</span>
+                                </div>
+                                <p className="text-white/50 text-xs mt-1">{(o.cities || []).map(city => CITY_LABELS_BRAND[city] || city).join(", ")} · {new Date(o.created_at).toLocaleDateString()}{o.paid_at ? ` · paid ${new Date(o.paid_at).toLocaleDateString()}` : ""}</p>
+                              </div>
+                              <div className="flex items-center gap-3 flex-shrink-0">
+                                <p className="font-display text-lg text-white">${Number(o.amount).toFixed(2)}</p>
+                                {o.stripe_payment_intent_id && (
+                                  <a href={`https://dashboard.stripe.com/payments/${o.stripe_payment_intent_id}`} target="_blank" rel="noopener noreferrer"
+                                    className="text-[11px] text-yellow-500/70 hover:text-yellow-400 underline underline-offset-2">View in Stripe</a>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               ))}
             </div>
