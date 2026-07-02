@@ -60,20 +60,17 @@ npx vercel env pull .env.local   # pulls to local (values will be empty strings 
 
 ---
 
-## Events (4 Cities)
+## Events — Permanent City URLs, Year-Based Data
 
-| City | Slug | Date | Venue | Price | Status |
-|---|---|---|---|---|---|
-| Cincinnati | `cincinnati` | June 13, 2026, 3–9 PM | Fountain Square, Downtown Cincinnati | $55 | on_sale |
-| Cleveland | `cleveland` | July 25, 2026, 3–9 PM | Cuyahoga County Fairgrounds, Berea OH | $55 | on_sale |
-| Columbus | `columbus` | Aug 8, 2026, 3–9 PM | Gravity/Greater Columbus Convention Center | $55 | on_sale |
-| Phoenix | `phoenix` | Nov 14, 2026, 3–9 PM | Phoenix Convention Center | $55 | coming_soon |
+Event pages are keyed by **city**, not by year — `/events/cincinnati` always resolves to whatever the current/next upcoming event is for Cincinnati, pulled live from the `events` DB table (`src/app/events/[slug]/page.tsx`). This lets a city run the same URL every year: when a city's event finishes, mark that year's row `status: "completed"` (blocks ticket sales) and either create a new row for next year or use the admin **Copy** button to duplicate the completed event with a new date.
 
-Event data is defined in `src/lib/events.ts`. VIP ticket available at all events.
+- **`cityKey(slug)`** (`page.tsx`) resolves any slug variant (`cincinnati`, `cincinnati-2027`, etc.) down to the base city name, then queries the DB for the next event `date_iso >= today` for that city. Falls back to the most recent (even if completed) so the page never 404s.
+- **`CITY_STYLE`** map in `page.tsx` holds visual theming (color, gradient, emoji, tag) per city — this does NOT change year to year, only event data (date, venue, ticket types) comes from the DB row.
+- **Status values**: `draft`, `on_sale`, `sold_out`, `cancelled`, `coming_soon`, `completed`. `completed` blocks all ticket purchase buttons ("EVENT COMPLETED") — added specifically so a past year's event page can't sell tickets once superseded.
 
-**Phoenix is set to `coming_soon`** — homepage card shows "🔔 COMING SOON" (non-clickable), event page shows Coming Soon UI. Status is stored in the `events` DB table. The DB check constraint was updated to allow: `draft`, `on_sale`, `sold_out`, `cancelled`, `coming_soon`.
+**Homepage event cards** (`src/components/EventCards.tsx`) are **dynamic** — fetch from `GET /api/events`, which filters to `date_iso >= today` and excludes `draft`/`cancelled`/`completed`, sorted ascending by date. Farthest-out event appears last. No code change needed to add/remove/reorder homepage cards — manage entirely from admin → Events.
 
-**Homepage event cards** (`src/components/EventCards.tsx`) are **hardcoded** — they do not read from the DB. To change a city's status on the homepage, update the `status` field in that file directly. The individual event pages (`/events/[slug]`) DO read status from the DB.
+**Admin → Events** (`AdminDashboard.tsx`): "New Event" and "Copy" buttons (`POST /api/admin/events` — `copy_from_id` duplicates an event + its ticket types with sold counts reset to 0, defaults new date to `2027-01-01` as a placeholder). Events are grouped by year in the list, with year shown on each card. Date field uses a calendar picker.
 
 ---
 
@@ -92,6 +89,7 @@ Event data is defined in `src/lib/events.ts`. VIP ticket available at all events
 | `coupons` | Discount codes |
 | `brand_contacts` | Tequila brand contacts — contact_name, contact_email, contact_phone, contact_type (distributor/supplier/self_distributed), brands (JSONB: [{name, price_per_bottle}]), distributor, supplier, notes |
 | `brand_invoices` | Brand invoices — linked to brand_contacts, line_items JSONB, total, status (draft/sent/paid/cancelled), stripe_payment_link_id/url |
+| `brand_package_orders` | Brand package purchases (self-serve checkout at `/brand-packages`) — order_number, brand_name, contact_name/email/phone, tier (Value/Standard/Premium), cities (JSONB array), amount, stripe_session_id, stripe_payment_intent_id, status (pending/paid), paid_at, **brand_contact_id** (FK — auto-linked/created by the Stripe webhook by matching contact_email, so paid orders always surface under the right Brands → Contacts card). Non-Stripe payments (e.g. Zelle) can be inserted manually with `status: 'paid'`, `stripe_session_id: null`. |
 | `staff_members` | Check-in staff — id, name, email, password_hash (bcrypt), permissions (array), status, last_login_at |
 | `vendor_applications` | Vendor form submissions — business_name, cities (array), stripe_session_id, status (pending/approved/paid) |
 
@@ -112,8 +110,15 @@ Event data is defined in `src/lib/events.ts`. VIP ticket available at all events
 | `src/app/api/admin/resend-email/route.ts` | Admin: resend ticket email for any order (uses qrTicketHtml) |
 | `src/app/api/admin/contact/route.ts` | Admin: GET submissions, POST reply |
 | `src/app/api/session-email/route.ts` | Fetches customer email from Stripe session (for post-purchase flow) |
-| `src/app/admin/AdminDashboard.tsx` | Full admin dashboard (orders, events, users, inbox, AI, staff, check-in) |
-| `src/components/EventCards.tsx` | Homepage city event cards — hardcoded data, includes status field per city |
+| `src/app/admin/AdminDashboard.tsx` | Full admin dashboard (orders, events, users, inbox, AI, staff, check-in, brands) |
+| `src/components/EventCards.tsx` | Homepage city event cards — **dynamic**, fetches `/api/events`, upcoming-only |
+| `src/app/api/events/route.ts` | Public — upcoming events (`date_iso >= today`, excludes draft/cancelled/completed) for homepage + city pages |
+| `src/app/events/[slug]/page.tsx` | Server component — resolves permanent city slug to current/next DB event via `cityKey()`, applies `CITY_STYLE` theming |
+| `src/app/api/brands/route.ts` | Public — brand names for the rolling scroller. Only brands with a **paid** `brand_package_orders` row; `?city=` scopes to one city, no param = all cities (used on homepage) |
+| `src/lib/normalizeBrandName.ts` | Strips the standalone word "Tequila" from brand names at checkout time + display time, so "Dulce Vida" and "Dulce Vida Tequila" don't show as duplicate scroller entries |
+| `src/app/api/brand-checkout/route.ts` | Self-serve brand package Stripe Checkout — creates pending `brand_package_orders` row, sets `payment_intent_data.description` to `"{brand} — {tier} Brand Package ({cities})"` so Stripe dashboard/receipts show the brand name instead of the raw PaymentIntent ID |
+| `src/app/api/admin/brand-orders/route.ts` | Admin — list all `brand_package_orders` |
+| `src/app/api/admin/resend-old-qr/route.ts` | Admin — bulk-resends QR ticket emails for orders whose `qr_code` was generated by the old Replit format (`TKT-______-___-%` pattern) so the customer's saved QR matches the current DB value |
 | `src/components/TicketCartModal.tsx` | Ticket purchase modal on city event pages |
 | `src/components/PreCheckoutModal.tsx` | Pre-checkout info collection modal |
 | `src/app/login/LoginPage.tsx` | Login page — detects staff accounts and redirects to /checkin with JWT |
@@ -253,7 +258,16 @@ URL: `/admin` (requires admin password — sent as `x-admin-token` header)
 - **Orders** — all ticket purchases, Stripe receipt link, **Send icon resends ticket email**, refund button. Save now shows error alert if it fails.
 - **Events** — manage event listings and ticket types. Status options: `on_sale`, `coming_soon`, `sold_out`, `draft`, `cancelled`
 - **Users** — customer accounts
-- **Brands** — tequila brand contacts, invoicing, and inbox (brands@mail.tequilafestusa.com). Sub-tabs: Contacts / Invoices / Inbox. Contacts stored in `brand_contacts`. Invoices in `brand_invoices` with auto-generated Stripe payment links emailed on creation.
+- **Brands** — tequila brand contacts, invoicing, orders, and inbox (brands@mail.tequilafestusa.com). Sub-tabs: Contacts / Orders / Invoices / Inbox. Contacts stored in `brand_contacts`; each Contacts card shows that contact's linked `brand_package_orders` inline (order #, tier, cities, amount, status, "View in Stripe" link when a real `stripe_payment_intent_id` exists). Invoices in `brand_invoices` with auto-generated Stripe payment links emailed on creation.
+
+### Brand Package Purchase Flow (`/brand-packages`)
+Self-serve flow separate from ticket checkout — a brand pays $250/$300/$350 per city (Value/Standard/Premium tier) to be featured at an event.
+1. `BrandPackagesPage.tsx` collects brand name, contact info, tier, city selection → `POST /api/brand-checkout`
+2. That route creates a pending `brand_package_orders` row and a Stripe Checkout Session with `metadata.type = "brand_package"` (this is how the shared Stripe webhook tells brand orders apart from ticket orders)
+3. `src/app/api/webhooks/stripe/route.ts` → `handleBrandPackagePaid()` marks the order `status: "paid"`, and **auto-links or auto-creates** a `brand_contacts` row by matching `contact_email` (appends the brand name to that contact's `brands[]` if not already present) — this is the mechanism that makes a paid brand show up under admin → Brands → Contacts automatically, no manual entry needed
+4. Once paid for a given city, that brand name appears in the rolling tequila-brand scroller on that city's event page (and on the homepage scroller, unscoped by city) via `GET /api/brands` — see `src/lib/normalizeBrandName.ts` for the "Tequila" word-stripping normalization
+
+**Non-Stripe payments** (e.g. a brand pays via Zelle): insert directly into `brand_package_orders` with `status: 'paid'`, `stripe_session_id: null`, `stripe_payment_intent_id: null`, and manually create/update the matching `brand_contacts` row (or let it auto-create on the next real Stripe order from that email). The admin Contacts card only shows "View in Stripe" when a real payment intent ID is present.
 - **Inbox** — contact form submissions by type (Support / Sponsors / Affiliates / Brands). Reads from `contact_submissions` via `/api/admin/contact` GET. Supports AI-generated replies.
 - **Staff** — staff management
 - **Analytics** — site stats
@@ -386,6 +400,22 @@ OPENAI_API_KEY=...
 - [x] Admin inbox was empty — `supabaseAdmin` was used in client component (server-only key)
 - [x] Two back-to-back emails dropped by Resend — merged into one
 - [x] `listUsers()` pagination bug — replaced with direct DB lookup
+- [x] `tastecleveland.net` inbound emails leaking into this admin inbox — domain guard added to `email-inbound/route.ts`
+- [x] Stripe PaymentIntent showing raw `pi_...` ID instead of a description — `payment_intent_data.description` now set on brand-checkout
+
+### Dynamic Events / Year Rollover (this session)
+- [x] Homepage `EventCards.tsx` converted from hardcoded to dynamic (`/api/events`)
+- [x] City pages (`/events/[slug]`) now permanently keyed by city — always show current/next event for that city from DB, resolved via `cityKey()`
+- [x] `completed` event status added — blocks ticket purchases, used to archive a past year's event without deleting data
+- [x] Admin Events: "New Event" + "Copy" buttons, year grouping in the list, date picker calendar
+- [x] Front page only shows upcoming (non-completed, non-draft) events, sorted by date ascending
+
+### Brand Package / Contacts Integration (this session)
+- [x] Admin → Brands → Contacts cards show each contact's linked `brand_package_orders` inline (order #, tier, cities, amount, status, Stripe link)
+- [x] Rolling tequila brand scroller (city pages + homepage) is dynamic — pulls brand names from **paid** `brand_package_orders`, city-scoped on event pages, unscoped on homepage
+- [x] "Add Your Tequila Brand" CTA button added to both city-page and homepage scroller sections, linking to `/brand-packages`
+- [x] `normalizeBrandName()` strips "Tequila" from brand names at checkout + display time to prevent duplicate scroller entries
+- [x] Stripe MCP connector set up for direct account access from Claude sessions (account: Tequila Fest, `acct_1P2FfCLyuw3Oooiq`)
 
 ---
 
@@ -412,7 +442,7 @@ OPENAI_API_KEY=...
 - [ ] **Sponsor portal** — not built
 - [ ] **Brand owner portal** — not built
 - [ ] **Admin analytics** — revenue by city, ticket type breakdown, etc.
-- [ ] **Wire homepage EventCards to DB** — so admin status changes reflect on homepage without code deploy
+- [ ] **Embedded admin AI assistant** — chat box inside `/admin` calling Claude's API directly, with this site's own Stripe/Supabase/Resend keys wired as tools (not a shared personal Connector session) — solves the multi-account Stripe connector conflict between Adam's different projects. Under discussion, not yet scoped/built.
 
 ---
 
@@ -509,6 +539,9 @@ Sonnet 4.6 kept retrying `/emails/{id}` with workarounds (delays, different ID f
 - Event: `email.received`
 - Status: Enabled
 
+### Fixed: Cross-Domain Leak (tastecleveland.net emails appearing in this admin inbox)
+Adam has a **separate, unrelated** sister project (`tastecleveland.net`, an old Lovable/Supabase SPA with its own inbound webhook pointed at a Supabase edge function). Emails to `help@mail.tastecleveland.net` were showing up in the Tequila Fest admin inbox. Root cause was never fully confirmed (both domains have separate, correctly-configured Resend webhooks — likely a shared-MX/inbound-domain-verification issue on Resend's side), but as a hard guardrail, `src/app/api/webhooks/email-inbound/route.ts` now rejects any inbound payload whose `to` address doesn't contain `tequilafestusa.com` before any DB write happens. If this recurs, check Resend Dashboard → Domains → tastecleveland.net → confirm inbound domain is fully verified (green check) and its webhook isn't erroring.
+
 ---
 
 ## Critical Notes for Next Session
@@ -525,9 +558,13 @@ Sonnet 4.6 kept retrying `/emails/{id}` with workarounds (delays, different ID f
 
 6. **Local builds fail** with `supabaseUrl is required` — Vercel pulls empty strings for secrets locally. This is expected and harmless. Vercel production builds work fine.
 
-7. **Homepage event cards are hardcoded** (`src/components/EventCards.tsx`) — admin status changes only affect individual event pages, not the homepage cards. Update the `status` field in `EventCards.tsx` directly to change homepage display.
+7. **Homepage event cards are now dynamic** (`src/components/EventCards.tsx` fetches `/api/events`) — admin status/date changes on an event automatically reflect on the homepage. No code deploy needed. (This was previously hardcoded — fixed this session.)
 
-8. **DB events status constraint** — allowed values: `draft`, `on_sale`, `sold_out`, `cancelled`, `coming_soon`. Adding any new status requires an `ALTER TABLE` to update the check constraint first.
+8. **DB events status constraint** — allowed values: `draft`, `on_sale`, `sold_out`, `cancelled`, `coming_soon`, `completed`. Adding any new status requires an `ALTER TABLE` to update the check constraint first. `completed` blocks ticket purchases on that event's page — use it when a year's event has passed instead of deleting the row (keeps historical order data intact).
+
+13. **Old vs. new QR code format** — old Replit-generated tickets: `TKT-{6-char}-{3-char type abbrev}-{3-digit num}-{6-char}`. Current generator (`stripe/route.ts`, `handleCheckoutComplete`): `TKT-{8-char order id suffix}-{3-digit num}-{8-char random hex}`, no type abbreviation. Old-format QR codes emailed to customers don't match what's now in `ticket_instances.qr_code` after a past migration — use admin → Events → Cleveland → "Resend Old QR" button (`/api/admin/resend-old-qr`) to re-send corrected emails for a given event slug. There is no scan-time fuzzy fallback; check-in only matches exact `qr_code`, then falls back to name/email/order-number search.
+
+14. **Stripe is connected via MCP connector** (account: `acct_1P2FfCLyuw3Oooiq`, display name "Tequila Fest") — gives live read/limited-write access (refunds, resource lookups) directly in a Claude session without needing the raw secret key. The connector's write scope does **not** currently support updating an existing PaymentIntent's `description` — that still requires the Stripe Dashboard UI. Since Adam manages multiple Stripe accounts across different projects, this connector has to be manually disconnected/reconnected per session when switching between them — the long-term fix under discussion is embedding a Claude-API-powered chat directly in `/admin` with Tequila Fest's Stripe key stored in *this app's* own env vars, so it's permanently scoped and never fights with other projects' connector sessions.
 
 9. **`ticket_instances` status constraint** — `ticket_instances_status_check` allows: `valid`, `used`, `cancelled`, `refunded`, `pending`, `transferred`. Checked-in tickets must be set to `"used"` — `"checked_in"` is **NOT** an allowed value and will throw a constraint violation error.
 
