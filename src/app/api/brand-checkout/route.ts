@@ -65,6 +65,9 @@ export async function POST(req: NextRequest) {
     })),
     success_url: `${appUrl}/brand-packages/success?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${appUrl}/brand-packages`,
+    payment_intent_data: {
+      description: `${brandName} — ${tier} Brand Package (${cityLabels})`,
+    },
     metadata: {
       type: "brand_package",
       orderNumber,
