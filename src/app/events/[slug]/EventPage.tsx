@@ -181,7 +181,7 @@ export default function EventPage({ event, ogImage, dbStatus }: { event: EventDa
           {/* City header image (if uploaded) */}
           {ogImage && (
             <div className="absolute inset-0 z-0">
-              <img src={ogImage} alt={event.city} className="w-full h-full object-cover object-center" />
+              <Image src={ogImage} alt={event.city} fill priority sizes="100vw" className="object-cover object-center" />
               <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, rgba(13,5,0,0.45) 0%, rgba(13,5,0,0.35) 40%, rgba(13,5,0,0.75) 80%, #0d0500 100%)" }} />
             </div>
           )}

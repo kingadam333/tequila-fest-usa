@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAdminToken, unauthorizedResponse } from "@/lib/adminAuth";
 import { supabaseAdmin } from "@/lib/supabase";
+import sharp from "sharp";
 
 export const config = { api: { bodyParser: false } };
 
@@ -15,8 +16,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "eventId and file are required" }, { status: 400 });
   }
 
-  const buffer = Buffer.from(await file.arrayBuffer());
-  // Always store as webp for optimal size/quality
+  const rawBuffer = Buffer.from(await file.arrayBuffer());
+  // Actually resize + re-encode to webp — these are hero backgrounds, never
+  // need to exceed 1920px wide, and full-res phone photos were previously
+  // uploaded as-is under a ".webp" name with no real compression.
+  const buffer = await sharp(rawBuffer)
+    .resize({ width: 1920, withoutEnlargement: true })
+    .webp({ quality: 80 })
+    .toBuffer();
   const storagePath = `og/${eventId}.webp`;
 
   const db = supabaseAdmin as any;
@@ -24,7 +31,7 @@ export async function POST(req: NextRequest) {
   const { error: uploadError } = await db.storage
     .from("event-images")
     .upload(storagePath, buffer, {
-      contentType: file.type || "image/webp",
+      contentType: "image/webp",
       upsert: true,
     });
 
