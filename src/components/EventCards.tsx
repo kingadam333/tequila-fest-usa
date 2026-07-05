@@ -138,18 +138,21 @@ export default function EventCards() {
                     </div>
                   </div>
 
-                  {/* What's included — compact so everything fits on one line */}
-                  <div className="flex flex-wrap gap-1.5 mb-6">
-                    {["12 Tastings", "Live Music", "Food", "Souvenir"].map(item => (
-                      <span key={item} className="whitespace-nowrap text-[11px] text-white/50 bg-white/5 border border-white/10 rounded-full px-2 py-1">{item}</span>
+                  {/* What's included */}
+                  <div className={`flex flex-wrap gap-1.5 ${event.gaPrice !== null ? "mb-3" : "mb-6"}`}>
+                    {["12 Tasting Tickets", "Live Music", "Authentic Food", "Souvenir Item"].map(item => (
+                      <span key={item} className="whitespace-nowrap text-xs text-white/50 bg-white/5 border border-white/10 rounded-full px-3 py-1">{item}</span>
                     ))}
-                    {event.gaPrice !== null && (
-                      <span className="whitespace-nowrap text-[11px] font-semibold rounded-full px-2 py-1 bg-yellow-900/30 border border-yellow-500/30 text-yellow-400">🎟️ GA ${event.gaPrice}</span>
-                    )}
                     {event.free_parking && (
-                      <span className="whitespace-nowrap text-[11px] font-semibold rounded-full px-2 py-1 bg-green-900/30 border border-green-500/30 text-green-400">🅿️ Free Parking</span>
+                      <span className="whitespace-nowrap text-xs font-semibold rounded-full px-3 py-1 bg-green-900/30 border border-green-500/30 text-green-400">🅿️ Free Parking</span>
                     )}
                   </div>
+
+                  {event.gaPrice !== null && (
+                    <div className="w-full text-center text-xs font-semibold rounded-full px-3 py-2 mb-6 bg-yellow-900/30 border border-yellow-500/30 text-yellow-400">
+                      🎟️ General Admission / Designated Driver Ticket starting at ${event.gaPrice}
+                    </div>
+                  )}
 
                   {/* CTA */}
                   {isComingSoon ? (
