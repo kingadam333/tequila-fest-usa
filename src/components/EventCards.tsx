@@ -119,9 +119,6 @@ export default function EventCards() {
                       <p className="font-display text-white" style={{ fontSize: "2.5rem" }}>$55</p>
                       <p className="text-yellow-500/70 text-xs font-semibold">Early Bird</p>
                       <p className="text-white/20 text-xs">then $60 / $65</p>
-                      {event.gaPrice !== null && (
-                        <p className="text-white/40 text-xs mt-1">GA from ${event.gaPrice}</p>
-                      )}
                     </div>
                   </div>
 
@@ -146,6 +143,9 @@ export default function EventCards() {
                     {["12 Tasting Tickets", "Live Music", "Authentic Food", "Souvenir Item"].map(item => (
                       <span key={item} className="text-xs text-white/50 bg-white/5 border border-white/10 rounded-full px-3 py-1">{item}</span>
                     ))}
+                    {event.gaPrice !== null && (
+                      <span className="text-xs font-semibold rounded-full px-3 py-1 bg-yellow-900/30 border border-yellow-500/30 text-yellow-400">🎟️ GA from ${event.gaPrice}</span>
+                    )}
                     {event.free_parking && (
                       <span className="text-xs font-semibold rounded-full px-3 py-1 bg-green-900/30 border border-green-500/30 text-green-400">🅿️ Free Parking</span>
                     )}
