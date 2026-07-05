@@ -17,6 +17,22 @@ export async function POST(req: NextRequest) {
 
   const db = supabaseAdmin as any;
 
+  // Scrub duplicate submissions by email — a rejected prior application
+  // doesn't block reapplying, but a pending/approved one does. Don't create
+  // a second row; just let the applicant know they've already applied.
+  const { data: existing } = await db
+    .from("vendor_applications")
+    .select("id, status")
+    .eq("email", email.trim().toLowerCase())
+    .neq("status", "rejected")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (existing) {
+    return NextResponse.json({ duplicate: true, existingStatus: existing.status }, { status: 409 });
+  }
+
   const { data, error } = await db.from("vendor_applications").insert({
     name: name.trim(),
     business_name: business.trim(),

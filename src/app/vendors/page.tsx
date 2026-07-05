@@ -38,6 +38,7 @@ export default function VendorsPage() {
   const [selectedCities, setSelectedCities] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [duplicate, setDuplicate] = useState(false);
   const [error, setError] = useState("");
   const [captchaToken, setCaptchaToken] = useState("");
 
@@ -76,7 +77,10 @@ export default function VendorsPage() {
       });
       const data = await res.json();
       if (res.ok) setSubmitted(true);
-      else {
+      else if (res.status === 409 && data.duplicate) {
+        setDuplicate(true);
+        setCaptchaToken("");
+      } else {
         setError(data.error || "Something went wrong. Please try again.");
         setCaptchaToken("");
       }
@@ -185,7 +189,12 @@ export default function VendorsPage() {
           {/* Application form */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
             <h2 className="font-display text-white text-3xl mb-8 text-center">APPLY TO VEND</h2>
-            {submitted ? (
+            {duplicate ? (
+              <div className="max-w-lg mx-auto bg-red-500/10 border border-red-500/30 rounded-3xl p-12 text-center">
+                <p className="font-display text-red-400 text-2xl mb-2">DOUBLE APPLICATION</p>
+                <p className="text-white/50">Looks like you&apos;ve already submitted an application with this email. We&apos;ve already got it on file — no need to apply again. This duplicate submission will not be saved. If you think this is a mistake, email <a href="mailto:partners@tequilafestusa.com" className="text-yellow-400 underline">partners@tequilafestusa.com</a>.</p>
+              </div>
+            ) : submitted ? (
               <div className="max-w-lg mx-auto bg-yellow-500/10 border border-yellow-500/30 rounded-3xl p-12 text-center">
                 <CheckCircle size={48} className="text-yellow-400 mx-auto mb-4" />
                 <p className="font-display text-yellow-400 text-2xl mb-2">APPLICATION RECEIVED!</p>
