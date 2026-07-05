@@ -4074,6 +4074,23 @@ function VendorsSection({ adminToken }: { adminToken: string }) {
     setSaving(false);
   };
 
+  const resendConfirmation = async (id: string) => {
+    setSaving(true);
+    setResendStatus("");
+    try {
+      const res = await fetch("/api/admin/vendors/resend-confirmation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-token": adminToken },
+        body: JSON.stringify({ id }),
+      });
+      const data = await res.json();
+      setResendStatus(res.ok ? "Confirmation email resent" : `Error: ${data.error || "failed to resend"}`);
+    } catch (e: any) {
+      setResendStatus(`Error: ${e?.message || "failed to resend"}`);
+    }
+    setSaving(false);
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -4244,6 +4261,12 @@ function VendorsSection({ adminToken }: { adminToken: string }) {
                 <button onClick={() => updateStatus(selected.id, "approved")} disabled={saving}
                   className="w-full bg-green-500/20 hover:bg-green-500/30 border border-green-500/30 text-green-400 font-bold py-2.5 rounded-xl text-sm transition-all cursor-pointer">
                   Re-approve & Send Payment Link
+                </button>
+              )}
+              {selected.paid && (
+                <button onClick={() => resendConfirmation(selected.id)} disabled={saving}
+                  className="w-full bg-white/5 hover:bg-white/10 border border-white/15 text-white/60 font-bold py-2.5 rounded-xl text-sm transition-all cursor-pointer">
+                  {saving ? "Sending..." : "Resend Vendor Confirmation Email"}
                 </button>
               )}
             </div>
