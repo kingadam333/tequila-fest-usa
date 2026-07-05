@@ -36,6 +36,7 @@ interface DBEvent {
   tag: string;
   free_parking: boolean;
   status: string;
+  gaPrice: number | null;
 }
 
 export default function EventCards() {
@@ -118,6 +119,9 @@ export default function EventCards() {
                       <p className="font-display text-white" style={{ fontSize: "2.5rem" }}>$55</p>
                       <p className="text-yellow-500/70 text-xs font-semibold">Early Bird</p>
                       <p className="text-white/20 text-xs">then $60 / $65</p>
+                      {event.gaPrice !== null && (
+                        <p className="text-white/40 text-xs mt-1">GA from ${event.gaPrice}</p>
+                      )}
                     </div>
                   </div>
 
