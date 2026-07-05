@@ -374,6 +374,135 @@ export function qrTicketHtml({
 </html>`;
 }
 
+// ─── Vendor Payment Confirmation Email ───────────────────────────────────────
+// Separate from qrTicketHtml — vendors are paying for a booth spot, not a
+// festival ticket, so the copy and QR label must never say "All Inclusive".
+export function vendorConfirmationHtml({
+  firstName,
+  businessName,
+  cities,
+  orderNumber,
+  total,
+  qrCode,
+  appUrl,
+  newPassword,
+}: {
+  firstName: string;
+  businessName: string;
+  cities: string[];
+  orderNumber: string;
+  total: number;
+  qrCode: string;
+  appUrl: string;
+  newPassword?: string;
+}) {
+  const cityLabel = cities.join(", ");
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=10&data=${encodeURIComponent(qrCode)}`;
+
+  return `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#0d0500;font-family:'Segoe UI',Arial,sans-serif;color:#fff8f0">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#0d0500;padding:40px 20px">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%">
+
+        <tr><td style="text-align:center;padding-bottom:24px">
+          <p style="font-family:Arial;font-size:32px;font-weight:900;letter-spacing:4px;color:#F5A623;margin:0">TEQUILA FEST USA</p>
+        </td></tr>
+
+        <tr><td style="text-align:center;padding-bottom:28px">
+          <p style="font-size:36px;margin:0 0 8px">🏪</p>
+          <p style="font-family:Arial;font-size:22px;font-weight:900;letter-spacing:2px;color:#fff8f0;margin:0">YOU'RE CONFIRMED, ${firstName.toUpperCase()}!</p>
+          <p style="color:rgba(255,248,240,0.5);margin:6px 0 0">Your vendor spot payment is confirmed. Save this email — show your QR code on-site.</p>
+        </td></tr>
+
+        <tr><td style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:18px 20px">
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr>
+              <td><p style="margin:0;color:rgba(255,248,240,0.4);font-size:11px;text-transform:uppercase;letter-spacing:1px">Order #${orderNumber}</p></td>
+              <td style="text-align:right"><p style="margin:0;color:#F5A623;font-weight:700;font-size:15px">$${total.toFixed(2)}</p></td>
+            </tr>
+            <tr><td colspan="2"><p style="margin:6px 0 0;color:rgba(255,248,240,0.6);font-size:13px">1× Vendor Spot — ${cityLabel}</p></td></tr>
+          </table>
+        </td></tr>
+
+        <tr><td style="height:16px"></td></tr>
+
+        <tr><td>
+          <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:16px;overflow:hidden">
+            <tr>
+              <td style="background:linear-gradient(135deg,#1a0e00,#0d0500);padding:16px 20px;border-bottom:1px solid rgba(255,255,255,0.08)">
+                <p style="margin:0;color:rgba(255,248,240,0.4);font-size:11px;letter-spacing:2px;text-transform:uppercase">Vendor Pass 1 of 1</p>
+                <p style="margin:4px 0 0;font-family:Arial;font-size:20px;font-weight:900;letter-spacing:3px;color:#F5A623">TEQUILA FEST USA</p>
+                <p style="margin:2px 0 0;color:rgba(255,248,240,0.5);font-size:13px">${cityLabel} · 2026</p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:20px">
+                <table width="100%" cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td width="180" valign="top" style="padding-right:20px">
+                      <img src="${qrUrl}" width="160" height="160" alt="QR Code ${qrCode}" style="display:block;border-radius:8px;border:4px solid white" />
+                      <p style="margin:8px 0 0;color:rgba(255,248,240,0.25);font-family:monospace;font-size:9px;text-align:center;word-break:break-all">${qrCode}</p>
+                    </td>
+                    <td valign="top">
+                      <p style="margin:0 0 4px;color:rgba(255,248,240,0.4);font-size:11px;text-transform:uppercase;letter-spacing:1px">Business</p>
+                      <p style="margin:0 0 16px;color:#fff8f0;font-size:16px;font-weight:700">${businessName}</p>
+                      <span style="background:#1a0e00;border:2px solid #F5A623;color:#F5A623;font-family:Arial;font-size:14px;font-weight:900;letter-spacing:2px;text-transform:uppercase;padding:6px 16px;border-radius:50px">Vendor</span>
+                      <p style="margin:16px 0 0;color:rgba(255,248,240,0.35);font-size:12px">Show QR at vendor check-in · Must be 21+</p>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td style="background:rgba(0,0,0,0.3);padding:10px 20px;text-align:right">
+                <p style="margin:0;color:rgba(255,248,240,0.15);font-size:10px">Order #${orderNumber} · TequilaFestUSA.com · Non-transferable</p>
+              </td>
+            </tr>
+          </table>
+        </td></tr>
+
+        ${newPassword ? `
+        <tr><td style="height:16px"></td></tr>
+        <tr><td style="background:rgba(245,166,35,0.06);border:1px solid rgba(245,166,35,0.25);border-radius:16px;padding:20px">
+          <p style="color:#F5A623;font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 10px">🔑 Your Account Was Created</p>
+          <p style="color:rgba(255,248,240,0.65);font-size:13px;margin:0 0 12px">We created a Tequila Fest USA account for you so you can access your vendor details anytime.</p>
+          <table cellpadding="0" cellspacing="0" border="0" style="background:rgba(0,0,0,0.3);border-radius:10px;padding:12px 16px;width:100%">
+            <tr><td><p style="margin:0;color:rgba(255,248,240,0.4);font-size:11px;text-transform:uppercase;letter-spacing:1px">Login URL</p><p style="margin:2px 0 8px;color:#fff8f0;font-size:13px">${appUrl}/login</p></td></tr>
+            <tr><td><p style="margin:0;color:rgba(255,248,240,0.4);font-size:11px;text-transform:uppercase;letter-spacing:1px">Temporary Password</p><p style="margin:2px 0 0;color:#F5A623;font-family:monospace;font-size:15px;font-weight:700;letter-spacing:2px">${newPassword}</p></td></tr>
+          </table>
+          <p style="color:rgba(255,248,240,0.35);font-size:11px;margin:10px 0 0">Change your password after first login under Account Settings.</p>
+        </td></tr>` : ""}
+
+        <tr><td style="height:20px"></td></tr>
+
+        <tr><td style="background:rgba(245,166,35,0.08);border:1px solid rgba(245,166,35,0.2);border-radius:16px;padding:20px">
+          <p style="color:#F5A623;font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 10px">Important Reminders</p>
+          <ul style="margin:0;padding:0 0 0 16px">
+            ${["Vendor load-in is from 12pm to 2pm.", "Valid government-issued ID required — must be 21+", "No vendors will be able to enter the grounds after 2pm.", "You will be provided a 10x10 area. Tent, table and chairs are your responsibility."].map(r => `<li style="color:rgba(255,248,240,0.6);font-size:13px;margin-bottom:6px">${r}</li>`).join("")}
+          </ul>
+        </td></tr>
+
+        <tr><td style="height:24px"></td></tr>
+
+        <tr><td style="text-align:center">
+          <a href="${appUrl}/account" style="display:inline-block;background:#F5A623;color:#0d0500;font-weight:900;font-size:14px;letter-spacing:2px;text-transform:uppercase;text-decoration:none;padding:14px 36px;border-radius:50px">VIEW MY VENDOR DETAILS</a>
+        </td></tr>
+
+        <tr><td style="height:32px"></td></tr>
+        <tr><td style="text-align:center;border-top:1px solid rgba(255,255,255,0.08);padding-top:20px">
+          <p style="color:rgba(255,248,240,0.2);font-size:11px;margin:0">Questions? Email partners@tequilafestusa.com · TequilaFestUSA.com</p>
+        </td></tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+}
+
 // ─── Password Reset Email ─────────────────────────────────────────────────────
 export function passwordResetHtml({ resetUrl }: { resetUrl: string }) {
   return `<!DOCTYPE html>

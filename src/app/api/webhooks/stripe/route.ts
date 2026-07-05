@@ -33,6 +33,8 @@ export async function POST(req: NextRequest) {
         const session = event.data.object as Stripe.Checkout.Session;
         if (session.metadata?.type === "brand_package") {
           await handleBrandPackagePaid(session);
+        } else if (session.metadata?.type === "vendor") {
+          await handleVendorPaid(session);
         } else {
           await handleCheckoutComplete(session);
         }
@@ -298,6 +300,116 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
     } catch (dbErr) {
       console.error("Supabase write error:", dbErr);
     }
+  }
+}
+
+async function handleVendorPaid(session: Stripe.Checkout.Session) {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) return;
+
+  const vendorApplicationId = session.metadata?.vendor_application_id;
+  if (!vendorApplicationId) {
+    console.error("Vendor payment webhook missing vendor_application_id metadata");
+    return;
+  }
+
+  try {
+    const { supabaseAdmin } = await import("@/lib/supabase");
+    const { vendorConfirmationHtml } = await import("@/lib/resend");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const db = supabaseAdmin as any;
+
+    const { data: app } = await db.from("vendor_applications").select("*").eq("id", vendorApplicationId).single();
+    if (!app) {
+      console.error("Vendor payment webhook: application not found", vendorApplicationId);
+      return;
+    }
+    if (app.paid) return; // already processed — idempotent guard against duplicate webhook delivery
+
+    const amountTotal = (session.amount_total || 0) / 100;
+    const paymentIntentId = typeof session.payment_intent === "string" ? session.payment_intent : null;
+    const orderNumber = `TFV-${session.id.slice(-8).toUpperCase()}`;
+    const qrCode = `TKT-${vendorApplicationId.replace(/-/g, "").slice(-8).toUpperCase()}-001-${crypto.randomBytes(4).toString("hex").toUpperCase()}`;
+
+    await db.from("vendor_applications").update({
+      paid: true,
+      paid_at: new Date().toISOString(),
+      order_number: orderNumber,
+      qr_code: qrCode,
+      stripe_payment_intent_id: paymentIntentId,
+      updated_at: new Date().toISOString(),
+    }).eq("id", vendorApplicationId);
+
+    const firstName = (app.name || "").split(" ")[0] || "there";
+
+    // Auto-create an account for the vendor, same as ticket buyers, so they
+    // can log in and see their vendor details — but never send a ticket email.
+    let newAccountPassword: string | null = null;
+    if (app.email) {
+      try {
+        const { createClient } = await import("@supabase/supabase-js");
+        const adminAuth = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.SUPABASE_SERVICE_ROLE_KEY!,
+          { auth: { autoRefreshToken: false, persistSession: false } }
+        );
+        const { data: existingAccount } = await db
+          .from("customer_accounts")
+          .select("id")
+          .eq("email", app.email)
+          .maybeSingle();
+
+        if (!existingAccount) {
+          const password = generatePassword();
+          newAccountPassword = password;
+          const nameParts = (app.name || "").split(" ");
+          const { data: authUser, error: authErr } = await adminAuth.auth.admin.createUser({
+            email: app.email,
+            password,
+            email_confirm: true,
+            user_metadata: {
+              first_name: nameParts[0] || firstName,
+              last_name: nameParts.slice(1).join(" ") || "",
+              phone: app.phone || "",
+            },
+          });
+          if (!authErr && authUser?.user) {
+            await db.from("customer_accounts").upsert({
+              id: authUser.user.id,
+              email: app.email,
+              first_name: nameParts[0] || firstName,
+              last_name: nameParts.slice(1).join(" ") || null,
+              phone: app.phone || null,
+            }, { onConflict: "email" });
+          } else if (authErr) {
+            console.error("Vendor auth createUser error:", authErr);
+            newAccountPassword = null;
+          }
+        }
+      } catch (authErr) {
+        console.error("Vendor auth account creation error:", authErr);
+      }
+    }
+
+    if (app.email) {
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.tequilafestusa.com";
+      await resend.emails.send({
+        from: FROM_EMAIL,
+        to: app.email,
+        subject: `You're Confirmed! Vendor Spot Payment Received — ${orderNumber}`,
+        html: vendorConfirmationHtml({
+          firstName,
+          businessName: app.business_name,
+          cities: app.cities?.length ? app.cities : ["Festival"],
+          orderNumber,
+          total: amountTotal,
+          qrCode,
+          appUrl,
+          newPassword: newAccountPassword || undefined,
+        }),
+      });
+    }
+  } catch (err) {
+    console.error("handleVendorPaid error:", err);
   }
 }
 

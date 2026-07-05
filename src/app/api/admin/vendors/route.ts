@@ -45,7 +45,7 @@ export async function sendVendorApprovalEmail(db: any, app: any) {
     payment_method_types: ["card"],
     line_items: lineItems,
     customer_email: app.email,
-    metadata: { vendor_application_id: app.id, business_name: app.business_name },
+    metadata: { type: "vendor", vendor_application_id: app.id, business_name: app.business_name },
     success_url: `${process.env.NEXT_PUBLIC_SITE_URL || "https://tequilafestusa.com"}/vendor-payment-success?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL || "https://tequilafestusa.com"}/vendors`,
     expires_at: Math.floor(Date.now() / 1000) + 60 * 60 * 23, // 23h — stays under Stripe's 24h payment-mode cap
