@@ -4662,7 +4662,7 @@ export default function AdminDashboard() {
         <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
           {NAV_ITEMS.map(item => (
             <button key={item.id} onClick={() => { handleSectionChange(item.id); if (item.id === "events") setEditingEventId(null); }}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer text-left ${activeSection === item.id ? "bg-yellow-500/15 text-yellow-400 border border-yellow-500/20" : "text-white/40 hover:text-white hover:bg-white/5"}`}>
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer text-left ${activeSection === item.id ? "bg-yellow-500/15 text-yellow-400 border border-yellow-500/20" : "text-white hover:bg-white/5"}`}>
               {item.icon}
               {item.label}
             </button>
@@ -4672,11 +4672,11 @@ export default function AdminDashboard() {
         {/* Footer */}
         <div className="p-3 border-t border-white/10 space-y-0.5">
           <Link href="/" target="_blank"
-            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-white/30 hover:text-white hover:bg-white/5 transition-all cursor-pointer">
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-white hover:bg-white/5 transition-all cursor-pointer">
             <Eye size={15} /> View Site
           </Link>
           <button onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-white/30 hover:text-red-400 hover:bg-red-500/5 transition-all cursor-pointer">
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-white hover:text-red-400 hover:bg-red-500/5 transition-all cursor-pointer">
             <LogOut size={15} /> Log Out
           </button>
         </div>
