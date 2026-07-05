@@ -85,12 +85,17 @@ function useCartModal(event: EventData, liveTypes: LiveTicketType[]) {
     "GA": "ga",
   };
 
+  // GA availability comes from the live DB ticket type (see EventPage's
+  // `gaLive`), not a static event flag — it may not be offered at every city.
+  const gaLive = liveTypes.find(lt => lt.name === "GA");
+  const gaRemaining = gaLive ? Math.max(gaLive.capacity - gaLive.sold_count, 0) : 0;
+
   const ticketTypeOptions = [
     { key: "earlyBird" as TicketType, label: "Early Bird", price: 55, note: "First 300 tickets" },
     { key: "regular" as TicketType, label: "Regular Rate", price: 60, note: "General on-sale" },
     { key: "late" as TicketType, label: "Late Registration", price: 65, note: "Final week only" },
     { key: "vip" as TicketType, label: "VIP Experience", price: 125, note: "All inclusive + exclusive perks" },
-    ...(event.gaTicket ? [{ key: "ga" as TicketType, label: "GA Entry", price: 5, note: event.gaTicket.limited ? `Only ${event.gaTicket.qty} available` : "Entry only" }] : []),
+    ...(gaLive ? [{ key: "ga" as TicketType, label: "GA Entry", price: 5, note: gaRemaining <= 30 ? `Only ${gaRemaining} available` : "Entry only" }] : []),
   ].map(tt => {
     const live = liveTypes.find(lt => lt.name === tt.label || PRICING_MAP[lt.name] === tt.key);
     return {
@@ -142,6 +147,15 @@ export default function EventPage({ event, ogImage, dbStatus }: { event: EventDa
   const { openCart, modal } = useCartModal(event, liveTypes);
   const isComingSoon = dbStatus === "coming_soon";
   const isCompleted = dbStatus === "completed";
+
+  // GA availability now comes from the live DB ticket type, not a static
+  // per-city flag — previously `gaTicket` was hardcoded to null for
+  // every city on the DB-driven event page, silently hiding GA everywhere
+  // even when it was actively for sale (e.g. Cleveland, Columbus).
+  const gaLive = liveTypes.find(t => t.name === "GA");
+  const gaSoldOut = gaLive ? (gaLive.is_active === false || gaLive.sold_count >= gaLive.capacity) : false;
+  const gaRemaining = gaLive ? Math.max(gaLive.capacity - gaLive.sold_count, 0) : 0;
+  const gaTicket = gaLive && !gaSoldOut ? { price: gaLive.price, limited: gaRemaining <= 30, qty: gaRemaining } : null;
 
   const STATIC_BRANDS = ["Camerena","Avión","Gran Coramino","1800","Jose Cuervo","Gran Centenario","Dobel","Milagro","Del Maguey","Olmeca Altos","Codigo 1530","El Jimador","Hornitos","El Tesoro","Sauza","Ghost","G4","Los Linderos","Suavecito","Teremana","Viva Agave","Dolce Vida","Corazon","Authentico"];
   const [brandNames, setBrandNames] = useState<string[]>(STATIC_BRANDS);
@@ -287,11 +301,11 @@ export default function EventPage({ event, ogImage, dbStatus }: { event: EventDa
             {/* CTAs */}
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.65 }}
               className="mt-4 flex flex-col sm:flex-row gap-4 justify-center items-center flex-wrap">
-              {event.gaTicket && (
+              {gaTicket && (
                 <button onClick={() => openCart("ga")}
                   className="cursor-pointer inline-flex items-center gap-2 border border-white/25 hover:border-white/50 text-white/70 hover:text-white text-base px-7 py-4 rounded-full transition-all duration-200">
                   $5 GA Entry
-                  {event.gaTicket.limited && <span className="text-yellow-400 text-xs font-bold">· {event.gaTicket.qty} left</span>}
+                  {gaTicket.limited && <span className="text-yellow-400 text-xs font-bold">· {gaTicket.qty} left</span>}
                 </button>
               )}
             </motion.div>
@@ -373,7 +387,7 @@ export default function EventPage({ event, ogImage, dbStatus }: { event: EventDa
             </motion.div>
 
             {/* VIP + GA row */}
-            <div className={`grid gap-6 ${event.gaTicket ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1 max-w-xl mx-auto"}`}>
+            <div className={`grid gap-6 ${gaTicket ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1 max-w-xl mx-auto"}`}>
 
               {/* VIP */}
               <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.1 }} className="relative">
@@ -423,7 +437,7 @@ export default function EventPage({ event, ogImage, dbStatus }: { event: EventDa
               </motion.div>
 
               {/* GA */}
-              {event.gaTicket && (
+              {gaTicket && (
                 <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.2 }}>
                   <div className="rounded-2xl p-6 border h-full flex flex-col" style={{ background: "rgba(255,255,255,0.03)", borderColor: "rgba(255,255,255,0.1)" }}>
                     <div className="flex items-start justify-between mb-4">
@@ -436,9 +450,9 @@ export default function EventPage({ event, ogImage, dbStatus }: { event: EventDa
                         <p className="text-white/30 text-xs">per person</p>
                       </div>
                     </div>
-                    {event.gaTicket.limited && (
+                    {gaTicket.limited && (
                       <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg px-3 py-2 mb-4">
-                        <p className="text-yellow-400 text-xs font-bold">⚡ Only {event.gaTicket.qty} tickets available</p>
+                        <p className="text-yellow-400 text-xs font-bold">⚡ Only {gaTicket.qty} tickets available</p>
                       </div>
                     )}
                     <ul className="space-y-2 mb-6 flex-1">
