@@ -4016,6 +4016,7 @@ function VendorsSection({ adminToken }: { adminToken: string }) {
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [filter, setFilter] = useState("all");
+  const [resendStatus, setResendStatus] = useState("");
 
   const fetchApps = () => {
     fetch("/api/admin/vendors", { headers: { "x-admin-token": adminToken } })
@@ -4048,6 +4049,29 @@ function VendorsSection({ adminToken }: { adminToken: string }) {
       setApps(prev => prev.map(a => a.id === id ? data.application : a));
       setSelected(data.application);
     }
+    if (data.error) setResendStatus(`Error: ${data.error}`);
+  };
+
+  const resendPaymentLink = async (id: string) => {
+    setSaving(true);
+    setResendStatus("");
+    try {
+      const res = await fetch("/api/admin/vendors/resend-payment-link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-token": adminToken },
+        body: JSON.stringify({ id }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setResendStatus("Payment link resent");
+        fetchApps();
+      } else {
+        setResendStatus(`Error: ${data.error || "failed to resend"}`);
+      }
+    } catch (e: any) {
+      setResendStatus(`Error: ${e?.message || "failed to resend"}`);
+    }
+    setSaving(false);
   };
 
   return (
@@ -4142,16 +4166,45 @@ function VendorsSection({ adminToken }: { adminToken: string }) {
                 </div>
               )}
 
-              {/* Payment link */}
-              {selected.payment_link && (
-                <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-blue-400 text-xs font-bold uppercase tracking-wider">Payment Link Sent</p>
-                    <p className="text-white/40 text-xs mt-0.5">Stripe checkout link was emailed to vendor</p>
+              {/* Payment link + email tracking */}
+              {selected.payment_link ? (
+                <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl px-4 py-3 space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-blue-400 text-xs font-bold uppercase tracking-wider">Payment Link Sent</p>
+                      <p className="text-white/40 text-xs mt-0.5">Stripe checkout link was emailed to vendor</p>
+                    </div>
+                    <a href={selected.payment_link} target="_blank" rel="noopener noreferrer"
+                      className="text-blue-400 hover:text-blue-300 text-xs underline flex-shrink-0">View Link</a>
                   </div>
-                  <a href={selected.payment_link} target="_blank" rel="noopener noreferrer"
-                    className="text-blue-400 hover:text-blue-300 text-xs underline flex-shrink-0">View Link</a>
+                  <div className="flex flex-wrap gap-2">
+                    <span className={`text-xs font-semibold px-2 py-1 rounded-full border ${selected.approval_email_sent_at ? "bg-white/10 border-white/20 text-white/70" : "bg-white/5 border-white/10 text-white/25"}`}>
+                      Sent{selected.approval_email_sent_at ? ` · ${new Date(selected.approval_email_sent_at).toLocaleString()}` : ""}
+                    </span>
+                    <span className={`text-xs font-semibold px-2 py-1 rounded-full border ${selected.approval_email_delivered_at ? "bg-green-500/15 border-green-500/25 text-green-400" : "bg-white/5 border-white/10 text-white/25"}`}>
+                      Delivered{selected.approval_email_delivered_at ? ` · ${new Date(selected.approval_email_delivered_at).toLocaleString()}` : ""}
+                    </span>
+                    <span className={`text-xs font-semibold px-2 py-1 rounded-full border ${selected.approval_email_opened_at ? "bg-yellow-500/15 border-yellow-500/25 text-yellow-400" : "bg-white/5 border-white/10 text-white/25"}`}>
+                      Opened{selected.approval_email_open_count ? ` · ${selected.approval_email_open_count}×` : ""}
+                    </span>
+                    <span className={`text-xs font-semibold px-2 py-1 rounded-full border ${selected.approval_email_clicked_at ? "bg-blue-500/15 border-blue-500/25 text-blue-400" : "bg-white/5 border-white/10 text-white/25"}`}>
+                      Clicked{selected.approval_email_click_count ? ` · ${selected.approval_email_click_count}×` : ""}
+                    </span>
+                    {selected.approval_email_bounced_at && (
+                      <span className="text-xs font-semibold px-2 py-1 rounded-full border bg-red-500/15 border-red-500/25 text-red-400">
+                        Bounced · {new Date(selected.approval_email_bounced_at).toLocaleString()}
+                      </span>
+                    )}
+                  </div>
                 </div>
+              ) : selected.status === "approved" ? (
+                <div className="bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">
+                  <p className="text-red-400 text-xs font-bold uppercase tracking-wider">No Payment Link On File</p>
+                  <p className="text-white/40 text-xs mt-0.5">This vendor was approved but the payment link/email never went out — use Resend below.</p>
+                </div>
+              ) : null}
+              {resendStatus && (
+                <p className={`text-xs ${resendStatus.startsWith("Error") ? "text-red-400" : "text-green-400"}`}>{resendStatus}</p>
               )}
 
               {/* Admin notes */}
@@ -4177,7 +4230,7 @@ function VendorsSection({ adminToken }: { adminToken: string }) {
               )}
               {selected.status === "approved" && !selected.paid && (
                 <div className="flex gap-3">
-                  <button onClick={() => updateStatus(selected.id, "approved")} disabled={saving}
+                  <button onClick={() => resendPaymentLink(selected.id)} disabled={saving}
                     className="bg-white/5 hover:bg-white/10 border border-white/15 text-white/60 font-bold py-2.5 px-4 rounded-xl text-sm transition-all cursor-pointer">
                     {saving ? "Sending..." : "Resend Payment Link"}
                   </button>
