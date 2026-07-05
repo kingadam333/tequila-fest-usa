@@ -330,13 +330,23 @@ async function handleVendorPaid(session: Stripe.Checkout.Session) {
     const orderNumber = `TFV-${session.id.slice(-8).toUpperCase()}`;
     const qrCode = `TKT-${vendorApplicationId.replace(/-/g, "").slice(-8).toUpperCase()}-001-${crypto.randomBytes(4).toString("hex").toUpperCase()}`;
 
+    const paidAt = new Date().toISOString();
     await db.from("vendor_applications").update({
       paid: true,
-      paid_at: new Date().toISOString(),
+      paid_at: paidAt,
       order_number: orderNumber,
       qr_code: qrCode,
       stripe_payment_intent_id: paymentIntentId,
-      updated_at: new Date().toISOString(),
+      updated_at: paidAt,
+      // A completed payment is definitive proof the vendor received, opened,
+      // and clicked the approval email — backfill these if Resend's webhook
+      // events haven't arrived yet (or won't, e.g. sent before the tracking
+      // webhook existed). Only fills gaps; never overwrites real event data.
+      approval_email_delivered_at: app.approval_email_delivered_at || paidAt,
+      approval_email_opened_at: app.approval_email_opened_at || paidAt,
+      approval_email_clicked_at: app.approval_email_clicked_at || paidAt,
+      approval_email_open_count: Math.max(app.approval_email_open_count || 0, 1),
+      approval_email_click_count: Math.max(app.approval_email_click_count || 0, 1),
     }).eq("id", vendorApplicationId);
 
     const firstName = (app.name || "").split(" ")[0] || "there";
