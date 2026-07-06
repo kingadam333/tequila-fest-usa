@@ -2,6 +2,7 @@ import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import OfficialBanner from "@/components/OfficialBanner";
 import Footer from "@/components/Footer";
+import PurchaseDataLayerPush from "@/components/PurchaseDataLayerPush";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +37,16 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ s
 
   return (
     <>
+      {order && order.status === "paid" && (
+        <PurchaseDataLayerPush
+          data={{
+            transactionId: order.order_number,
+            value: Number(order.amount || 0),
+            itemName: `${order.tier} Brand Package — ${order.brand_name}`,
+            itemCity: (order.cities || []).map((c: string) => CITY_LABELS[c] || c).join(", "),
+          }}
+        />
+      )}
       <OfficialBanner />
       <Navbar />
       <main className="bg-[#0d0500] min-h-screen pt-24 pb-24">

@@ -11,7 +11,7 @@ import OfficialBanner from "@/components/OfficialBanner";
 import Footer from "@/components/Footer";
 import { getEvent } from "@/lib/events";
 import Confetti from "@/components/Confetti";
-import { trackPixelEvent } from "@/components/MetaPixel";
+import PurchaseDataLayerPush, { PurchaseData } from "@/components/PurchaseDataLayerPush";
 
 export default function ConfirmationPage() {
   const params = useSearchParams();
@@ -21,6 +21,7 @@ export default function ConfirmationPage() {
 
   const [mounted, setMounted] = useState(false);
   const [customerEmail, setCustomerEmail] = useState<string | null>(null);
+  const [purchaseData, setPurchaseData] = useState<PurchaseData | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -30,26 +31,12 @@ export default function ConfirmationPage() {
         .then(r => r.json())
         .then(d => {
           if (d.email) setCustomerEmail(d.email);
-          // Fire Meta Pixel Purchase event
-          trackPixelEvent("Purchase", {
-            currency: "USD",
+          setPurchaseData({
+            transactionId: d.orderNumber || sessionId,
             value: d.total ?? 0,
-            content_type: "product",
-            content_name: d.ticketType ? `Tequila Fest ${d.city} - ${d.ticketType}` : "Tequila Fest Ticket",
-            num_items: d.quantity ?? 1,
-          });
-          // Push purchase data to GTM's dataLayer so any GTM tag (Roku, GA4,
-          // etc.) can reference real order values/IDs as variables instead
-          // of hardcoded ones.
-          (window as any).dataLayer = (window as any).dataLayer || [];
-          (window as any).dataLayer.push({
-            event: "purchase",
-            transaction_id: d.orderNumber || sessionId,
-            value: d.total ?? 0,
-            currency: "USD",
             quantity: d.quantity ?? 1,
-            item_name: d.ticketType ? `Tequila Fest ${d.city} - ${d.ticketType}` : "Tequila Fest Ticket",
-            item_city: d.city || "",
+            itemName: d.ticketType ? `Tequila Fest ${d.city} - ${d.ticketType}` : "Tequila Fest Ticket",
+            itemCity: d.city || "",
           });
         })
         .catch(() => {});
@@ -58,6 +45,7 @@ export default function ConfirmationPage() {
 
   return (
     <>
+      {purchaseData && <PurchaseDataLayerPush data={purchaseData} />}
       <div className="sticky top-0 z-50">
         <OfficialBanner />
         <Navbar />
