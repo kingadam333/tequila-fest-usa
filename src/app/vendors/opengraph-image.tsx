@@ -1,11 +1,20 @@
 import { ImageResponse } from "next/og";
 
 export const runtime = "edge";
-export const alt = "Vendors Wanted — Tequila Fest USA";
+export const alt = "Vendor Application — Tequila Fest USA";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
+// Same gradient stops as .text-shimmer / .text-shimmer-blue in globals.css —
+// the exact colors behind "VENDOR APPLICATION" on the live page, just
+// rendered as a static gradient here since OG images can't animate.
+const GOLD_GRADIENT = "linear-gradient(90deg, #F5A623, #fff8f0, #F5A623, #C8102E, #F5A623)";
+const BLUE_GRADIENT = "linear-gradient(90deg, #0ea5e9, #06b6d4, #7dd3fc, #1e3a8a, #0ea5e9, #06b6d4)";
+
 export default async function Image() {
+  const logoBuffer = await fetch("https://www.tequilafestusa.com/tequilafest_usa.png").then(res => res.arrayBuffer());
+  const logoBase64 = `data:image/png;base64,${Buffer.from(logoBuffer).toString("base64")}`;
+
   return new ImageResponse(
     (
       <div
@@ -45,34 +54,47 @@ export default async function Image() {
           />
         ))}
 
-        <div
-          style={{
-            display: "flex",
-            fontSize: 26,
-            letterSpacing: 10,
-            fontWeight: 700,
-            color: "#F5A623",
-            textTransform: "uppercase",
-            marginBottom: 14,
-          }}
-        >
-          Tequila Fest USA
-        </div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={logoBase64}
+          width={140}
+          height={93}
+          style={{ marginBottom: 18 }}
+        />
 
         <div
           style={{
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
-            fontSize: 130,
             fontWeight: 900,
             letterSpacing: 2,
             textTransform: "uppercase",
             lineHeight: 1.05,
           }}
         >
-          <span style={{ color: "#F5A623" }}>VENDORS</span>
-          <span style={{ color: "#ffffff" }}>WANTED</span>
+          <div
+            style={{
+              display: "flex",
+              fontSize: 130,
+              backgroundImage: GOLD_GRADIENT,
+              backgroundClip: "text",
+              color: "transparent",
+            }}
+          >
+            VENDOR
+          </div>
+          <div
+            style={{
+              display: "flex",
+              fontSize: 100,
+              backgroundImage: BLUE_GRADIENT,
+              backgroundClip: "text",
+              color: "transparent",
+            }}
+          >
+            APPLICATION
+          </div>
         </div>
 
         <div
@@ -86,17 +108,6 @@ export default async function Image() {
         >
           Cincinnati · Cleveland · Columbus · Phoenix
         </div>
-
-        <div
-          style={{
-            display: "flex",
-            width: 140,
-            height: 6,
-            borderRadius: 9999,
-            background: "#F5A623",
-            marginTop: 34,
-          }}
-        />
       </div>
     ),
     { ...size }
