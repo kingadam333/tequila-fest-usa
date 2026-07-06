@@ -3,6 +3,7 @@ import "./globals.css";
 import SupportChat from "@/components/SupportChat";
 import MetaPixel from "@/components/MetaPixel";
 import MetaPixelHead from "@/components/MetaPixelHead";
+import { GTMHeadScript, GTMBodyNoscript } from "@/components/GoogleTagManager";
 import InstallBanner from "@/components/InstallBanner";
 
 export const viewport: Viewport = {
@@ -49,6 +50,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full">
       <head>
+        <GTMHeadScript />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="application-name" content="Tequila Fest" />
         <link rel="mask-icon" href="/icons/icon-512x512.png" color="#F5A623" />
@@ -57,6 +59,7 @@ export default function RootLayout({
         <MetaPixelHead />
       </head>
       <body className="min-h-full flex flex-col antialiased">
+        <GTMBodyNoscript />
         <MetaPixel />
         {children}
         <SupportChat />
