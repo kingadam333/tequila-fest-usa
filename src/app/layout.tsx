@@ -40,6 +40,9 @@ export const metadata: Metadata = {
       { url: "/icons/icon-152x152.png", sizes: "152x152", type: "image/png" },
     ],
   },
+  other: {
+    "facebook-domain-verification": "635vf5gns3zeu4m88hq5labmd66t8p",
+  },
 };
 
 export default function RootLayout({
