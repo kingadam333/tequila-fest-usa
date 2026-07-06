@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import SupportChat from "@/components/SupportChat";
 import MetaPixel from "@/components/MetaPixel";
+import MetaPixelHead from "@/components/MetaPixelHead";
 import InstallBanner from "@/components/InstallBanner";
 
 export const viewport: Viewport = {
@@ -53,6 +54,7 @@ export default function RootLayout({
         <link rel="mask-icon" href="/icons/icon-512x512.png" color="#F5A623" />
         <meta name="msapplication-TileColor" content="#F5A623" />
         <meta name="msapplication-TileImage" content="/icons/icon-144x144.png" />
+        <MetaPixelHead />
       </head>
       <body className="min-h-full flex flex-col antialiased">
         <MetaPixel />
