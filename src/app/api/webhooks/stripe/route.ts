@@ -80,6 +80,17 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
       // Create order record
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const db = supabaseAdmin as any;
+
+      // Resolve the current DB event row's id for this slug — stamped onto
+      // every ticket_instance below so sold counts stay tied to the exact
+      // event purchased against even after a future year rollover reassigns
+      // this same slug to a new event row.
+      let dbEventId: string | null = null;
+      if (eventSlug) {
+        const { data: eventRow } = await db.from("events").select("id").eq("slug", eventSlug).maybeSingle();
+        dbEventId = eventRow?.id || null;
+      }
+
       const orderPayload = {
         order_number: orderNumber,
         customer_email: customerEmail,
@@ -111,6 +122,7 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
           ticket_number: i + 1,
           event_slug: eventSlug || "",
           event_city: eventCity || event?.city || "",
+          event_id: dbEventId,
           ticket_type: ticketType || "",
           holder_name: i === 0 ? customerName : "Guest",
           qr_code: `TKT-${order.id.slice(-8).toUpperCase()}-${String(i + 1).padStart(3, "0")}-${crypto.randomBytes(4).toString("hex").toUpperCase()}`,

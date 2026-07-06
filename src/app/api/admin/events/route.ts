@@ -14,15 +14,21 @@ export async function GET(req: NextRequest) {
     .order("sort_order");
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  // Count from ticket_instances (one row per ticket — the real source of truth)
+  // Count from ticket_instances (one row per ticket — the real source of truth).
+  // Counted by event_id, NOT event_slug — a city's slug gets reassigned to
+  // the next year's event when the old one is marked completed (permanent
+  // city URL strategy), so slug-based counting would misattribute every past
+  // year's sales to whichever event currently holds that slug. event_id is
+  // set at purchase time and never changes.
   const { data: instances } = await db
     .from("ticket_instances")
-    .select("ticket_type, event_slug");
+    .select("ticket_type, event_id");
 
-  // Build lookup: "slug:normalizedType" → count
+  // Build lookup: "eventId:normalizedType" → count
   const countMap = new Map<string, number>();
   for (const ti of instances || []) {
-    const key = `${(ti.event_slug || "").toLowerCase()}:${normalizeTicketType(ti.ticket_type)}`;
+    if (!ti.event_id) continue;
+    const key = `${ti.event_id}:${normalizeTicketType(ti.ticket_type)}`;
     countMap.set(key, (countMap.get(key) || 0) + 1);
   }
 
@@ -30,7 +36,7 @@ export async function GET(req: NextRequest) {
   const enriched = (events || []).map((event: any) => ({
     ...event,
     ticket_types: (event.ticket_types || []).map((tt: any) => {
-      const key = `${(event.slug || "").toLowerCase()}:${normalizeTicketType(tt.name)}`;
+      const key = `${event.id}:${normalizeTicketType(tt.name)}`;
       return {
         ...tt,
         sold_count: countMap.get(key) ?? 0,
