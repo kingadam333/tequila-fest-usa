@@ -38,6 +38,19 @@ export default function ConfirmationPage() {
             content_name: d.ticketType ? `Tequila Fest ${d.city} - ${d.ticketType}` : "Tequila Fest Ticket",
             num_items: d.quantity ?? 1,
           });
+          // Push purchase data to GTM's dataLayer so any GTM tag (Roku, GA4,
+          // etc.) can reference real order values/IDs as variables instead
+          // of hardcoded ones.
+          (window as any).dataLayer = (window as any).dataLayer || [];
+          (window as any).dataLayer.push({
+            event: "purchase",
+            transaction_id: d.orderNumber || sessionId,
+            value: d.total ?? 0,
+            currency: "USD",
+            quantity: d.quantity ?? 1,
+            item_name: d.ticketType ? `Tequila Fest ${d.city} - ${d.ticketType}` : "Tequila Fest Ticket",
+            item_city: d.city || "",
+          });
         })
         .catch(() => {});
     }

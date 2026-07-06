@@ -13,7 +13,8 @@ export async function GET(req: NextRequest) {
     const quantity = session.line_items?.data?.[0]?.quantity ?? 1;
     const city = (session.metadata?.city as string) ?? "";
     const ticketType = (session.metadata?.ticketType as string) ?? "";
-    return NextResponse.json({ email, total, quantity, city, ticketType });
+    const orderNumber = (session.metadata?.orderNumber as string) ?? sessionId;
+    return NextResponse.json({ email, total, quantity, city, ticketType, orderNumber });
   } catch {
     return NextResponse.json({ email: null });
   }
