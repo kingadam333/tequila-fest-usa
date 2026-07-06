@@ -4091,11 +4091,51 @@ function VendorsSection({ adminToken }: { adminToken: string }) {
     setSaving(false);
   };
 
+  const [resendingAll, setResendingAll] = useState(false);
+  const [resendAllStatus, setResendAllStatus] = useState("");
+
+  const unpaidApprovedCount = apps.filter(a => a.status === "approved" && !a.paid).length;
+
+  const resendAllUnpaid = async () => {
+    if (!confirm(`Resend the payment link email to all ${unpaidApprovedCount} approved, unpaid vendors?`)) return;
+    setResendingAll(true);
+    setResendAllStatus("");
+    try {
+      const res = await fetch("/api/admin/vendors/resend-all-unpaid", {
+        method: "POST",
+        headers: { "x-admin-token": adminToken },
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setResendAllStatus(`Sent ${data.sent} email${data.sent === 1 ? "" : "s"}${data.failed?.length ? ` — ${data.failed.length} failed` : ""}`);
+        fetchApps();
+      } else {
+        setResendAllStatus(`Error: ${data.error || "failed"}`);
+      }
+    } catch (e: any) {
+      setResendAllStatus(`Error: ${e?.message || "failed"}`);
+    }
+    setResendingAll(false);
+  };
+
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="font-display text-white text-3xl mb-1">VENDORS</h2>
-        <p className="text-white/30 text-sm">{apps.length} application{apps.length !== 1 ? "s" : ""}</p>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h2 className="font-display text-white text-3xl mb-1">VENDORS</h2>
+          <p className="text-white/30 text-sm">{apps.length} application{apps.length !== 1 ? "s" : ""}</p>
+        </div>
+        {unpaidApprovedCount > 0 && (
+          <div className="text-right">
+            <button onClick={resendAllUnpaid} disabled={resendingAll}
+              className="bg-white/5 hover:bg-white/10 border border-white/15 disabled:opacity-60 text-white/70 font-semibold px-4 py-2 rounded-xl text-sm transition-all cursor-pointer">
+              {resendingAll ? "Sending…" : `Resend Payment Link to All Unpaid (${unpaidApprovedCount})`}
+            </button>
+            {resendAllStatus && (
+              <p className={`text-xs mt-1.5 ${resendAllStatus.startsWith("Error") ? "text-red-400" : "text-green-400"}`}>{resendAllStatus}</p>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Filter tabs */}
