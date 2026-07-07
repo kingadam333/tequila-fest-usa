@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { resend, FROM_EMAIL, generatePassword, qrTicketHtml } from "@/lib/resend";
 import { getEvent } from "@/lib/events";
+import { syncTicketBuyerToMarketingLists } from "@/lib/marketingSync";
 import { TICKET_LABELS } from "@/lib/stripe";
 import type Stripe from "stripe";
 import crypto from "crypto";
@@ -257,6 +258,21 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
           } catch (emailErr: any) {
             console.error("Failed to send ticket email:", emailErr?.message || emailErr);
           }
+        }
+
+        // ── Sync buyer to the correct per-city Brevo + TextMagic list ──
+        // Awaited (not fire-and-forget) — Vercel can kill the function
+        // before an un-awaited request completes once this handler returns.
+        const buyerCity = eventCity || event?.city || "";
+        if (customerEmail && buyerCity) {
+          const nameParts = customerName.split(" ");
+          await syncTicketBuyerToMarketingLists({
+            city: buyerCity,
+            email: customerEmail,
+            firstName: nameParts[0] || firstName,
+            lastName: nameParts.slice(1).join(" ") || undefined,
+            phone: customerPhone || null,
+          }).catch(err => console.error("Marketing list sync error:", err));
         }
 
         // ── Award referral points ──────────────────────────────────
