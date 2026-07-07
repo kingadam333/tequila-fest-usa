@@ -298,6 +298,8 @@ function OrdersSection({ orders, loading, adminToken, onRefetch }: { orders: Ord
   const [filter, setFilter] = useState("all");
   const [refunding, setRefunding] = useState<string | null>(null);
   const [resending, setResending] = useState<string | null>(null);
+  const [backfilling, setBackfilling] = useState(false);
+  const [backfillStatus, setBackfillStatus] = useState("");
 
   const filtered = orders.filter(o => {
     const matchSearch = o.customer.toLowerCase().includes(search.toLowerCase()) ||
@@ -353,13 +355,43 @@ function OrdersSection({ orders, loading, adminToken, onRefetch }: { orders: Ord
     }
   };
 
+  const handleBackfillMarketingSync = async () => {
+    if (!confirm("Push every paid ticket buyer (all cities, all-time) into the correct Brevo and TextMagic lists? This is safe to run more than once.")) return;
+    setBackfilling(true);
+    setBackfillStatus("");
+    try {
+      const res = await fetch("/api/admin/backfill-marketing-sync", {
+        method: "POST",
+        headers: { "x-admin-token": adminToken },
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setBackfillStatus(`Synced ${data.synced}/${data.uniqueBuyers} buyers${data.failed?.length ? ` — ${data.failed.length} failed` : ""}`);
+      } else {
+        setBackfillStatus(`Error: ${data.error || "failed"}`);
+      }
+    } catch (e: any) {
+      setBackfillStatus(`Error: ${e?.message || "failed"}`);
+    }
+    setBackfilling(false);
+  };
+
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <h2 className="font-display text-white text-3xl">ORDERS</h2>
-        <button className="flex items-center gap-2 bg-white/5 border border-white/15 text-white/60 hover:text-white text-sm px-4 py-2 rounded-xl transition-all cursor-pointer">
-          <Download size={14} /> Export CSV
-        </button>
+        <div className="flex items-center gap-3">
+          {backfillStatus && (
+            <p className={`text-xs ${backfillStatus.startsWith("Error") ? "text-red-400" : "text-green-400"}`}>{backfillStatus}</p>
+          )}
+          <button onClick={handleBackfillMarketingSync} disabled={backfilling}
+            className="flex items-center gap-2 bg-white/5 border border-white/15 disabled:opacity-60 text-white/60 hover:text-white text-sm px-4 py-2 rounded-xl transition-all cursor-pointer">
+            {backfilling ? "Syncing…" : "Backfill Marketing Lists"}
+          </button>
+          <button className="flex items-center gap-2 bg-white/5 border border-white/15 text-white/60 hover:text-white text-sm px-4 py-2 rounded-xl transition-all cursor-pointer">
+            <Download size={14} /> Export CSV
+          </button>
+        </div>
       </div>
 
       <div className="flex gap-3 mb-5 flex-wrap">
