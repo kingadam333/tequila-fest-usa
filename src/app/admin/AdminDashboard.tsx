@@ -4049,6 +4049,7 @@ function VendorsSection({ adminToken }: { adminToken: string }) {
   const [saving, setSaving] = useState(false);
   const [filter, setFilter] = useState("all");
   const [resendStatus, setResendStatus] = useState("");
+  const [copiedLinkId, setCopiedLinkId] = useState<string | null>(null);
 
   const fetchApps = () => {
     fetch("/api/admin/vendors", { headers: { "x-admin-token": adminToken } })
@@ -4263,8 +4264,19 @@ function VendorsSection({ adminToken }: { adminToken: string }) {
                       <p className="text-blue-400 text-xs font-bold uppercase tracking-wider">Payment Link Sent</p>
                       <p className="text-white/40 text-xs mt-0.5">Stripe checkout link was emailed to vendor</p>
                     </div>
-                    <a href={selected.payment_link} target="_blank" rel="noopener noreferrer"
-                      className="text-blue-400 hover:text-blue-300 text-xs underline flex-shrink-0">View Link</a>
+                    <div className="flex items-center gap-3 flex-shrink-0">
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(selected.payment_link);
+                          setCopiedLinkId(selected.id);
+                          setTimeout(() => setCopiedLinkId(null), 1800);
+                        }}
+                        className="text-blue-400 hover:text-blue-300 text-xs underline cursor-pointer">
+                        {copiedLinkId === selected.id ? "Copied!" : "Copy Link"}
+                      </button>
+                      <a href={selected.payment_link} target="_blank" rel="noopener noreferrer"
+                        className="text-blue-400 hover:text-blue-300 text-xs underline">View Link</a>
+                    </div>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <span className={`text-xs font-semibold px-2 py-1 rounded-full border ${selected.approval_email_sent_at ? "bg-white/10 border-white/20 text-white/70" : "bg-white/5 border-white/10 text-white/25"}`}>
