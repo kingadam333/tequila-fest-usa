@@ -72,6 +72,10 @@ Event pages are keyed by **city**, not by year — `/events/cincinnati` always r
 
 **Admin → Events** (`AdminDashboard.tsx`): "New Event" and "Copy" buttons (`POST /api/admin/events` — `copy_from_id` duplicates an event + its ticket types with sold counts reset to 0, defaults new date to `2027-01-01` as a placeholder). Events are grouped by year in the list, with year shown on each card. Date field uses a calendar picker.
 
+**Sold-count bug (fixed this session):** `/api/admin/events` GET used to compute each ticket type's `sold_count` by matching `ticket_instances.event_slug` to the current event row's slug. Since the year-rollover reassigns a city's slug to the new event, this misattributed 100% of a completed year's historical sales to the new year's (unsold) event, while the real completed event showed all zeros. Fixed by counting via `ticket_instances.event_id` instead (see DB Schema section) — confirmed against real data: Cincinnati's 495 real June 2026 sales now correctly show under `cincinnati-2026`, not the 2027 event.
+
+**GA ticket type** is optional per event (not every city has one). `EventPage.tsx` derives GA availability live from the DB ticket type (`liveTypes.find(t => t.name === "GA")`) — do NOT hardcode a static `gaTicket` flag on the event object; a prior version did this and silently hid GA everywhere even when actively for sale. Homepage cards (`EventCards.tsx`) show GA price via `event.gaPrice`, computed server-side in `/api/events` by joining `ticket_types`.
+
 ---
 
 ## Database Schema (Supabase — Key Tables)
@@ -91,7 +95,9 @@ Event pages are keyed by **city**, not by year — `/events/cincinnati` always r
 | `brand_invoices` | Brand invoices — linked to brand_contacts, line_items JSONB, total, status (draft/sent/paid/cancelled), stripe_payment_link_id/url |
 | `brand_package_orders` | Brand package purchases (self-serve checkout at `/brand-packages`) — order_number, brand_name, contact_name/email/phone, tier (Value/Standard/Premium), cities (JSONB array), amount, stripe_session_id, stripe_payment_intent_id, status (pending/paid), paid_at, **brand_contact_id** (FK — auto-linked/created by the Stripe webhook by matching contact_email, so paid orders always surface under the right Brands → Contacts card). Non-Stripe payments (e.g. Zelle) can be inserted manually with `status: 'paid'`, `stripe_session_id: null`. |
 | `staff_members` | Check-in staff — id, name, email, password_hash (bcrypt), permissions (array), status, last_login_at |
-| `vendor_applications` | Vendor form submissions — business_name, cities (array), stripe_session_id, status (pending/approved/paid) |
+| `vendor_applications` | Vendor form submissions — business_name, cities (array), status (pending/approved/rejected), **paid** (bool), **order_number**, **qr_code**, **paid_at**, **stripe_payment_intent_id**, **payment_link**, and email-tracking columns: `approval_email_id`, `approval_email_sent_at/delivered_at/opened_at/clicked_at/bounced_at`, `approval_email_open_count/click_count` |
+
+**`ticket_instances.event_id`** (uuid, FK → `events.id`) — added this session. **Always join/count by this, never by `event_slug`.** A city's slug gets reassigned to the next year's event when the old one completes (see Events section below), so any code matching tickets to an event by slug string will silently misattribute historical sales to whichever event currently holds that slug. `event_id` is set once at purchase time in the Stripe webhook and never changes. Backfilled for all pre-existing rows via a one-time migration matching each ticket's `created_at` to the closest `events.date_iso` for the same city.
 
 ---
 
@@ -284,6 +290,10 @@ Self-serve flow separate from ticket checkout — a brand pays $250/$300/$350 pe
 | `/api/admin/events/[id]` | PATCH | Update event fields including status |
 | `/api/admin/brands` | GET/POST/PATCH/DELETE | Brand contacts CRUD |
 | `/api/admin/brands/invoices` | GET/POST/PATCH | Brand invoices — POST creates invoice + Stripe payment link + emails brand contact |
+| `/api/admin/vendors/resend-payment-link` | POST | Resend a fresh Stripe payment link + approval email to one vendor. Body: `{ id }` |
+| `/api/admin/vendors/resend-all-unpaid` | POST | Bulk version — resends to every approved, unpaid vendor in one call |
+| `/api/admin/vendors/resend-confirmation` | POST | Resends the post-payment confirmation email (for vendors who paid but got the wrong pre-fix email). Body: `{ id }` |
+| `/api/admin/backfill-marketing-sync` | POST | One-time: pushes every historical paid ticket order into Brevo + TextMagic. Safe to re-run. `maxDuration = 300` |
 
 All admin endpoints require `x-admin-token` header matching `ADMIN_PASSWORD` env var.
 
@@ -305,6 +315,19 @@ ADMIN_PASSWORD=...                      # used in x-admin-token header
 NEXT_PUBLIC_TURNSTILE_SITE_KEY=...      # Cloudflare Turnstile site key
 TURNSTILE_SECRET_KEY=...                # Cloudflare Turnstile secret key
 OPENAI_API_KEY=...
+NEXT_PUBLIC_META_PIXEL_ID=1559821735737152
+NEXT_PUBLIC_GTM_ID=GTM-P3Q33V72
+BREVO_API_KEY=...
+BREVO_LIST_ID_CINCINNATI=...
+BREVO_LIST_ID_CLEVELAND=...
+BREVO_LIST_ID_COLUMBUS=...
+BREVO_LIST_ID_PHOENIX=...
+TEXTMAGIC_USERNAME=...
+TEXTMAGIC_API_KEY=...
+TEXTMAGIC_LIST_ID_CINCINNATI=...
+TEXTMAGIC_LIST_ID_CLEVELAND=...
+TEXTMAGIC_LIST_ID_COLUMBUS=...
+TEXTMAGIC_LIST_ID_PHOENIX=...
 ```
 
 ---
@@ -379,9 +402,14 @@ OPENAI_API_KEY=...
 - [x] Install banner (`InstallBanner.tsx`) — Android native prompt, iOS 3-step instructions, shows immediately, dismisses 7 days
 - [x] `next.config.ts` — added `turbopack: {}` to silence webpack/Turbopack conflict from next-pwa
 
-### Meta Pixel
-- [x] `MetaPixel.tsx` component fires PageView on every route change
-- [x] `NEXT_PUBLIC_META_PIXEL_ID=1968617953699126` set in Vercel env (baked at build time)
+### Meta Pixel, GTM, and Roku (this session)
+- [x] Meta Pixel ID replaced: `NEXT_PUBLIC_META_PIXEL_ID=1559821735737152` (old `1968617953699126` removed)
+- [x] Pixel base code + noscript fallback moved to `src/components/MetaPixelHead.tsx`, rendered directly in `layout.tsx`'s `<head>` JSX — **not** via `next/script`. Verified by inspecting the actual rendered HTML that `next/script` (even with `strategy="beforeInteractive"`) does NOT reliably land in the literal `<head>` tag in this Next.js version — it gets injected in `<body>` instead, which can make Meta's own install-checker report "not installed" even though it still fires. `MetaPixel.tsx` now only holds the client-side `PixelPageView` route-change tracker (rendered in `<body>`, doesn't need to be in head) and the exported `trackPixelEvent()` helper.
+- [x] Facebook domain verification meta tag added via `metadata.other` in `layout.tsx` (`facebook-domain-verification` content tag) — same reasoning, verified it renders in static server HTML.
+- [x] **Google Tag Manager** added: `NEXT_PUBLIC_GTM_ID=GTM-P3Q33V72`. Same pattern — `src/components/GoogleTagManager.tsx` exports `GTMHeadScript` (first element in `<head>`) and `GTMBodyNoscript` (first element in `<body>`), both raw HTML, not `next/script`.
+- [x] **Roku Ads pixel** wired through GTM (not a separate script) — GTM's "Roku Pixel" community template (Templates → Gallery), Event Type "Purchases", triggered on a custom `purchase` dataLayer event, with Event Metadata fields (`value`, `currency`, `transaction_id`, `quantity`, `item_name`, `item_city`) mapped to Data Layer Variables of the same names. Verified firing correctly via GTM Preview mode's Tags Fired panel.
+- [x] **`PurchaseDataLayerPush`** component (`src/components/PurchaseDataLayerPush.tsx`) — shared by all three post-payment confirmation pages (tickets, brand packages, vendor payments). Pushes `{ event: "purchase", transaction_id, value, currency, quantity, item_name, item_city }` to `window.dataLayer` AND fires the Meta Pixel `Purchase` event, so any current or future GTM tag (Roku, GA4, etc.) gets consistent real order data instead of each page reinventing this.
+- [x] A **Google Cloud server-side GTM tagging container** was auto-created by GTM's built-in AI assistant while setting up Roku (Cloud Run service, not something this codebase touches). Deliberately left running but unused/unconfigured — Roku's actual requirement is only the client-side web container. Server-side tagging is a bigger, separate architecture decision (ad-blocker resistance vs. added cost/complexity) not yet adopted. If picking this up later: point a subdomain at the Cloud Run URL via Cloudflare, then reconfigure the web container's transport URL.
 - [x] `trackPixelEvent()` helper exported for InitiateCheckout / Purchase events
 
 ### Vendor Flow
@@ -409,6 +437,32 @@ OPENAI_API_KEY=...
 - [x] `completed` event status added — blocks ticket purchases, used to archive a past year's event without deleting data
 - [x] Admin Events: "New Event" + "Copy" buttons, year grouping in the list, date picker calendar
 - [x] Front page only shows upcoming (non-completed, non-draft) events, sorted by date ascending
+
+### Vendor Payment Pipeline — Was Completely Broken (fixed this session)
+Vendors approved in admin → Vendors were never actually able to pay. Root causes, all fixed:
+1. **`expires_at` exceeded Stripe's cap** — the payment-link Stripe Checkout Session set a 7-day expiry, but Stripe only allows `payment`-mode sessions to expire within 24 hours. Every single `session.create()` call was silently throwing, caught by a try/catch that only logged to console — no payment link was ever created, no email ever sent, and the vendor's status still flipped to "approved" as if it worked. Fixed: capped at 23h in `sendVendorApprovalEmail()` (`src/app/api/admin/vendors/route.ts`).
+2. **No `metadata.type` on the vendor Stripe session** — meant a vendor's payment fell through to the generic ticket-purchase webhook handler (`handleCheckoutComplete`), creating a phantom `ticket_orders`/`ticket_instances` row (type "All Inclusive", wrong copy) instead of crediting their vendor application. Fixed: `metadata: { type: "vendor", ... }` added, and the webhook now branches on it to call `handleVendorPaid()` (`src/app/api/webhooks/stripe/route.ts`) before falling through to the ticket handler.
+3. **`/vendor-payment-success` page didn't exist** — the Stripe success_url has always pointed there; every paying vendor hit a 404 immediately after payment. Built `src/app/vendor-payment-success/page.tsx`, looks up the paid vendor via the Stripe session's `vendor_application_id` metadata (vendor_applications has no `stripe_session_id` column, only `stripe_payment_intent_id`).
+4. **Wrong post-payment email** — vendors were getting the ticket-purchase email ("1× All Inclusive", "Ticket #1 of 1"). New `vendorConfirmationHtml()` template in `src/lib/resend.ts` sends "1× Vendor Spot — {city}", a "VENDOR" badge, and vendor-specific reminders (load-in 12–2pm, no entry after 2pm, 10×10 space/tent/table/chairs are their responsibility).
+5. **Three vendors already fell into the phantom-ticket trap** before the fix shipped (Stonii gift shop, Rose/John, Scented Creations/Tina) — each had a stray `ticket_orders`/`ticket_instances` row deleted and their real Stripe payment intent moved onto their `vendor_applications` row manually. Since their approval links were sent in the same pre-fix batch, **any vendor who received a link from that original batch and hasn't paid yet still holds a broken link** — use the bulk "Resend Payment Link to All Unpaid" button (admin → Vendors) to reissue fresh links; safe to run repeatedly.
+- [x] Admin → Vendors: **email tracking badges** (Sent/Delivered/Opened/Clicked/Bounced) via a new Resend outbound webhook (`src/app/api/webhooks/resend-events/route.ts`, subscribed to `email.delivered/opened/clicked/bounced/complained`, matched back to `vendor_applications` by `approval_email_id`). Requires open/click tracking enabled on `mail.tequilafestusa.com` (Resend → Domains → Configuration → Enable tracking metrics — NOT a "Tracking" tab, that doesn't exist). **Important:** a webhook only receives events for emails sent *after* it was created — any email sent before the webhook existed will never show Delivered/Opened/Clicked even if the vendor definitely received it. `handleVendorPaid()` now auto-backfills those three badges using `paid_at` as a fallback timestamp whenever payment succeeds, since a completed payment is proof-positive the vendor got and clicked the email.
+- [x] **"Resend Payment Link"** button was previously dead — it called the same PATCH endpoint used for initial approval, which no-ops if the vendor is already `status: "approved"`. Fixed with a dedicated `POST /api/admin/vendors/resend-payment-link` endpoint, plus a bulk `POST /api/admin/vendors/resend-all-unpaid` and matching "Resend Payment Link to All Unpaid (N)" button.
+- [x] `POST /api/admin/vendors/resend-confirmation` — resends the *post-payment* confirmation email (for vendors who already paid but got the wrong pre-fix email).
+- [x] **Duplicate vendor applications** — `POST /api/vendor-apply` now checks for an existing non-rejected application by email before inserting; if found, returns 409 and the form shows a "DOUBLE APPLICATION" message instead of creating a second row. A rejected prior application doesn't block reapplying.
+
+### Marketing List Sync — Brevo + TextMagic (this session)
+Every **paid ticket purchase** (not brand packages or vendor payments, scoped intentionally) pushes the buyer into the correct per-city list on both platforms. Credentials/list IDs were already sitting in Vercel env vars (set up previously, never wired to code) — `BREVO_API_KEY`, `BREVO_LIST_ID_CINCINNATI/CLEVELAND/COLUMBUS/PHOENIX`, `TEXTMAGIC_API_KEY`, `TEXTMAGIC_USERNAME`, `TEXTMAGIC_LIST_ID_CINCINNATI/CLEVELAND/COLUMBUS/PHOENIX`.
+- **`src/lib/marketingSync.ts`** — `syncTicketBuyerToBrevo()`, `syncTicketBuyerToTextMagic()`, `syncTicketBuyerToMarketingLists()`. Best-effort: logs failures, never throws, never blocks order confirmation. Phone numbers normalized to E.164 (assumes US). Called from `handleCheckoutComplete` in the Stripe webhook, **awaited** (not fire-and-forget — Vercel can kill a serverless function before an un-awaited background request finishes once the handler returns).
+- **This sync did not exist before this session** — no historical ticket buyer (including all of Cincinnati's June 2026 event) was ever pushed to either platform before it was wired in. `POST /api/admin/backfill-marketing-sync` (button: admin → Orders → "Backfill Marketing Lists") does a one-time pass over every paid order, all-time, all cities, deduped by email+city, pulling phone from `customer_accounts` by email. Safe to run more than once (`updateEnabled: true` on Brevo; TextMagic just logs on duplicate phone). `maxDuration = 300` set on that route since ~190+ buyers × 2 sequential API calls can run past the default serverless timeout.
+
+### Image Performance (this session)
+- [x] `public/tequilafest_usa.png` was a 3.9MB, 4000×2660px print-resolution export used as the site logo everywhere — resized to 1200px wide via `sharp`, now 158KB, same visual quality at any size it's actually displayed (all usages already go through `next/image`, which handles responsive resizing).
+- [x] City page hero background (`EventPage.tsx`) was a raw `<img>` tag reading from Supabase Storage — switched to `next/image` with `fill`+`priority`, and Supabase's storage hostname added to `next.config.ts`'s `images.remotePatterns` (previously only `images.unsplash.com` was allowed, so `next/image` would have errored on the Supabase URL).
+- [x] `src/app/api/admin/events/upload-image/route.ts` claimed to store uploads as `.webp` but just renamed the raw bytes without any real compression — a full-res phone photo would upload untouched. Now actually resizes (max 1920px) and re-encodes via `sharp` at quality 80 before storing.
+
+### Vendors Page SEO + OG Image (this session)
+- [x] `/vendors` restructured: `page.tsx` is now a server component wrapper (metadata export) around the client form, moved to `src/app/vendors/VendorsPage.tsx` (metadata exports require a server component; the form itself needs `"use client"` for state).
+- [x] `src/app/vendors/opengraph-image.tsx` — dynamic OG image via Next's `ImageResponse` (`next/og`, edge runtime). Mirrors the actual hero section: logo, "VENDOR" (red→orange→cream gradient) / "APPLICATION" (cyan→blue gradient) headline matching the exact `.text-shimmer`/`.text-shimmer-blue` CSS gradient stops from `globals.css`, subtext copy, and the three vendor-type cards. **Gotcha:** passing `fonts: []` to `ImageResponse`'s options throws "No fonts are loaded" and breaks the whole image — omit the `fonts` key entirely to use Satori's default.
 
 ### Brand Package / Contacts Integration (this session)
 - [x] Admin → Brands → Contacts cards show each contact's linked `brand_package_orders` inline (order #, tier, cities, amount, status, Stripe link)
@@ -573,3 +627,11 @@ Adam has a **separate, unrelated** sister project (`tastecleveland.net`, an old 
 11. **Supabase project ID** — `igktkkjnyxeiflnvfzdw` (confirmed via `list_projects` MCP). The old ID `ycyxswsubxigpkehuqcf` was wrong — always use `igktkkjnyxeiflnvfzdw`.
 
 12. **`.env.local` values are dotenvx-encrypted** — `cat .env.local` shows empty strings. The actual secrets are encrypted in the file. Vercel CLI `env pull` also shows empty strings. To read actual values, use `npx @dotenvx/dotenvx run -- node -e "..."` or query the live DB via the Supabase MCP with project ID `igktkkjnyxeiflnvfzdw`.
+
+15. **`next/script` does not reliably render inside the literal `<head>` tag** in this Next.js version, even with `strategy="beforeInteractive"` — verified by curling the rendered HTML and checking tag position. For anything that must be literally inside `<head>` (tracking pixel base code, domain-verification meta tags), render a plain `<script>`/`<meta>` element directly in `layout.tsx`'s `<head>` JSX instead (see `MetaPixelHead.tsx`, `GoogleTagManager.tsx`'s `GTMHeadScript`).
+
+16. **Admin dashboard sidebar nav text is white**, not grey (`text-white` on `NAV_ITEMS` buttons in `AdminDashboard.tsx`) — was `text-white/40`, changed for readability. Active tab keeps its yellow highlight.
+
+17. **Never count/join `ticket_instances` by `event_slug` for anything spanning multiple years or admin reporting** — use `event_id`. See DB Schema section for the full year-rollover slug-reuse bug this caused.
+
+18. **Vendor payments and ticket payments share one Stripe webhook** (`src/app/api/webhooks/stripe/route.ts`) — routed by `session.metadata.type` (`"vendor"` → `handleVendorPaid`, `"brand_package"` → `handleBrandPackagePaid`, unset → `handleCheckoutComplete` for tickets). Any new payment type added to this site must set a distinct `metadata.type` or it will silently fall through to the ticket handler and create a phantom ticket order — this exact bug hit three real vendors before it was caught.
