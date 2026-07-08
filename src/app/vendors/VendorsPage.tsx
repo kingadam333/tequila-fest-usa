@@ -195,10 +195,33 @@ export default function VendorsPage() {
                 <p className="text-white/50">Looks like you&apos;ve already submitted an application with this email. We&apos;ve already got it on file — no need to apply again. This duplicate submission will not be saved. If you think this is a mistake, email <a href="mailto:partners@tequilafestusa.com" className="text-yellow-400 underline">partners@tequilafestusa.com</a>.</p>
               </div>
             ) : submitted ? (
-              <div className="max-w-lg mx-auto bg-yellow-500/10 border border-yellow-500/30 rounded-3xl p-12 text-center">
-                <CheckCircle size={48} className="text-yellow-400 mx-auto mb-4" />
-                <p className="font-display text-yellow-400 text-2xl mb-2">APPLICATION RECEIVED!</p>
-                <p className="text-white/50">We&apos;ll review your application and follow up within 3–5 business days.</p>
+              <div className="max-w-lg mx-auto space-y-5">
+                <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-3xl p-12 text-center">
+                  <CheckCircle size={48} className="text-yellow-400 mx-auto mb-4" />
+                  <p className="font-display text-yellow-400 text-2xl mb-2">APPLICATION RECEIVED!</p>
+                  <p className="text-white/50">We&apos;ll review your application and follow up within 3–5 business days.</p>
+                </div>
+
+                <div className="bg-red-500/10 border border-red-500/30 rounded-3xl p-6 sm:p-8">
+                  <p className="text-red-400 font-bold text-sm tracking-wider uppercase mb-3">Important</p>
+                  <p className="text-white/70 text-sm leading-relaxed mb-5">
+                    Please add the following to your Contact Book. This is very important as it ensures emails from us get into your inbox. If you don&apos;t, your approval email might end up in spam, promotions, or somewhere else and you won&apos;t get it. This is the main email all vendors use.
+                  </p>
+                  <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-2 text-sm">
+                    <div className="flex items-center justify-between gap-4">
+                      <span className="text-white/40 uppercase tracking-wider text-xs">Name</span>
+                      <span className="text-white font-semibold">Tequila Fest USA</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-4">
+                      <span className="text-white/40 uppercase tracking-wider text-xs">Email</span>
+                      <a href="mailto:vendors@mail.tequilafestusa.com" className="text-yellow-400 font-semibold hover:underline">vendors@mail.tequilafestusa.com</a>
+                    </div>
+                    <div className="flex items-center justify-between gap-4">
+                      <span className="text-white/40 uppercase tracking-wider text-xs">Phone</span>
+                      <a href="tel:+12164120033" className="text-white font-semibold hover:underline">216-412-0033</a>
+                    </div>
+                  </div>
+                </div>
               </div>
             ) : (
               <div className="max-w-2xl mx-auto bg-white/[0.03] border border-white/10 rounded-3xl p-8">
