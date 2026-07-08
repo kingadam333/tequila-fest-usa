@@ -4319,10 +4319,6 @@ function VendorsSection({ adminToken }: { adminToken: string }) {
               )}
               {selected.status === "approved" && !selected.paid && (
                 <div className="flex gap-3">
-                  <button onClick={() => resendPaymentLink(selected.id)} disabled={saving}
-                    className="bg-white/5 hover:bg-white/10 border border-white/15 text-white/60 font-bold py-2.5 px-4 rounded-xl text-sm transition-all cursor-pointer">
-                    {saving ? "Sending..." : "Resend Payment Link"}
-                  </button>
                   <button onClick={() => updateStatus(selected.id, "rejected")} disabled={saving}
                     className="bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-400 font-bold py-2.5 px-4 rounded-xl text-sm transition-all cursor-pointer">
                     Reject
@@ -4333,6 +4329,12 @@ function VendorsSection({ adminToken }: { adminToken: string }) {
                 <button onClick={() => updateStatus(selected.id, "approved")} disabled={saving}
                   className="w-full bg-green-500/20 hover:bg-green-500/30 border border-green-500/30 text-green-400 font-bold py-2.5 rounded-xl text-sm transition-all cursor-pointer">
                   Re-approve & Send Payment Link
+                </button>
+              )}
+              {selected.status === "approved" && (
+                <button onClick={() => resendPaymentLink(selected.id)} disabled={saving}
+                  className="w-full bg-white/5 hover:bg-white/10 border border-white/15 text-white/60 font-bold py-2.5 rounded-xl text-sm transition-all cursor-pointer">
+                  {saving ? "Sending..." : "Resend Payment Link"}
                 </button>
               )}
               {selected.paid && (
