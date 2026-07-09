@@ -4107,6 +4107,29 @@ function VendorsSection({ adminToken }: { adminToken: string }) {
     setSaving(false);
   };
 
+  const generateAndCopyLink = async (id: string) => {
+    setSaving(true);
+    setResendStatus("");
+    try {
+      const res = await fetch("/api/admin/vendors/generate-payment-link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-token": adminToken },
+        body: JSON.stringify({ id }),
+      });
+      const data = await res.json();
+      if (res.ok && data.payment_link) {
+        await navigator.clipboard.writeText(data.payment_link);
+        setResendStatus("Fresh link copied to clipboard — no email sent");
+        fetchApps();
+      } else {
+        setResendStatus(`Error: ${data.error || "failed to generate link"}`);
+      }
+    } catch (e: any) {
+      setResendStatus(`Error: ${e?.message || "failed to generate link"}`);
+    }
+    setSaving(false);
+  };
+
   const resendConfirmation = async (id: string) => {
     setSaving(true);
     setResendStatus("");
@@ -4344,10 +4367,16 @@ function VendorsSection({ adminToken }: { adminToken: string }) {
                 </button>
               )}
               {selected.status === "approved" && (
-                <button onClick={() => resendPaymentLink(selected.id)} disabled={saving}
-                  className="w-full bg-white/5 hover:bg-white/10 border border-white/15 text-white/60 font-bold py-2.5 rounded-xl text-sm transition-all cursor-pointer">
-                  {saving ? "Sending..." : "Resend Payment Link"}
-                </button>
+                <div className="flex gap-3">
+                  <button onClick={() => resendPaymentLink(selected.id)} disabled={saving}
+                    className="flex-1 bg-white/5 hover:bg-white/10 border border-white/15 text-white/60 font-bold py-2.5 rounded-xl text-sm transition-all cursor-pointer">
+                    {saving ? "Sending..." : "Resend Payment Link"}
+                  </button>
+                  <button onClick={() => generateAndCopyLink(selected.id)} disabled={saving}
+                    className="flex-1 bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/30 text-yellow-400 font-bold py-2.5 rounded-xl text-sm transition-all cursor-pointer">
+                    {saving ? "Generating..." : "Generate & Copy Link"}
+                  </button>
+                </div>
               )}
               {selected.paid && (
                 <button onClick={() => resendConfirmation(selected.id)} disabled={saving}

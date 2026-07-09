@@ -17,10 +17,14 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ applications: data });
 }
 
-// Creates (or re-creates) the Stripe payment link + sends the approval email.
-// Shared by PATCH (on first approval) and the resend-payment-link route (to
-// retry for vendors whose link/email previously failed to send).
-export async function sendVendorApprovalEmail(db: any, app: any) {
+// Creates a fresh Stripe Checkout Session for a vendor's $150/city fee —
+// no email is sent, this just returns the URL. Shared by
+// sendVendorApprovalEmail() (which sends it via Resend) and
+// generate-payment-link (which hands the raw URL back to admin to paste
+// into their own email/text — e.g. when a vendor's corporate spam filter
+// pre-clicks and burns through the Resend-delivered link before the human
+// ever sees it).
+export async function createVendorPaymentSession(app: any) {
   const cityCount = app.cities?.length || 1;
   const amount = 150 * cityCount; // $150 per city
 
@@ -50,6 +54,16 @@ export async function sendVendorApprovalEmail(db: any, app: any) {
     cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL || "https://tequilafestusa.com"}/vendors`,
     expires_at: Math.floor(Date.now() / 1000) + 60 * 60 * 23, // 23h — stays under Stripe's 24h payment-mode cap
   });
+
+  return { session, amount };
+}
+
+// Creates (or re-creates) the Stripe payment link + sends the approval email.
+// Shared by PATCH (on first approval) and the resend-payment-link route (to
+// retry for vendors whose link/email previously failed to send).
+export async function sendVendorApprovalEmail(db: any, app: any) {
+  const { session, amount } = await createVendorPaymentSession(app);
+  const cityCount = app.cities?.length || 1;
 
   const sendRes = await resend.emails.send({
     from: FROM_VENDORS,
