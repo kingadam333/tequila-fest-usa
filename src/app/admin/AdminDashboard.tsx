@@ -4526,6 +4526,42 @@ function MediaPartnersSection({ adminToken, events }: { adminToken: string; even
     fetchPartners();
   };
 
+  const [editingAllocId, setEditingAllocId] = useState<string | null>(null);
+  const [editingQuota, setEditingQuota] = useState("");
+  const [savingEditAlloc, setSavingEditAlloc] = useState(false);
+
+  const startEditAllocation = (a: MediaAllocation) => {
+    setEditingAllocId(a.id);
+    setEditingQuota(String(a.quota));
+  };
+
+  const saveEditAllocation = async (a: MediaAllocation) => {
+    if (!selected) return;
+    const newQuota = parseInt(editingQuota);
+    if (!newQuota || newQuota < a.issued_count) {
+      alert(`Quota must be a number and at least ${a.issued_count} (already issued)`);
+      return;
+    }
+    setSavingEditAlloc(true);
+    try {
+      const res = await fetch("/api/admin/media-partners/allocations", {
+        method: "POST",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify({ media_partner_id: selected.id, event_id: a.event_id, ticket_type: a.ticket_type, quota: newQuota }),
+      });
+      if (res.ok) {
+        setEditingAllocId(null);
+        fetchPartners();
+      } else {
+        const data = await res.json();
+        alert(`Error: ${data.error || "failed to update quota"}`);
+      }
+    } catch (e: any) {
+      alert(`Error: ${e?.message || "failed to update quota"}`);
+    }
+    setSavingEditAlloc(false);
+  };
+
   const handleDeletePartner = async (id: string) => {
     if (!confirm("Delete this media partner? They will lose portal access.")) return;
     await fetch("/api/admin/media-partners", {
@@ -4589,12 +4625,35 @@ function MediaPartnersSection({ adminToken, events }: { adminToken: string; even
                 ) : (
                   <div className="space-y-2">
                     {selected.media_partner_allocations.map(a => (
-                      <div key={a.id} className="flex items-center justify-between bg-white/[0.03] border border-white/8 rounded-xl px-4 py-3">
-                        <div>
+                      <div key={a.id} className="flex items-center justify-between bg-white/[0.03] border border-white/8 rounded-xl px-4 py-3 gap-3">
+                        <div className="min-w-0">
                           <p className="text-white text-sm font-medium">{a.events?.city}, {a.events?.state} — {a.ticket_type}</p>
-                          <p className="text-white/40 text-xs mt-0.5">{a.issued_count} issued / {a.quota} quota ({a.quota - a.issued_count} remaining)</p>
+                          {editingAllocId === a.id ? (
+                            <div className="flex items-center gap-2 mt-1.5">
+                              <input type="number" min={a.issued_count} value={editingQuota} autoFocus
+                                onChange={e => setEditingQuota(e.target.value)}
+                                onKeyDown={e => { if (e.key === "Enter") saveEditAllocation(a); if (e.key === "Escape") setEditingAllocId(null); }}
+                                className="w-24 bg-white/5 border border-yellow-500/40 rounded-lg px-2 py-1 text-white text-xs outline-none" />
+                              <span className="text-white/30 text-xs">quota · {a.issued_count} already issued</span>
+                            </div>
+                          ) : (
+                            <p className="text-white/40 text-xs mt-0.5">{a.issued_count} issued / {a.quota} quota ({a.quota - a.issued_count} remaining)</p>
+                          )}
                         </div>
-                        <button onClick={() => handleDeleteAllocation(a.id)} className="p-1.5 text-white/30 hover:text-red-400 transition-colors cursor-pointer"><Trash2 size={14} /></button>
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          {editingAllocId === a.id ? (
+                            <>
+                              <button onClick={() => saveEditAllocation(a)} disabled={savingEditAlloc}
+                                className="p-1.5 text-green-400 hover:text-green-300 disabled:opacity-50 transition-colors cursor-pointer"><CheckCircle size={14} /></button>
+                              <button onClick={() => setEditingAllocId(null)} className="p-1.5 text-white/30 hover:text-white transition-colors cursor-pointer"><X size={14} /></button>
+                            </>
+                          ) : (
+                            <>
+                              <button onClick={() => startEditAllocation(a)} className="p-1.5 text-white/30 hover:text-yellow-400 transition-colors cursor-pointer"><Edit2 size={14} /></button>
+                              <button onClick={() => handleDeleteAllocation(a.id)} className="p-1.5 text-white/30 hover:text-red-400 transition-colors cursor-pointer"><Trash2 size={14} /></button>
+                            </>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
