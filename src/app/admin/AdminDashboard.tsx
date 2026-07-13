@@ -4421,8 +4421,26 @@ function MediaPartnersSection({ adminToken, events }: { adminToken: string; even
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState("");
 
-  const [allocForm, setAllocForm] = useState({ event_id: "", ticket_type: "GA", quota: 10 });
+  const [allocEventId, setAllocEventId] = useState("");
+  const [typeQuotas, setTypeQuotas] = useState<Record<string, string>>({});
   const [savingAlloc, setSavingAlloc] = useState(false);
+  const [allocStatus, setAllocStatus] = useState("");
+
+  const allocEvent = events.find(e => e.id === allocEventId) || null;
+
+  // When the event changes, prefill quota inputs with whatever this partner
+  // already has allocated for that event, so admin can see & adjust existing
+  // ticket types instead of only adding new ones.
+  const handleEventChange = (eventId: string) => {
+    setAllocEventId(eventId);
+    const ev = events.find(e => e.id === eventId);
+    const prefill: Record<string, string> = {};
+    (ev?.ticket_types || []).forEach(tt => {
+      const existing = selected?.media_partner_allocations?.find(a => a.event_id === eventId && a.ticket_type === tt.name);
+      prefill[tt.name] = existing ? String(existing.quota) : "";
+    });
+    setTypeQuotas(prefill);
+  };
 
   const fetchPartners = useCallback(async () => {
     setLoading(true);
@@ -4468,23 +4486,32 @@ function MediaPartnersSection({ adminToken, events }: { adminToken: string; even
 
   const handleAddAllocation = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selected) return;
+    if (!selected || !allocEventId) return;
+    const rows = Object.entries(typeQuotas).filter(([, v]) => v.trim() !== "" && parseInt(v) > 0);
+    if (rows.length === 0) {
+      alert("Enter a quota for at least one ticket type");
+      return;
+    }
     setSavingAlloc(true);
+    setAllocStatus("");
     try {
-      const res = await fetch("/api/admin/media-partners/allocations", {
-        method: "POST",
-        headers: { ...headers, "Content-Type": "application/json" },
-        body: JSON.stringify({ media_partner_id: selected.id, ...allocForm }),
-      });
-      if (res.ok) {
-        setAllocForm({ event_id: "", ticket_type: "GA", quota: 10 });
-        fetchPartners();
+      const results = await Promise.all(rows.map(([ticket_type, quota]) =>
+        fetch("/api/admin/media-partners/allocations", {
+          method: "POST",
+          headers: { ...headers, "Content-Type": "application/json" },
+          body: JSON.stringify({ media_partner_id: selected.id, event_id: allocEventId, ticket_type, quota: parseInt(quota) }),
+        })
+      ));
+      const failed = results.filter(r => !r.ok);
+      if (failed.length) {
+        setAllocStatus(`Error: ${failed.length} of ${rows.length} allocation(s) failed to save`);
       } else {
-        const data = await res.json();
-        alert(`Error: ${data.error || "failed to add allocation"}`);
+        setAllocStatus(`Saved ${rows.length} ticket type${rows.length > 1 ? "s" : ""} for ${allocEvent?.city}`);
+        setTimeout(() => setAllocStatus(""), 3000);
       }
+      fetchPartners();
     } catch (e: any) {
-      alert(`Error: ${e?.message || "failed to add allocation"}`);
+      setAllocStatus(`Error: ${e?.message || "failed to add allocations"}`);
     }
     setSavingAlloc(false);
   };
@@ -4575,25 +4602,38 @@ function MediaPartnersSection({ adminToken, events }: { adminToken: string; even
               </div>
 
               <form onSubmit={handleAddAllocation} className="bg-white/[0.02] border border-white/10 rounded-xl p-4 space-y-3">
-                <p className="text-white/30 text-xs uppercase tracking-wider">Add Allocation</p>
-                <div className="grid grid-cols-3 gap-3">
-                  <select value={allocForm.event_id} onChange={e => setAllocForm(f => ({ ...f, event_id: e.target.value }))} required
-                    className="bg-white/5 border border-white/15 rounded-xl px-3 py-2 text-white text-sm outline-none cursor-pointer">
-                    <option value="" className="bg-[#0d0500]">Select event</option>
-                    {events.map(ev => (
-                      <option key={ev.id} value={ev.id} className="bg-[#0d0500]">{ev.city} — {ev.date}</option>
-                    ))}
-                  </select>
-                  <input value={allocForm.ticket_type} onChange={e => setAllocForm(f => ({ ...f, ticket_type: e.target.value }))}
-                    placeholder="Ticket type (e.g. GA)" required
-                    className="bg-white/5 border border-white/15 rounded-xl px-3 py-2 text-white text-sm outline-none" />
-                  <input type="number" min={1} value={allocForm.quota} onChange={e => setAllocForm(f => ({ ...f, quota: parseInt(e.target.value) || 0 }))}
-                    placeholder="Quota" required
-                    className="bg-white/5 border border-white/15 rounded-xl px-3 py-2 text-white text-sm outline-none" />
-                </div>
-                <button type="submit" disabled={savingAlloc}
+                <p className="text-white/30 text-xs uppercase tracking-wider">Add / Edit Allocations</p>
+                {allocStatus && (
+                  <p className={`text-xs ${allocStatus.startsWith("Error") ? "text-red-400" : "text-green-400"}`}>{allocStatus}</p>
+                )}
+                <select value={allocEventId} onChange={e => handleEventChange(e.target.value)}
+                  className="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2 text-white text-sm outline-none cursor-pointer">
+                  <option value="" className="bg-[#0d0500]">Select event</option>
+                  {events.map(ev => (
+                    <option key={ev.id} value={ev.id} className="bg-[#0d0500]">{ev.city} — {ev.date}</option>
+                  ))}
+                </select>
+
+                {allocEvent && (
+                  <>
+                    <p className="text-white/20 text-xs">Set a quota for each ticket type this partner can give away for {allocEvent.city}. Leave blank to skip.</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      {(allocEvent.ticket_types || []).map(tt => (
+                        <div key={tt.id}>
+                          <label className="text-white/40 text-xs block mb-1">{tt.name}</label>
+                          <input type="number" min={0} value={typeQuotas[tt.name] ?? ""}
+                            onChange={e => setTypeQuotas(q => ({ ...q, [tt.name]: e.target.value }))}
+                            placeholder="Quota"
+                            className="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2 text-white text-sm outline-none" />
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+
+                <button type="submit" disabled={savingAlloc || !allocEventId}
                   className="w-full bg-white/5 hover:bg-white/10 border border-white/15 disabled:opacity-60 text-white/70 font-semibold py-2 rounded-xl text-sm transition-all cursor-pointer">
-                  {savingAlloc ? "Adding..." : "Add Allocation"}
+                  {savingAlloc ? "Saving..." : "Save Allocations"}
                 </button>
               </form>
             </div>
