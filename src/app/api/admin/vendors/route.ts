@@ -17,45 +17,64 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ applications: data });
 }
 
-// Creates a fresh Stripe Checkout Session for a vendor's $150/city fee —
-// no email is sent, this just returns the URL. Shared by
+// Creates a fresh Stripe Payment Link for a vendor's $150/city fee — no
+// email is sent, this just returns the URL. Shared by
 // sendVendorApprovalEmail() (which sends it via Resend) and
 // generate-payment-link (which hands the raw URL back to admin to paste
-// into their own email/text — e.g. when a vendor's corporate spam filter
-// pre-clicks and burns through the Resend-delivered link before the human
-// ever sees it).
+// into their own email/text).
+//
+// Uses Payment Links, NOT Checkout Sessions — Checkout Sessions cap at a
+// 24-hour expiry with no way to extend it, which caused vendors to report
+// "link expired" days after approval. Payment Links never expire on their
+// own; `restrictions.completed_sessions.limit: 1` auto-deactivates it after
+// one successful payment instead, so it still can't be reused/double-paid.
+// Metadata set here is inherited by the Checkout Session Stripe creates
+// under the hood when someone pays, so the existing webhook routing
+// (`session.metadata.type === "vendor"` in handleVendorPaid) needs no
+// changes. The `{CHECKOUT_SESSION_ID}` placeholder in the redirect URL also
+// works identically to a Checkout Session's success_url.
 export async function createVendorPaymentSession(app: any) {
   const cityCount = app.cities?.length || 1;
   const amount = 150 * cityCount; // $150 per city
+  const appUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://tequilafestusa.com";
 
   const cityList: string[] = app.cities?.length ? app.cities : ["Festival"];
-  const lineItems = cityList.map((city: string) => ({
-    price_data: {
-      currency: "usd",
-      product_data: {
-        name: `Vendor - ${city}`,
-        description: `${app.business_name} · Tequila Fest USA ${city}`,
-      },
+
+  // Payment Links need pre-created Price objects (unlike Checkout Sessions,
+  // which allow inline price_data) — one Product+Price per city.
+  const prices = await Promise.all(cityList.map(async (city: string) => {
+    const product = await stripe.products.create({
+      name: `Vendor - ${city}`,
+      description: `${app.business_name} · Tequila Fest USA ${city}`,
+      metadata: { vendor_application_id: app.id },
+    });
+    const price = await stripe.prices.create({
+      product: product.id,
       unit_amount: 15000, // $150 per city
-    },
-    quantity: 1,
+      currency: "usd",
+    });
+    return price.id;
   }));
 
-  // Stripe caps `payment`-mode Checkout Session expiry at 24 hours from
-  // creation (30 min minimum) — a prior 7-day value here made every single
-  // session.create() call throw invalid_request_error, silently, every time.
-  const session = await stripe.checkout.sessions.create({
-    mode: "payment",
-    payment_method_types: ["card"],
-    line_items: lineItems,
-    customer_email: app.email,
+  const link = await stripe.paymentLinks.create({
+    line_items: prices.map(priceId => ({ price: priceId, quantity: 1 })),
     metadata: { type: "vendor", vendor_application_id: app.id, business_name: app.business_name },
-    success_url: `${process.env.NEXT_PUBLIC_SITE_URL || "https://tequilafestusa.com"}/vendor-payment-success?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL || "https://tequilafestusa.com"}/vendors`,
-    expires_at: Math.floor(Date.now() / 1000) + 60 * 60 * 23, // 23h — stays under Stripe's 24h payment-mode cap
+    restrictions: { completed_sessions: { limit: 1 } },
+    after_completion: {
+      type: "redirect",
+      redirect: { url: `${appUrl}/vendor-payment-success?session_id={CHECKOUT_SESSION_ID}` },
+    },
   });
 
-  return { session, amount };
+  // Payment Links don't take customer_email at creation like Checkout
+  // Sessions did — pre-fill it via query param instead so the vendor's
+  // email is still ready to go on Stripe's page.
+  const url = app.email ? `${link.url}?prefilled_email=${encodeURIComponent(app.email)}` : link.url;
+
+  // Keep the return shape compatible with existing callers that read
+  // `session.url` — a Payment Link isn't a Checkout Session, but exposes the
+  // same `.url` field.
+  return { session: { url }, amount };
 }
 
 // Creates (or re-creates) the Stripe payment link + sends the approval email.
@@ -95,7 +114,7 @@ export async function sendVendorApprovalEmail(db: any, app: any) {
   <div style="background:rgba(245,166,35,0.06);border:1px solid rgba(245,166,35,0.2);border-radius:14px;padding:22px;margin-bottom:24px">
     <p style="font-weight:700;color:#fff8f0;margin:0 0 8px">Next Step: Complete Your Payment</p>
     <p style="color:rgba(255,248,240,0.55);font-size:14px;margin:0 0 18px;line-height:1.6">
-      To secure your spot, please complete your vendor fee payment. This link expires in <strong>23 hours</strong> — reach out if you need it resent.
+      To secure your spot, please complete your vendor fee payment using the button below.
     </p>
     <div style="text-align:center">
       <a href="${session.url}"
