@@ -16,11 +16,14 @@ async function getSupabaseStats(cityFilter: string, yearFilter: string) {
   const { supabaseAdmin } = await import("@/lib/supabase");
   const db = supabaseAdmin as any;
 
-  // Build order query with optional city/year filters
+  // Build order query with optional city/year filters. Media-partner comp
+  // tickets ($0, source: "media_comp") are excluded so giveaways never
+  // appear as real revenue/sales in these numbers.
   let orderQuery = db
     .from("ticket_orders")
     .select("id, event_city, event_slug, total, created_at, status")
-    .eq("status", "paid");
+    .eq("status", "paid")
+    .neq("source", "media_comp");
 
   if (cityFilter) orderQuery = orderQuery.ilike("event_city", `%${cityFilter}%`);
   if (yearFilter) {

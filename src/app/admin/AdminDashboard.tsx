@@ -4392,6 +4392,241 @@ function VendorsSection({ adminToken }: { adminToken: string }) {
   );
 }
 
+// ─── Media Partners Section ────────────────────────────────────────────────────
+interface MediaAllocation {
+  id: string;
+  event_id: string;
+  ticket_type: string;
+  quota: number;
+  issued_count: number;
+  events: { city: string; state: string; date: string; slug: string } | null;
+}
+interface MediaPartner {
+  id: string;
+  company_name: string;
+  contact_name: string | null;
+  email: string;
+  status: string;
+  created_at: string;
+  media_partner_allocations: MediaAllocation[];
+}
+
+function MediaPartnersSection({ adminToken, events }: { adminToken: string; events: EventRow[] }) {
+  const headers = { "x-admin-token": adminToken };
+  const [partners, setPartners] = useState<MediaPartner[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selected, setSelected] = useState<MediaPartner | null>(null);
+  const [showAdd, setShowAdd] = useState(false);
+  const [form, setForm] = useState({ company_name: "", contact_name: "", email: "" });
+  const [saving, setSaving] = useState(false);
+  const [status, setStatus] = useState("");
+
+  const [allocForm, setAllocForm] = useState({ event_id: "", ticket_type: "GA", quota: 10 });
+  const [savingAlloc, setSavingAlloc] = useState(false);
+
+  const fetchPartners = useCallback(async () => {
+    setLoading(true);
+    const res = await fetch("/api/admin/media-partners", { headers });
+    if (res.ok) {
+      const data = await res.json();
+      setPartners(data.partners || []);
+      if (selected) {
+        const refreshed = (data.partners || []).find((p: MediaPartner) => p.id === selected.id);
+        if (refreshed) setSelected(refreshed);
+      }
+    }
+    setLoading(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adminToken]);
+
+  useEffect(() => { fetchPartners(); }, [fetchPartners]);
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setStatus("");
+    try {
+      const res = await fetch("/api/admin/media-partners", {
+        method: "POST",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setStatus("Media partner created — login sent via email");
+        setForm({ company_name: "", contact_name: "", email: "" });
+        setShowAdd(false);
+        fetchPartners();
+      } else {
+        setStatus(`Error: ${data.error || "failed to create"}`);
+      }
+    } catch (e: any) {
+      setStatus(`Error: ${e?.message || "failed to create"}`);
+    }
+    setSaving(false);
+  };
+
+  const handleAddAllocation = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selected) return;
+    setSavingAlloc(true);
+    try {
+      const res = await fetch("/api/admin/media-partners/allocations", {
+        method: "POST",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify({ media_partner_id: selected.id, ...allocForm }),
+      });
+      if (res.ok) {
+        setAllocForm({ event_id: "", ticket_type: "GA", quota: 10 });
+        fetchPartners();
+      } else {
+        const data = await res.json();
+        alert(`Error: ${data.error || "failed to add allocation"}`);
+      }
+    } catch (e: any) {
+      alert(`Error: ${e?.message || "failed to add allocation"}`);
+    }
+    setSavingAlloc(false);
+  };
+
+  const handleDeleteAllocation = async (id: string) => {
+    if (!confirm("Remove this ticket allocation?")) return;
+    await fetch("/api/admin/media-partners/allocations", {
+      method: "DELETE",
+      headers: { ...headers, "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+    fetchPartners();
+  };
+
+  const handleDeletePartner = async (id: string) => {
+    if (!confirm("Delete this media partner? They will lose portal access.")) return;
+    await fetch("/api/admin/media-partners", {
+      method: "DELETE",
+      headers: { ...headers, "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+    setSelected(null);
+    fetchPartners();
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="font-display text-white text-3xl mb-1">MEDIA PARTNERS</h2>
+          <p className="text-white/30 text-sm">Radio, news, and other outlets that give away contest-winner tickets</p>
+        </div>
+        <button onClick={() => setShowAdd(true)} className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-black text-sm font-semibold px-4 py-2 rounded-xl transition-all cursor-pointer">
+          <Plus size={15} /> Add Partner
+        </button>
+      </div>
+
+      {status && <p className={`text-sm ${status.startsWith("Error") ? "text-red-400" : "text-green-400"}`}>{status}</p>}
+
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+        <div className="lg:col-span-2 space-y-2">
+          {loading ? (
+            <div className="text-white/30 text-sm py-8 text-center">Loading...</div>
+          ) : partners.length === 0 ? (
+            <div className="text-white/30 text-sm py-8 text-center">No media partners yet.</div>
+          ) : partners.map(p => (
+            <button key={p.id} onClick={() => setSelected(p)}
+              className={`w-full text-left p-4 rounded-xl border transition-all cursor-pointer ${selected?.id === p.id ? "bg-yellow-500/10 border-yellow-500/30" : "bg-white/[0.03] border-white/10 hover:border-white/20"}`}>
+              <p className="text-white font-semibold text-sm">{p.company_name}</p>
+              <p className="text-white/40 text-xs mt-0.5">{p.contact_name} · {p.email}</p>
+              <p className="text-white/30 text-xs mt-1">{p.media_partner_allocations?.length || 0} allocation(s)</p>
+            </button>
+          ))}
+        </div>
+
+        <div className="lg:col-span-3">
+          {!selected ? (
+            <div className="bg-white/[0.02] border border-white/10 rounded-2xl p-8 text-center text-white/20 text-sm h-full flex items-center justify-center">
+              Select a media partner to manage their ticket allocations
+            </div>
+          ) : (
+            <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-6 space-y-5">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h3 className="text-white font-bold text-xl">{selected.company_name}</h3>
+                  <p className="text-white/40 text-sm">{selected.contact_name} · {selected.email}</p>
+                </div>
+                <button onClick={() => handleDeletePartner(selected.id)} className="p-1.5 text-white/30 hover:text-red-400 transition-colors cursor-pointer"><Trash2 size={14} /></button>
+              </div>
+
+              <div>
+                <p className="text-white/30 text-xs uppercase tracking-wider mb-2">Ticket Allocations</p>
+                {(selected.media_partner_allocations || []).length === 0 ? (
+                  <p className="text-white/20 text-sm">No allocations yet — add one below.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {selected.media_partner_allocations.map(a => (
+                      <div key={a.id} className="flex items-center justify-between bg-white/[0.03] border border-white/8 rounded-xl px-4 py-3">
+                        <div>
+                          <p className="text-white text-sm font-medium">{a.events?.city}, {a.events?.state} — {a.ticket_type}</p>
+                          <p className="text-white/40 text-xs mt-0.5">{a.issued_count} issued / {a.quota} quota ({a.quota - a.issued_count} remaining)</p>
+                        </div>
+                        <button onClick={() => handleDeleteAllocation(a.id)} className="p-1.5 text-white/30 hover:text-red-400 transition-colors cursor-pointer"><Trash2 size={14} /></button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <form onSubmit={handleAddAllocation} className="bg-white/[0.02] border border-white/10 rounded-xl p-4 space-y-3">
+                <p className="text-white/30 text-xs uppercase tracking-wider">Add Allocation</p>
+                <div className="grid grid-cols-3 gap-3">
+                  <select value={allocForm.event_id} onChange={e => setAllocForm(f => ({ ...f, event_id: e.target.value }))} required
+                    className="bg-white/5 border border-white/15 rounded-xl px-3 py-2 text-white text-sm outline-none cursor-pointer">
+                    <option value="" className="bg-[#0d0500]">Select event</option>
+                    {events.map(ev => (
+                      <option key={ev.id} value={ev.id} className="bg-[#0d0500]">{ev.city} — {ev.date}</option>
+                    ))}
+                  </select>
+                  <input value={allocForm.ticket_type} onChange={e => setAllocForm(f => ({ ...f, ticket_type: e.target.value }))}
+                    placeholder="Ticket type (e.g. GA)" required
+                    className="bg-white/5 border border-white/15 rounded-xl px-3 py-2 text-white text-sm outline-none" />
+                  <input type="number" min={1} value={allocForm.quota} onChange={e => setAllocForm(f => ({ ...f, quota: parseInt(e.target.value) || 0 }))}
+                    placeholder="Quota" required
+                    className="bg-white/5 border border-white/15 rounded-xl px-3 py-2 text-white text-sm outline-none" />
+                </div>
+                <button type="submit" disabled={savingAlloc}
+                  className="w-full bg-white/5 hover:bg-white/10 border border-white/15 disabled:opacity-60 text-white/70 font-semibold py-2 rounded-xl text-sm transition-all cursor-pointer">
+                  {savingAlloc ? "Adding..." : "Add Allocation"}
+                </button>
+              </form>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {showAdd && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={() => setShowAdd(false)}>
+          <div className="bg-[#1a0f00] border border-white/10 rounded-2xl p-6 w-full max-w-md" onClick={e => e.stopPropagation()}>
+            <h3 className="text-white font-bold text-lg mb-4">Add Media Partner</h3>
+            <form onSubmit={handleCreate} className="space-y-3">
+              <input value={form.company_name} onChange={e => setForm(f => ({ ...f, company_name: e.target.value }))} placeholder="Company name (e.g. Q104 Radio)" required
+                className="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2.5 text-white text-sm outline-none" />
+              <input value={form.contact_name} onChange={e => setForm(f => ({ ...f, contact_name: e.target.value }))} placeholder="Contact name"
+                className="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2.5 text-white text-sm outline-none" />
+              <input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="Login email" required
+                className="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2.5 text-white text-sm outline-none" />
+              <p className="text-white/30 text-xs">A password will be generated automatically and emailed to them with their login link.</p>
+              <div className="flex gap-3 pt-2">
+                <button type="submit" disabled={saving} className="flex-1 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-60 text-black font-bold py-2.5 rounded-xl text-sm transition-all cursor-pointer">
+                  {saving ? "Creating..." : "Create & Send Login"}
+                </button>
+                <button type="button" onClick={() => setShowAdd(false)} className="px-4 py-2.5 text-white/50 hover:text-white text-sm cursor-pointer">Cancel</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Tools Section ─────────────────────────────────────────────────────────────
 function SocialClaimsSection({ adminToken }: { adminToken: string }) {
   const [claims, setClaims] = useState<any[]>([]);
@@ -4642,6 +4877,7 @@ const NAV_ITEMS = [
   { id: "social-share", label: "Social Share", icon: <Megaphone size={17} /> },
   { id: "staff",      label: "Staff",       icon: <Users size={17} /> },
   { id: "vendors",    label: "Vendors",     icon: <Utensils size={17} /> },
+  { id: "media",      label: "Media Partners", icon: <Gift size={17} /> },
   { id: "newsletter", label: "Newsletter",  icon: <Mail size={17} /> },
   { id: "tools",      label: "Tools",       icon: <RefreshCw size={17} /> },
   { id: "blog",       label: "Blog",        icon: <FileText size={17} /> },
@@ -4749,6 +4985,7 @@ export default function AdminDashboard() {
     "social-share": <SocialShareSection adminToken={adminToken} />,
     staff:     <StaffSection adminToken={adminToken} />,
     vendors:    <VendorsSection adminToken={adminToken} />,
+    media:      <MediaPartnersSection adminToken={adminToken} events={events} />,
     newsletter: <NewsletterSection adminToken={adminToken} />,
     tools:     <ToolsSection adminToken={adminToken} />,
     blog:      <BlogAdminSection />,
