@@ -41,6 +41,7 @@ interface StatsData {
   totalStripeFees?: number;
   totalTicketRevenue?: number;
   byCity: Record<string, { revenue: number; tickets: number; byType?: Record<string, number> }>;
+  byEvent?: Record<string, { revenue: number; tickets: number; byType?: Record<string, number> }>;
 }
 
 // ─── Data hook ────────────────────────────────────────────────────────────────
@@ -229,33 +230,48 @@ function OverviewSection({ stats: globalStats, orders, events, loading: globalLo
         )}
       </div>
 
-      {/* Event capacity bars */}
+      {/* Event capacity bars — real DB events, not a hardcoded city list, so
+          a new year (e.g. Cincinnati 2027) shows up automatically and each
+          year gets its own row instead of being merged by city name. */}
       <div>
         <h3 className="text-white/50 text-xs font-bold uppercase tracking-wider mb-4">Ticket Sales by City</h3>
         <div className="space-y-3">
-          {EVENTS_CONFIG.map(ev => {
-            const cityStats = stats?.byCity?.[ev.city];
-            const sold = cityStats?.tickets ?? 0;
-            const dbEvent = events.find(e => e.city.toLowerCase() === ev.city.toLowerCase());
-            const capacity = dbEvent && dbEvent.ticket_types.length > 0
-              ? dbEvent.ticket_types.reduce((s, t) => s + t.capacity, 0)
-              : ev.capacity;
+          {events
+            .filter(ev => ev.status !== "draft" && ev.status !== "cancelled")
+            .sort((a, b) => {
+              const aCompleted = a.status === "completed" ? 1 : 0;
+              const bCompleted = b.status === "completed" ? 1 : 0;
+              if (aCompleted !== bCompleted) return aCompleted - bCompleted; // active events first, completed last
+              return aCompleted
+                ? new Date(b.date_iso).getTime() - new Date(a.date_iso).getTime()  // completed: most recent first
+                : new Date(a.date_iso).getTime() - new Date(b.date_iso).getTime(); // upcoming: soonest first
+            })
+            .map(ev => {
+            const eventStats = stats?.byEvent?.[ev.id];
+            const sold = eventStats?.tickets ?? 0;
+            const capacity = ev.ticket_types.length > 0
+              ? ev.ticket_types.reduce((s, t) => s + t.capacity, 0)
+              : 500;
+            const year = ev.date_iso ? new Date(ev.date_iso).getFullYear() : "";
             return (
-            <div key={ev.id} className="bg-white/[0.03] border border-white/10 rounded-xl p-4">
+            <div key={ev.id} className={`bg-white/[0.03] border border-white/10 rounded-xl p-4 ${ev.status === "completed" ? "opacity-60" : ""}`}>
               <div className="flex items-center justify-between mb-2">
-                <span className="font-display text-lg" style={{ color: ev.color }}>{ev.city}</span>
+                <span className="font-display text-lg" style={{ color: ev.color }}>
+                  {ev.city} <span className="text-white/40 text-base">{year}</span>
+                  {ev.status === "completed" && <span className="text-white/30 text-xs font-sans uppercase tracking-wider ml-2 align-middle">Completed</span>}
+                </span>
                 <div className="text-right">
                   <span className="text-white/50 text-sm">{sold} / {capacity} sold</span>
-                  {cityStats?.revenue ? <span className="text-white/30 text-xs ml-2">${cityStats.revenue.toLocaleString()}</span> : null}
+                  {eventStats?.revenue ? <span className="text-white/30 text-xs ml-2">${eventStats.revenue.toLocaleString()}</span> : null}
                 </div>
               </div>
               <div className="h-2 bg-white/10 rounded-full overflow-hidden mb-2">
                 <div className="h-full rounded-full transition-all duration-500" style={{ width: `${Math.min((sold / capacity) * 100, 100)}%`, background: ev.color }} />
               </div>
               {/* Ticket type breakdown */}
-              {cityStats?.byType && Object.keys(cityStats.byType).length > 0 && (
+              {eventStats?.byType && Object.keys(eventStats.byType).length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mt-2">
-                  {Object.entries(cityStats.byType).map(([type, count]) => (
+                  {Object.entries(eventStats.byType).map(([type, count]) => (
                     <span key={type} className="text-xs px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-white/50">
                       {type}: <span className="text-white/80 font-semibold">{count}</span>
                     </span>

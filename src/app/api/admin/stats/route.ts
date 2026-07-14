@@ -39,7 +39,7 @@ async function getSupabaseStats(cityFilter: string, yearFilter: string) {
   // Fetch ticket_instances filtered to matching orders
   let instanceQuery = db
     .from("ticket_instances")
-    .select("ticket_type, event_slug, event_city, order_id");
+    .select("ticket_type, event_slug, event_city, event_id, order_id");
 
   if (orderIds.length > 0) {
     instanceQuery = instanceQuery.in("order_id", orderIds);
@@ -48,7 +48,7 @@ async function getSupabaseStats(cityFilter: string, yearFilter: string) {
     return NextResponse.json({
       source: "supabase",
       totalRevenue: 0, totalTickets: 0, totalOrders: 0, ordersToday: 0,
-      byCity: {}, totalServiceFees: 0, totalPlatformFees: 0,
+      byCity: {}, byEvent: {}, totalServiceFees: 0, totalPlatformFees: 0,
       totalStripeFees: 0, totalTicketRevenue: 0,
     });
   }
@@ -90,6 +90,33 @@ async function getSupabaseStats(cityFilter: string, yearFilter: string) {
     byCity[city].byType = sortByType(byCity[city].byType);
   }
 
+  // Per-event breakdown (by event_id, not city name) — a city's slug gets
+  // reassigned to a new event row on year rollover (see events section of
+  // CLAUDE.md), so grouping by city alone can't distinguish "Cincinnati
+  // 2026" from "Cincinnati 2027". event_id is stamped on ticket_instances at
+  // purchase time and never changes.
+  const byEvent: Record<string, { revenue: number; tickets: number; byType: Record<string, number> }> = {};
+  const revenueAttributed = new Set<string>();
+
+  for (const ti of instances || []) {
+    if (!ti.event_id) continue;
+    const order = orderMap.get(ti.order_id);
+    if (!order) continue;
+    if (!byEvent[ti.event_id]) byEvent[ti.event_id] = { revenue: 0, tickets: 0, byType: {} };
+    byEvent[ti.event_id].tickets++;
+    const type = normalizeTicketType(ti.ticket_type);
+    byEvent[ti.event_id].byType[type] = (byEvent[ti.event_id].byType[type] || 0) + 1;
+
+    if (!revenueAttributed.has(ti.order_id)) {
+      byEvent[ti.event_id].revenue += order.total;
+      revenueAttributed.add(ti.order_id);
+    }
+  }
+
+  for (const eventId of Object.keys(byEvent)) {
+    byEvent[eventId].byType = sortByType(byEvent[eventId].byType);
+  }
+
   // Fee analytics
   const { calculateFees } = await import("@/lib/fees");
   let totalServiceFees = 0;
@@ -112,6 +139,7 @@ async function getSupabaseStats(cityFilter: string, yearFilter: string) {
     totalOrders,
     ordersToday,
     byCity,
+    byEvent,
     totalServiceFees: parseFloat(totalServiceFees.toFixed(2)),
     totalPlatformFees: parseFloat(totalPlatformFees.toFixed(2)),
     totalStripeFees: parseFloat(totalStripeFees.toFixed(2)),
