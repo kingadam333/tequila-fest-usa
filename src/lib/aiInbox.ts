@@ -132,7 +132,10 @@ export interface AIInboxResult {
 async function fetchDBKnowledge(): Promise<string> {
   try {
     const db = supabaseAdmin as any;
-    const { data, error } = await db.from("knowledge_base").select("title, content, category").order("category").order("title");
+    // Treat active=null (older rows, before the column existed) as active too
+    // — .eq("active", true) alone would silently exclude them since SQL NULL
+    // never equals true.
+    const { data, error } = await db.from("knowledge_base").select("title, content, category").or("active.is.null,active.eq.true").order("category").order("title");
     if (error) { console.error("KB fetch error:", error); return ""; }
     if (!data?.length) return "";
     const grouped: Record<string, string[]> = {};
@@ -158,6 +161,7 @@ export async function generateAIReply(
   message: string,
   orderInfo?: string | null,
   emailMismatch?: boolean,
+  hasAccount?: boolean,
 ): Promise<AIInboxResult> {
   const dbKnowledge = await fetchDBKnowledge();
 
@@ -174,6 +178,7 @@ A customer has submitted the following support message. Your job is to reply hel
 ${message}
 
 ${orderInfo && !emailMismatch ? `**Their order history found in our system:**\n${orderInfo}\n` : ""}${orderInfo && emailMismatch ? `**Order found by name (email on file does NOT match their contact email — likely a typo at checkout):**\n${orderInfo}\n` : ""}${!orderInfo ? "No order found for this email or name in our system.\n" : ""}
+**Account status:** ${hasAccount === true ? "This email HAS a registered account — use forgot-password wording, NOT sign-up wording." : hasAccount === false ? "This email does NOT have a registered account yet." : "Account status unknown."}
 
 Instructions:
 
@@ -257,4 +262,61 @@ Respond with ONLY:
   }
 
   return { confident: true, reply: text, action, actionEmail: customerEmail };
+}
+
+// ─── Learn from admin replies ──────────────────────────────────────────────────
+// Called after an admin manually replies to a ticket the AI had escalated
+// (status was "needs-review" — meaning the AI didn't know the answer). Turns
+// the (question, admin's real answer) pair into a generalized, reusable
+// knowledge_base entry so the AI can answer similar questions on its own
+// next time, instead of escalating the same gap forever.
+export async function learnFromAdminReply(customerMessage: string, adminReply: string, subject: string): Promise<void> {
+  if (!process.env.OPENAI_API_KEY) return;
+
+  try {
+    const prompt = `You are maintaining a support knowledge base for Tequila Fest USA. An admin just answered a customer question that the AI support bot didn't know how to answer.
+
+Customer's question (subject: "${subject}"):
+${customerMessage}
+
+Admin's actual reply:
+${adminReply}
+
+Turn this into a general, reusable knowledge base entry that will help the AI answer SIMILAR future questions — not just this exact one. Strip out anything specific to this one customer (their name, order number, email, dates specific to their situation). Keep only the general policy/fact/answer.
+
+If the admin's reply is too specific to this one customer to generalize (e.g. it's about a unique one-off situation, or doesn't actually contain a reusable fact/policy), respond with exactly: SKIP
+
+Otherwise respond with EXACTLY this format (no extra commentary):
+TITLE: <short title, under 60 chars>
+CATEGORY: <one or two words, e.g. "Tickets", "Refunds", "Account", "Policies", "Events">
+CONTENT: <the generalized answer, 1-4 sentences, written as a statement of fact/policy — not addressed to a specific customer>`;
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      max_tokens: 300,
+      messages: [{ role: "user", content: prompt }],
+    });
+
+    const text = (response.choices[0].message.content || "").trim();
+    if (text === "SKIP" || !text.includes("TITLE:")) return;
+
+    const titleMatch = text.match(/TITLE:\s*(.+)/);
+    const categoryMatch = text.match(/CATEGORY:\s*(.+)/);
+    const contentMatch = text.match(/CONTENT:\s*([\s\S]+)/);
+
+    const title = titleMatch?.[1]?.trim();
+    const category = categoryMatch?.[1]?.trim() || "General";
+    const content = contentMatch?.[1]?.trim();
+    if (!title || !content) return;
+
+    const db = supabaseAdmin as any;
+    const { error } = await db.from("knowledge_base").insert({ title, content, category, active: true });
+    if (error) {
+      console.error("learnFromAdminReply insert error:", error);
+      return;
+    }
+    console.log("📚 Learned new KB entry from admin reply:", title);
+  } catch (err) {
+    console.error("learnFromAdminReply error:", err);
+  }
 }

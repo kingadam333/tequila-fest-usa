@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyAdminToken, unauthorizedResponse } from "@/lib/adminAuth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { resend, FROM_SUPPORT, FROM_AFFILIATES, FROM_SPONSORS, FROM_VENDORS, FROM_BRANDS } from "@/lib/resend";
+import { learnFromAdminReply } from "@/lib/aiInbox";
 
 const INBOX_FROM: Record<string, string> = {
   Support:    FROM_SUPPORT,
@@ -46,6 +47,25 @@ export async function POST(req: NextRequest) {
 
   if (!replyTo || !message) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+  }
+
+  // Fetch the submission BEFORE updating it, so we know whether this reply
+  // is filling a gap the AI escalated (status was "needs-review") — that's
+  // the signal to learn from it. Also need the customer's original message
+  // as the "question" half of the Q&A pair being taught to the AI.
+  let priorStatus: string | null = null;
+  let originalMessage: string | null = null;
+  let submissionInbox: string | null = null;
+  if (submissionId) {
+    const db = supabaseAdmin as any;
+    const { data: existing } = await db
+      .from("contact_submissions")
+      .select("status, message, inbox")
+      .eq("id", submissionId)
+      .single();
+    priorStatus = existing?.status || null;
+    originalMessage = existing?.message || null;
+    submissionInbox = existing?.inbox || null;
   }
 
   // Send reply email
@@ -104,6 +124,16 @@ export async function POST(req: NextRequest) {
       body: message,
       provider_message_id: sentMessageId,
     });
+
+    // The AI escalated this one (status was "needs-review") — the admin's
+    // manual answer is a real knowledge gap being filled. Learn from it so
+    // the AI can answer similar questions on its own next time. Only the
+    // Support inbox feeds the AI pipeline, so scope learning to that.
+    if (priorStatus === "needs-review" && originalMessage && submissionInbox === "Support") {
+      learnFromAdminReply(originalMessage, message, subject || "").catch(err =>
+        console.error("learnFromAdminReply failed:", err)
+      );
+    }
   }
 
   return NextResponse.json({ success: true });

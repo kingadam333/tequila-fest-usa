@@ -5,6 +5,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { resend, FROM_SUPPORT } from "@/lib/resend";
 import { generateAIReply } from "@/lib/aiInbox";
 import { buildReplyHtml, buildEscalationHtml, ADMIN_EMAIL } from "@/lib/aiInboxEmail";
+import { lookupAccount, sendPasswordResetEmail, resendTicketEmail } from "@/lib/accountActions";
 
 export async function POST(req: NextRequest) {
   const { submissionId, name, email, subject, message } = await req.json();
@@ -38,9 +39,11 @@ export async function POST(req: NextRequest) {
       ).join("\n")
     : null;
 
+  const { hasAccount } = await lookupAccount(email);
+
   let result;
   try {
-    result = await generateAIReply(name, email, subject, message, orderInfo);
+    result = await generateAIReply(name, email, subject, message, orderInfo, undefined, hasAccount);
   } catch (err) {
     console.error("AI inbox error:", err);
     result = { confident: false, reply: "AI error", action: null };
@@ -76,6 +79,12 @@ export async function POST(req: NextRequest) {
       body: result.reply,
       provider_message_id: sentMessageId,
     });
+
+    if (result.action === "send_reset_link") {
+      await sendPasswordResetEmail(email).catch((err: any) => console.error("AI reset-link action failed:", err));
+    } else if (result.action === "resend_tickets" && orders?.length === 1) {
+      await resendTicketEmail(orders[0].order_number).catch((err: any) => console.error("AI resend-tickets action failed:", err));
+    }
 
     return NextResponse.json({ handled: true, reply: result.reply });
   } else {

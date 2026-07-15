@@ -250,6 +250,7 @@ export async function POST(req: NextRequest) {
   try {
     const { generateAIReply } = await import("@/lib/aiInbox");
     const { buildReplyHtml } = await import("@/lib/aiInboxEmail");
+    const { lookupAccount, sendPasswordResetEmail, resendTicketEmail } = await import("@/lib/accountActions");
 
     const { data: orders } = await db
       .from("ticket_orders")
@@ -264,7 +265,8 @@ export async function POST(req: NextRequest) {
         ).join("\n")
       : null;
 
-    const result = await generateAIReply(name, email, subject, message, orderInfo);
+    const { hasAccount } = await lookupAccount(email);
+    const result = await generateAIReply(name, email, subject, message, orderInfo, undefined, hasAccount);
 
     if (result.confident) {
       const sendRes = await resend.emails.send({
@@ -289,6 +291,12 @@ export async function POST(req: NextRequest) {
         body: result.reply,
         provider_message_id: sendRes?.data?.id || null,
       });
+
+      if (result.action === "send_reset_link") {
+        await sendPasswordResetEmail(email).catch((err: any) => console.error("AI reset-link action failed:", err));
+      } else if (result.action === "resend_tickets" && orders?.length === 1) {
+        await resendTicketEmail(orders[0].order_number).catch((err: any) => console.error("AI resend-tickets action failed:", err));
+      }
     } else {
       await resend.emails.send({
         from: FROM_SUPPORT,

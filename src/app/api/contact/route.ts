@@ -4,6 +4,7 @@ import { verifyTurnstile } from "@/lib/turnstile";
 import { resend, INBOX_ROUTING, FROM_SUPPORT } from "@/lib/resend";
 import { generateAIReply } from "@/lib/aiInbox";
 import { buildReplyHtml, buildEscalationHtml, ADMIN_EMAIL } from "@/lib/aiInboxEmail";
+import { lookupAccount, sendPasswordResetEmail, resendTicketEmail } from "@/lib/accountActions";
 
 export async function POST(req: NextRequest) {
   const { name, email, phone, subject, message, captchaToken } = await req.json();
@@ -39,8 +40,10 @@ export async function POST(req: NextRequest) {
 
       let orderInfo: string | null = null;
       let emailMismatch = false;
+      let matchedOrders: any[] = [];
 
       if (orders?.length) {
+        matchedOrders = orders;
         orderInfo = orders.map((o: any) =>
           `Order #${o.order_number}: ${o.event_city} – ${o.ticket_type} x${o.quantity} ($${o.total}) on ${o.created_at?.slice(0, 10)}`
         ).join("\n");
@@ -70,13 +73,15 @@ export async function POST(req: NextRequest) {
 
         if (combined.length) {
           emailMismatch = true;
+          matchedOrders = combined;
           orderInfo = combined.map((o: any) =>
             `Order #${o.order_number}: ${o.event_city} – ${o.ticket_type} x${o.quantity} ($${o.total}) on ${o.created_at?.slice(0, 10)} [NOTE: order email on file is ${o.customer_email} — may differ from contact email]`
           ).join("\n");
         }
       }
 
-      const result = await generateAIReply(name, email, subject, message, orderInfo, emailMismatch);
+      const { hasAccount } = await lookupAccount(email);
+      const result = await generateAIReply(name, email, subject, message, orderInfo, emailMismatch, hasAccount);
 
       if (result.confident) {
         const sendRes = await resend.emails.send({
@@ -102,6 +107,15 @@ export async function POST(req: NextRequest) {
           body: result.reply,
           provider_message_id: sendRes?.data?.id || null,
         });
+
+        // Actually perform the action the AI decided on — not just tell the
+        // customer to do it themselves. Resend only fires when exactly one
+        // order matched, to avoid guessing which order they meant.
+        if (result.action === "send_reset_link") {
+          await sendPasswordResetEmail(email).catch(err => console.error("AI reset-link action failed:", err));
+        } else if (result.action === "resend_tickets" && matchedOrders.length === 1) {
+          await resendTicketEmail(matchedOrders[0].order_number).catch(err => console.error("AI resend-tickets action failed:", err));
+        }
       } else {
         await resend.emails.send({
           from: FROM_SUPPORT,
