@@ -129,7 +129,7 @@ export interface AIInboxResult {
   actionEmail?: string;
 }
 
-async function fetchDBKnowledge(): Promise<string> {
+export async function fetchDBKnowledge(): Promise<string> {
   try {
     const db = supabaseAdmin as any;
     // Treat active=null (older rows, before the column existed) as active too

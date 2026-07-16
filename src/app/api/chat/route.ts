@@ -1,18 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { resend, FROM_SUPPORT } from "@/lib/resend";
-import { qrTicketHtml } from "@/lib/resend";
+import { KNOWLEDGE_BASE, fetchDBKnowledge } from "@/lib/aiInbox";
+import { buildEscalationHtml, ADMIN_EMAIL } from "@/lib/aiInboxEmail";
+import { sendPasswordResetEmail, resendTicketEmail } from "@/lib/accountActions";
 import OpenAI from "openai";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // ── Tool implementations ──────────────────────────────────────────────────────
+// Every action below only ever touches the email address that was looked up
+// (the "email on file"), never an arbitrary address supplied elsewhere in the
+// conversation — same rule the admin AI Inbox pipeline follows.
 async function lookupOrdersByEmail(email: string) {
   const db = supabaseAdmin as any;
+  const cleanEmail = email.trim().toLowerCase();
   const { data: orders } = await db
     .from("ticket_orders")
     .select("order_number, ticket_type, quantity, total, event_city, status, created_at")
-    .eq("customer_email", email.toLowerCase())
+    .eq("customer_email", cleanEmail)
     .eq("status", "paid")
     .order("created_at", { ascending: false });
 
@@ -32,89 +38,59 @@ async function lookupOrdersByEmail(email: string) {
 
 async function resendTickets(email: string) {
   const db = supabaseAdmin as any;
-  const { data: tickets } = await db
-    .from("ticket_instances")
-    .select(`*, ticket_orders!inner(customer_name, customer_email, order_number, event_city)`)
-    .eq("ticket_orders.customer_email", email.toLowerCase())
-    .eq("status", "valid");
+  const cleanEmail = email.trim().toLowerCase();
+  const { data: orders } = await db
+    .from("ticket_orders")
+    .select("order_number")
+    .eq("customer_email", cleanEmail)
+    .eq("status", "paid");
 
-  if (!tickets?.length) return { success: false, message: "No valid tickets found for that email." };
+  if (!orders?.length) return { success: false, message: "No orders found for that email address." };
 
-  // Group by order
-  const byOrder = new Map<string, any[]>();
-  for (const t of tickets) {
-    const key = t.ticket_orders.order_number;
-    if (!byOrder.has(key)) byOrder.set(key, []);
-    byOrder.get(key)!.push(t);
-  }
-
-  for (const [orderNum, orderTickets] of byOrder.entries()) {
-    const first = orderTickets[0];
-    const customerName = first.ticket_orders.customer_name || email;
-    const firstName = customerName.split(" ")[0];
-    const eventCity = first.ticket_orders.event_city;
-
-    const ticketHtml = qrTicketHtml({
-      firstName,
-      orderNumber: orderNum,
-      eventCity,
-      eventDate: "",
-      eventTime: "",
-      eventVenue: "",
-      appUrl: process.env.NEXT_PUBLIC_SITE_URL || "https://tequila-fest-usa.vercel.app",
-      tickets: orderTickets.map((t: any) => ({
-        ticketType: t.ticket_type,
-        ticketNumber: t.ticket_number,
-        totalInOrder: orderTickets.length,
-        qrCode: t.qr_code,
-        holderName: t.holder_name,
-      })),
-    });
-
-    await resend.emails.send({
-      from: FROM_SUPPORT,
-      to: email,
-      subject: `Your Tequila Fest USA Tickets — ${eventCity}`,
-      html: ticketHtml,
-    });
-  }
-
-  return { success: true, message: `Tickets resent to ${email}. Please check your inbox (and spam folder).` };
+  // resendTicketEmail always sends to the order's own customer_email column —
+  // never to whatever string the caller passed in — so this can't be used to
+  // redirect tickets to an email that isn't on file for the order.
+  const results = await Promise.all(orders.map((o: any) => resendTicketEmail(o.order_number)));
+  const sent = results.filter(r => r.sent).length;
+  if (!sent) return { success: false, message: "Found orders but couldn't resend the email. Please contact support." };
+  return { success: true, message: `Tickets resent to the email on file for ${sent} order(s). Please check your inbox (and spam folder).` };
 }
 
 async function sendPasswordReset(email: string) {
-  try {
-    const { data, error } = await (supabaseAdmin as any).auth.admin.generateLink({
-      type: "recovery",
-      email: email.toLowerCase(),
-    });
-
-    if (error || !data?.properties?.action_link) {
-      return { success: false, message: "No account found for that email address." };
-    }
-
-    await resend.emails.send({
-      from: FROM_SUPPORT,
-      to: email,
-      subject: "Reset your Tequila Fest USA password",
-      html: `<!DOCTYPE html><html><body style="background:#0d0500;font-family:Arial,sans-serif;color:#fff8f0;padding:40px 20px">
-<div style="max-width:560px;margin:0 auto">
-  <p style="font-size:24px;font-weight:900;letter-spacing:4px;color:#F5A623">TEQUILA FEST USA</p>
-  <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:28px;margin-top:16px">
-    <p style="font-size:16px;margin:0 0 12px">Password reset requested for <strong>${email}</strong></p>
-    <p style="color:rgba(255,248,240,0.5);font-size:14px;margin:0 0 20px">Click the button below to set a new password. This link expires in 1 hour.</p>
-    <a href="${data.properties.action_link}" style="display:inline-block;background:#F5A623;color:#000;font-weight:700;padding:12px 28px;border-radius:10px;text-decoration:none">RESET PASSWORD</a>
-  </div>
-</div></body></html>`,
-    });
-
-    return { success: true, message: "Password reset email sent! Check your inbox." };
-  } catch {
-    return { success: false, message: "Unable to send reset email. Please contact support." };
+  const result = await sendPasswordResetEmail(email);
+  if (!result.sent) {
+    return result.reason === "no_account"
+      ? { success: false, message: "No account found for that email address. If you bought tickets but never made a password, sign up at tequilafestusa.com/signup with the same email instead." }
+      : { success: false, message: "Unable to send reset email right now. Please contact support." };
   }
+  return { success: true, message: "Password reset email sent! Check your inbox." };
 }
 
-// ── Tools definition ──────────────────────────────────────────────────────────
+async function escalateToHuman(name: string, email: string, subject: string, message: string) {
+  const db = supabaseAdmin as any;
+  const { data: inserted } = await db.from("contact_submissions").insert({
+    name, email, phone: null, subject, message, status: "needs-review",
+    inbox: "Support", ai_handled: false,
+  }).select("id").single();
+
+  try {
+    await resend.emails.send({
+      from: FROM_SUPPORT,
+      to: ADMIN_EMAIL,
+      subject: `Open Ticket in Tequila Fest Inbox — ${subject}`,
+      html: buildEscalationHtml(name, email, subject, message, null),
+    });
+  } catch (err) {
+    console.error("escalateToHuman notification failed:", err);
+  }
+
+  return {
+    success: !!inserted,
+    message: "I've opened a support ticket for you — a member of our team will follow up by email shortly.",
+  };
+}
+
+// ── Tools definition ────────────────────────────────────────────────────────
 const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
   {
     type: "function",
@@ -132,7 +108,7 @@ const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
     type: "function",
     function: {
       name: "resend_tickets",
-      description: "Resend ticket QR codes to a customer's email address",
+      description: "Resend ticket QR codes to the email address on file for that customer's order(s)",
       parameters: {
         type: "object",
         properties: { email: { type: "string", description: "Customer email address" } },
@@ -152,6 +128,23 @@ const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "escalate_to_human",
+      description: "Open a real support ticket for a human teammate to handle, for anything you can't confidently answer from the knowledge base — angry/legal messages, group bookings, sponsorships, or any question not covered by known facts. Only call this once you have the customer's name and email.",
+      parameters: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "Customer's name" },
+          email: { type: "string", description: "Customer's email address" },
+          subject: { type: "string", description: "Short summary of the issue" },
+          message: { type: "string", description: "The customer's question or issue, in their own words" },
+        },
+        required: ["name", "email", "subject", "message"],
+      },
+    },
+  },
 ];
 
 export async function POST(req: NextRequest) {
@@ -162,29 +155,31 @@ export async function POST(req: NextRequest) {
   const { messages } = await req.json();
   if (!messages?.length) return NextResponse.json({ error: "No messages" }, { status: 400 });
 
-  const db = supabaseAdmin as any;
+  // Same knowledge base the admin AI Inbox uses for auto-replies, so answers
+  // stay consistent between the site widget and email support.
+  const dbKnowledge = await fetchDBKnowledge();
 
-  // Pull knowledge base
-  const { data: kb } = await db.from("knowledge_base").select("title, content").eq("active", true);
-  const kbText = (kb || []).map((k: any) => `${k.title}: ${k.content}`).join("\n\n");
+  const systemPrompt = `${KNOWLEDGE_BASE}${dbKnowledge}
 
-  const systemPrompt = `You are a friendly support assistant for Tequila Fest USA, a national tequila festival.
+---
 
-Be warm, helpful, and concise. You can help customers with:
+You are the "Instant Customer Service" chat widget on the Tequila Fest USA website — the live, real-time counterpart to the AI Inbox that handles support emails. Be warm, helpful, and concise.
+
+You can help customers with:
 - Finding their orders and tickets (ask for their email, then use lookup_orders)
-- Resending ticket emails (use resend_tickets with their email)
+- Resending ticket emails (use resend_tickets — this always goes to the email on file, never anywhere else)
 - Password resets / account access (use send_password_reset)
-- General questions about the event
+- General questions about the event, answered ONLY from the knowledge base above
 
-Knowledge base:
-${kbText}
+PRIME DIRECTIVE — DON'T INVENT FACTS: Only answer using facts clearly covered by the knowledge base above. If a customer asks something it doesn't cover, or something emotionally charged (angry, legal, chargeback), a group booking/sponsorship/press inquiry, or anything you're not confident about, collect their name + email if you don't already have them and call escalate_to_human — do not guess or make up policy.
 
 Rules:
 - Always be friendly and on-brand (fun, tequila-themed where appropriate)
 - If you need an email address to help, ask for it politely
 - Never invent ticket prices or policies not in the knowledge base
 - Keep responses short and helpful
-- If you can't help, direct them to help@tequilafestusa.com`;
+- Never claim "unlimited" samples — it's a fixed allotment of 12 tasting tickets
+- Ticket resends and password resets only ever go to the email address that's on file — you cannot redirect them anywhere else, and should tell the customer that if asked`;
 
   const chatMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
     { role: "system", content: systemPrompt },
@@ -217,6 +212,7 @@ Rules:
         if (fn.name === "lookup_orders")           result = await lookupOrdersByEmail(args.email);
         else if (fn.name === "resend_tickets")      result = await resendTickets(args.email);
         else if (fn.name === "send_password_reset") result = await sendPasswordReset(args.email);
+        else if (fn.name === "escalate_to_human")   result = await escalateToHuman(args.name, args.email, args.subject, args.message);
         else result = { error: "Unknown tool" };
 
         toolResults.push({

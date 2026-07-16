@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageCircle, X, Send, Bot } from "lucide-react";
+import { X, Send, Bot, Headset } from "lucide-react";
 
 interface Message {
   role: "user" | "assistant";
@@ -21,6 +21,12 @@ export default function SupportChat() {
   useEffect(() => {
     if (open) bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, open]);
+
+  useEffect(() => {
+    if (!open) return;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = ""; };
+  }, [open]);
 
   const send = async () => {
     const text = input.trim();
@@ -49,18 +55,54 @@ export default function SupportChat() {
 
   return (
     <>
-      {/* Chat window */}
+      {/* Side tab */}
+      <AnimatePresence>
+        {!open && (
+          <motion.button
+            key="tab"
+            initial={{ x: 12, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: 12, opacity: 0 }}
+            whileHover={{ x: -3 }}
+            onClick={() => setOpen(true)}
+            className="fixed right-0 top-1/2 -translate-y-1/2 z-50 bg-yellow-500 hover:bg-yellow-400 text-black rounded-l-xl shadow-lg flex flex-col items-center gap-2 py-4 px-2.5 transition-colors cursor-pointer"
+            aria-label="Open Instant Customer Service"
+          >
+            <Headset size={18} />
+            <span
+              className="font-bold text-xs tracking-wide"
+              style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}
+            >
+              Instant Customer Service
+            </span>
+          </motion.button>
+        )}
+      </AnimatePresence>
+
+      {/* Backdrop */}
       <AnimatePresence>
         {open && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            transition={{ duration: 0.2 }}
-            className="fixed bottom-24 right-4 sm:right-6 z-50 w-[calc(100vw-2rem)] max-w-sm"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setOpen(false)}
+            className="fixed inset-0 z-50 bg-black/50"
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Drawer */}
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ x: "100%" }}
+            animate={{ x: 0 }}
+            exit={{ x: "100%" }}
+            transition={{ duration: 0.25, ease: "easeOut" }}
+            className="fixed top-0 right-0 z-50 h-full w-full max-w-md"
           >
-            <div className="bg-[#0f0700] border border-white/15 rounded-2xl shadow-2xl overflow-hidden flex flex-col"
-              style={{ height: "min(520px, 75vh)" }}>
+            <div className="bg-[#0f0700] border-l border-white/15 shadow-2xl h-full flex flex-col">
 
               {/* Header */}
               <div className="flex items-center justify-between px-4 py-3 bg-black/40 border-b border-white/10 flex-shrink-0">
@@ -69,7 +111,7 @@ export default function SupportChat() {
                     <Bot size={15} className="text-yellow-400" />
                   </div>
                   <div>
-                    <p className="text-white font-semibold text-sm">Tequila Loving Support Friend</p>
+                    <p className="text-white font-semibold text-sm">Instant Customer Service</p>
                     <p className="text-green-400 text-[10px] flex items-center gap-1">
                       <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block" />
                       Online now
@@ -77,7 +119,7 @@ export default function SupportChat() {
                   </div>
                 </div>
                 <button onClick={() => setOpen(false)} className="text-white/30 hover:text-white/70 transition-colors cursor-pointer p-1">
-                  <X size={16} />
+                  <X size={18} />
                 </button>
               </div>
 
@@ -128,28 +170,6 @@ export default function SupportChat() {
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Floating button */}
-      <motion.button
-        onClick={() => setOpen(!open)}
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        className="fixed bottom-5 right-4 sm:right-6 z-50 h-14 px-5 bg-yellow-500 hover:bg-yellow-400 text-black rounded-full shadow-lg flex items-center gap-2.5 transition-colors cursor-pointer"
-        aria-label="Open support chat"
-      >
-        <AnimatePresence mode="wait">
-          {open ? (
-            <motion.div key="x" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }}>
-              <X size={22} />
-            </motion.div>
-          ) : (
-            <motion.div key="chat" initial={{ rotate: 90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -90, opacity: 0 }} className="flex items-center gap-2.5">
-              <MessageCircle size={22} />
-              <span className="font-bold text-sm">Help</span>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </motion.button>
     </>
   );
 }
