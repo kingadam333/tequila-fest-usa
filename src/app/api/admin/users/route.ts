@@ -100,8 +100,27 @@ export async function POST(req: NextRequest) {
   const { data: existing } = await db.from("customer_accounts").select("id").eq("email", email).single();
   if (existing) return NextResponse.json({ error: "A user with this email already exists" }, { status: 409 });
 
-  // Create customer_accounts row
+  // Create the Supabase Auth account FIRST — customer_accounts.id must equal
+  // the Auth user's id for login/session lookups to work (same pattern the
+  // Stripe webhook's auto-account-creation uses). Creating customer_accounts
+  // first and Auth second (the old order) left an orphaned, un-loggable-into
+  // row whenever the Auth call failed, silently, since the error was never
+  // checked.
+  const tempPassword = `Agave${Math.floor(1000 + Math.random() * 9000)}`;
+  const { data: authUser, error: authErr } = await (supabaseAdmin as any).auth.admin.createUser({
+    email: email.toLowerCase().trim(),
+    password: tempPassword,
+    email_confirm: true,
+    user_metadata: { first_name: firstName, last_name: lastName },
+  });
+
+  if (authErr || !authUser?.user) {
+    return NextResponse.json({ error: authErr?.message || "Failed to create login for this user" }, { status: 500 });
+  }
+
+  // Create customer_accounts row, keyed to the Auth user's id
   const { data: user, error } = await db.from("customer_accounts").insert({
+    id: authUser.user.id,
     email: email.toLowerCase().trim(),
     first_name: firstName || "",
     last_name: lastName || "",
@@ -109,16 +128,11 @@ export async function POST(req: NextRequest) {
     loyalty_points: 0,
   }).select().single();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-  // Create Supabase Auth account
-  const tempPassword = `Agave${Math.floor(1000 + Math.random() * 9000)}`;
-  await (supabaseAdmin as any).auth.admin.createUser({
-    email: email.toLowerCase().trim(),
-    password: tempPassword,
-    email_confirm: true,
-    user_metadata: { first_name: firstName, last_name: lastName },
-  });
+  if (error) {
+    // Roll back the Auth user so we don't leave a dangling login with no account row
+    await (supabaseAdmin as any).auth.admin.deleteUser(authUser.user.id).catch(() => {});
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
 
   // Optionally send welcome email with login link
   if (sendWelcome) {

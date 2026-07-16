@@ -9,7 +9,7 @@ import {
   MessageSquare, FileText, LogOut, Menu, X, TrendingUp, DollarSign,
   RefreshCw, Download, Send, CheckCircle, Search, Plus,
   Trash2, Edit2, Eye, AlertCircle, BarChart2, Mail, Utensils, Share2, Copy,
-  Star, Gift, UserCheck, ChevronRight, Megaphone, ShieldCheck,
+  Star, Gift, UserCheck, ChevronRight, Megaphone, ShieldCheck, Wrench,
 } from "lucide-react";
 import SocialShareSection from "./SocialShareSection";
 import SecuritySection from "./SecuritySection";
@@ -1386,6 +1386,30 @@ function UsersSection({ adminToken }: { adminToken: string }) {
     setAdding(false);
   };
 
+  const [repairingId, setRepairingId] = useState<string | null>(null);
+  const [repairMessage, setRepairMessage] = useState<{ id: string; text: string } | null>(null);
+
+  const repairLogin = async (u: UserRecord) => {
+    if (!u.id) return;
+    setRepairingId(u.id);
+    setRepairMessage(null);
+    try {
+      const res = await fetch(`/api/admin/users/${u.id}/repair-login`, {
+        method: "POST",
+        headers: headers as any,
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setRepairMessage({ id: u.id, text: data.repaired ? "Fixed — new login emailed to the customer." : data.message });
+      } else {
+        setRepairMessage({ id: u.id, text: data.error || "Repair failed" });
+      }
+    } catch {
+      setRepairMessage({ id: u.id, text: "Network error — try again" });
+    }
+    setRepairingId(null);
+  };
+
   const compTicket = async () => {
     if (!compUserId) return;
     setComping(true);
@@ -1611,9 +1635,19 @@ function UsersSection({ adminToken }: { adminToken: string }) {
                       className="flex items-center gap-1.5 px-3 py-1.5 bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/20 hover:border-yellow-500/40 text-yellow-400 text-xs font-semibold rounded-lg transition-all cursor-pointer">
                       <Ticket size={11} /> Comp
                     </button>
+                    {u.id && (
+                      <button onClick={() => repairLogin(u)} disabled={repairingId === u.id}
+                        title="Check for and fix a broken login (e.g. can't reset password)"
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 hover:border-red-500/40 text-red-400 text-xs font-semibold rounded-lg transition-all cursor-pointer disabled:opacity-50">
+                        <Wrench size={11} /> {repairingId === u.id ? "Checking…" : "Repair Login"}
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
+              {repairMessage?.id === u.id && (
+                <p className="text-white/50 text-xs px-4 pb-3">{repairMessage.text}</p>
+              )}
 
               {/* Expanded orders */}
               <AnimatePresence>
