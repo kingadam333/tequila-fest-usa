@@ -168,6 +168,24 @@ export async function POST(req: NextRequest) {
     if (matched && matched.length) threadedSubmissionId = matched[0].submission_id;
   }
 
+  // Fallback: no header match — this is likely a reply to a transactional
+  // email we don't log into contact_replies (e.g. the password-reset email),
+  // not a genuinely new issue. If this customer already has a recent
+  // submission in the same inbox, merge into it instead of spawning a
+  // duplicate thread for the same problem.
+  if (!threadedSubmissionId) {
+    const fallbackWindow = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
+    const { data: recent } = await db
+      .from("contact_submissions")
+      .select("id")
+      .ilike("email", email)
+      .eq("inbox", inboxLabel)
+      .gte("created_at", fallbackWindow)
+      .order("created_at", { ascending: false })
+      .limit(1);
+    if (recent && recent.length) threadedSubmissionId = recent[0].id;
+  }
+
   if (threadedSubmissionId) {
     // Customer reply to an existing thread — append to contact_replies and
     // bump the parent submission to needs-review so it surfaces in admin.
