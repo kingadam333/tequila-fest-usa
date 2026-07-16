@@ -5325,70 +5325,6 @@ function ToolsSection({ adminToken }: { adminToken: string }) {
         <p className="text-white/30 text-sm">Admin utilities and data management</p>
       </div>
 
-      {/* Claim Account Email Blast */}
-      <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-6">
-        <div className="flex items-start justify-between mb-4">
-          <div>
-            <h3 className="text-white font-bold text-lg flex items-center gap-2">
-              <Mail size={18} className="text-yellow-400" /> Claim Account Email Blast
-            </h3>
-            <p className="text-white/40 text-sm mt-1">
-              Email all ticket buyers who haven&apos;t created an account yet. Tells them their points are waiting and walks them through signup step-by-step.
-            </p>
-          </div>
-        </div>
-
-        <button onClick={sendClaimBlast} disabled={blasting}
-          className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-60 text-black font-bold px-5 py-2.5 rounded-xl text-sm transition-all cursor-pointer mb-4">
-          <Mail size={15} />
-          {blasting ? "Sending..." : "Send Claim Account Emails"}
-        </button>
-
-        {blastResult && (
-          <div className="bg-green-500/10 border border-green-500/30 rounded-xl px-4 py-3 text-sm">
-            <p className="text-green-400 font-bold">✅ Blast complete</p>
-            <p className="text-white/50 mt-1">Sent: {blastResult.sent} · Failed: {blastResult.failed} · Total: {blastResult.total}</p>
-          </div>
-        )}
-        {blastError && <p className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">{blastError}</p>}
-      </div>
-
-      {/* Sync from old site */}
-      <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-6">
-        <div className="flex items-start justify-between mb-4">
-          <div>
-            <h3 className="text-white font-bold text-lg flex items-center gap-2">
-              <RefreshCw size={18} className="text-yellow-400" /> Sync from Old Site
-            </h3>
-            <p className="text-white/40 text-sm mt-1">
-              Pull any new ticket sales from the old Replit site that aren&apos;t already in the new database.
-              Safe to run anytime — duplicate orders are automatically skipped.
-            </p>
-          </div>
-        </div>
-
-        <button onClick={runSync} disabled={syncing}
-          className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-60 text-black font-bold px-5 py-2.5 rounded-xl text-sm transition-all cursor-pointer mb-4">
-          <RefreshCw size={15} className={syncing ? "animate-spin" : ""} />
-          {syncing ? "Syncing..." : "Run Sync Now"}
-        </button>
-
-        {syncLog.length > 0 && (
-          <div className="bg-black/40 border border-white/10 rounded-xl p-4 font-mono text-xs space-y-1 max-h-64 overflow-y-auto">
-            {syncLog.map((line, i) => (
-              <p key={i} className={
-                line.startsWith("✅") ? "text-green-400" :
-                line.startsWith("❌") ? "text-red-400" :
-                line.startsWith("⚠️") ? "text-yellow-400" :
-                line.startsWith("🆕") ? "text-blue-400" :
-                "text-white/50"
-              }>{line}</p>
-            ))}
-            {syncDone && <p className="text-white/20 mt-2 pt-2 border-t border-white/10">— sync complete —</p>}
-          </div>
-        )}
-      </div>
-
       {/* QR Code Generator */}
       <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-6">
         <div className="mb-4">
@@ -5456,6 +5392,70 @@ function ToolsSection({ adminToken }: { adminToken: string }) {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+      </div>
+
+      {/* Claim Account Email Blast */}
+      <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-6">
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <h3 className="text-white font-bold text-lg flex items-center gap-2">
+              <Mail size={18} className="text-yellow-400" /> Claim Account Email Blast
+            </h3>
+            <p className="text-white/40 text-sm mt-1">
+              Email all ticket buyers who haven&apos;t created an account yet. Tells them their points are waiting and walks them through signup step-by-step.
+            </p>
+          </div>
+        </div>
+
+        <button onClick={sendClaimBlast} disabled={blasting}
+          className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-60 text-black font-bold px-5 py-2.5 rounded-xl text-sm transition-all cursor-pointer mb-4">
+          <Mail size={15} />
+          {blasting ? "Sending..." : "Send Claim Account Emails"}
+        </button>
+
+        {blastResult && (
+          <div className="bg-green-500/10 border border-green-500/30 rounded-xl px-4 py-3 text-sm">
+            <p className="text-green-400 font-bold">✅ Blast complete</p>
+            <p className="text-white/50 mt-1">Sent: {blastResult.sent} · Failed: {blastResult.failed} · Total: {blastResult.total}</p>
+          </div>
+        )}
+        {blastError && <p className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">{blastError}</p>}
+      </div>
+
+      {/* Sync from old site */}
+      <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-6">
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <h3 className="text-white font-bold text-lg flex items-center gap-2">
+              <RefreshCw size={18} className="text-yellow-400" /> Sync from Old Site
+            </h3>
+            <p className="text-white/40 text-sm mt-1">
+              Pull any new ticket sales from the old Replit site that aren&apos;t already in the new database.
+              Safe to run anytime — duplicate orders are automatically skipped.
+            </p>
+          </div>
+        </div>
+
+        <button onClick={runSync} disabled={syncing}
+          className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-60 text-black font-bold px-5 py-2.5 rounded-xl text-sm transition-all cursor-pointer mb-4">
+          <RefreshCw size={15} className={syncing ? "animate-spin" : ""} />
+          {syncing ? "Syncing..." : "Run Sync Now"}
+        </button>
+
+        {syncLog.length > 0 && (
+          <div className="bg-black/40 border border-white/10 rounded-xl p-4 font-mono text-xs space-y-1 max-h-64 overflow-y-auto">
+            {syncLog.map((line, i) => (
+              <p key={i} className={
+                line.startsWith("✅") ? "text-green-400" :
+                line.startsWith("❌") ? "text-red-400" :
+                line.startsWith("⚠️") ? "text-yellow-400" :
+                line.startsWith("🆕") ? "text-blue-400" :
+                "text-white/50"
+              }>{line}</p>
+            ))}
+            {syncDone && <p className="text-white/20 mt-2 pt-2 border-t border-white/10">— sync complete —</p>}
           </div>
         )}
       </div>
