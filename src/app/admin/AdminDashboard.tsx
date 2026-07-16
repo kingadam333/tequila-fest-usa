@@ -9,7 +9,7 @@ import {
   MessageSquare, FileText, LogOut, Menu, X, TrendingUp, DollarSign,
   RefreshCw, Download, Send, CheckCircle, Search, Plus,
   Trash2, Edit2, Eye, AlertCircle, BarChart2, Mail, Utensils, Share2, Copy,
-  Star, Gift, UserCheck, ChevronRight, Megaphone, ShieldCheck, Wrench, Sparkles, Bot,
+  Star, Gift, UserCheck, ChevronRight, Megaphone, ShieldCheck, Wrench, Sparkles, Bot, Link2,
 } from "lucide-react";
 import SocialShareSection from "./SocialShareSection";
 import SecuritySection from "./SecuritySection";
@@ -5192,10 +5192,69 @@ function SocialClaimsSection({ adminToken }: { adminToken: string }) {
   );
 }
 
+interface ShortLink { id: string; slug: string; destination_url: string; label: string | null; clicks: number; created_at: string; }
+
 function ToolsSection({ adminToken }: { adminToken: string }) {
   const [syncLog, setSyncLog] = useState<string[]>([]);
   const [syncing, setSyncing] = useState(false);
   const [syncDone, setSyncDone] = useState(false);
+
+  const SITE_URL = "https://www.tequilafestusa.com";
+  const [links, setLinks] = useState<ShortLink[]>([]);
+  const [linksLoading, setLinksLoading] = useState(true);
+  const [destUrl, setDestUrl] = useState("");
+  const [customSlug, setCustomSlug] = useState("");
+  const [linkLabel, setLinkLabel] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState("");
+  const [copiedSlug, setCopiedSlug] = useState<string | null>(null);
+
+  const loadLinks = useCallback(async () => {
+    setLinksLoading(true);
+    const res = await fetch("/api/admin/short-links", { headers: { "x-admin-token": adminToken } });
+    if (res.ok) { const data = await res.json(); setLinks(data.links || []); }
+    setLinksLoading(false);
+  }, [adminToken]);
+
+  useEffect(() => { if (adminToken) loadLinks(); }, [adminToken, loadLinks]);
+
+  const createLink = async () => {
+    setCreateError("");
+    if (!destUrl.trim()) { setCreateError("Enter a destination URL"); return; }
+    setCreating(true);
+    try {
+      const res = await fetch("/api/admin/short-links", {
+        method: "POST",
+        headers: { "x-admin-token": adminToken, "Content-Type": "application/json" },
+        body: JSON.stringify({ destinationUrl: destUrl, slug: customSlug, label: linkLabel }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setLinks(prev => [data.link, ...prev]);
+        setDestUrl(""); setCustomSlug(""); setLinkLabel("");
+      } else {
+        setCreateError(data.error || "Failed to create link");
+      }
+    } catch {
+      setCreateError("Network error — try again");
+    }
+    setCreating(false);
+  };
+
+  const deleteLink = async (id: string) => {
+    if (!confirm("Delete this QR link? This can't be undone.")) return;
+    await fetch(`/api/admin/short-links/${id}`, { method: "DELETE", headers: { "x-admin-token": adminToken } });
+    setLinks(prev => prev.filter(l => l.id !== id));
+  };
+
+  const copyLink = (slug: string) => {
+    navigator.clipboard.writeText(`${SITE_URL}/go/${slug}`);
+    setCopiedSlug(slug);
+    setTimeout(() => setCopiedSlug(null), 1500);
+  };
+
+  const qrUrl = (slug: string, size = 300) =>
+    `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&margin=10&data=${encodeURIComponent(`${SITE_URL}/go/${slug}`)}`;
 
   const [blasting, setBlasting] = useState(false);
   const [blastResult, setBlastResult] = useState<{ sent: number; failed: number; total: number } | null>(null);
@@ -5326,6 +5385,77 @@ function ToolsSection({ adminToken }: { adminToken: string }) {
               }>{line}</p>
             ))}
             {syncDone && <p className="text-white/20 mt-2 pt-2 border-t border-white/10">— sync complete —</p>}
+          </div>
+        )}
+      </div>
+
+      {/* QR Code Generator */}
+      <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-6">
+        <div className="mb-4">
+          <h3 className="text-white font-bold text-lg flex items-center gap-2">
+            <QrCode size={18} className="text-yellow-400" /> QR Code Generator
+          </h3>
+          <p className="text-white/40 text-sm mt-1">
+            Create a custom short link (tequilafestusa.com/go/&lt;slug&gt;) with a matching QR code — great for flyers, vendor booths, and print ads. Point it anywhere and change the destination later without reprinting.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+          <div className="sm:col-span-2">
+            <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Destination URL</label>
+            <input value={destUrl} onChange={e => setDestUrl(e.target.value)} placeholder="https://tequilafestusa.com/events/cincinnati"
+              className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-2.5 text-white placeholder-white/25 outline-none text-sm" />
+          </div>
+          <div>
+            <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Custom slug (optional)</label>
+            <input value={customSlug} onChange={e => setCustomSlug(e.target.value)} placeholder="cincinnati-flyer"
+              className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-2.5 text-white placeholder-white/25 outline-none text-sm" />
+          </div>
+          <div>
+            <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Label (optional)</label>
+            <input value={linkLabel} onChange={e => setLinkLabel(e.target.value)} placeholder="Cincinnati vendor booth flyer"
+              className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-2.5 text-white placeholder-white/25 outline-none text-sm" />
+          </div>
+        </div>
+
+        {createError && <p className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-2.5 mb-3">{createError}</p>}
+
+        <button onClick={createLink} disabled={creating}
+          className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-60 text-black font-bold px-5 py-2.5 rounded-xl text-sm transition-all cursor-pointer mb-6">
+          <Link2 size={15} /> {creating ? "Creating..." : "Generate QR Code"}
+        </button>
+
+        {linksLoading ? (
+          <p className="text-white/30 text-sm">Loading…</p>
+        ) : !links.length ? (
+          <p className="text-white/25 text-sm text-center py-6 border border-dashed border-white/10 rounded-xl">No QR links yet — create one above.</p>
+        ) : (
+          <div className="space-y-3">
+            {links.map(link => (
+              <div key={link.id} className="flex items-start gap-4 bg-white/[0.02] border border-white/10 rounded-xl p-4">
+                <img src={qrUrl(link.slug, 100)} alt={`QR code for ${link.slug}`} width={72} height={72} className="rounded-lg border-2 border-white flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  {link.label && <p className="text-white font-semibold text-sm truncate">{link.label}</p>}
+                  <p className="text-yellow-400 text-xs font-mono mt-0.5">{SITE_URL.replace(/^https?:\/\//, "")}/go/{link.slug}</p>
+                  <p className="text-white/30 text-xs mt-0.5 truncate">→ {link.destination_url}</p>
+                  <p className="text-white/20 text-[11px] mt-1">{link.clicks} click{link.clicks !== 1 ? "s" : ""} · {new Date(link.created_at).toLocaleDateString()}</p>
+                </div>
+                <div className="flex flex-col gap-1.5 flex-shrink-0">
+                  <button onClick={() => copyLink(link.slug)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white/60 hover:text-white text-xs font-semibold rounded-lg transition-all cursor-pointer">
+                    <Copy size={11} /> {copiedSlug === link.slug ? "Copied!" : "Copy Link"}
+                  </button>
+                  <a href={qrUrl(link.slug, 512)} download={`qr-${link.slug}.png`} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white/60 hover:text-white text-xs font-semibold rounded-lg transition-all cursor-pointer">
+                    <Download size={11} /> Download PNG
+                  </a>
+                  <button onClick={() => deleteLink(link.id)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 text-xs font-semibold rounded-lg transition-all cursor-pointer">
+                    <Trash2 size={11} /> Delete
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>
