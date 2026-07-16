@@ -3,19 +3,6 @@ import { verifyAdminToken, unauthorizedResponse } from "@/lib/adminAuth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { resend, FROM_SUPPORT, generatePassword } from "@/lib/resend";
 
-// Every table that FKs to customer_accounts.id, so a re-key doesn't orphan
-// any of a customer's history. Kept in sync manually with the schema.
-const CUSTOMER_ID_REFERENCES: { table: string; column: string }[] = [
-  { table: "ticket_orders", column: "customer_id" },
-  { table: "ticket_instances", column: "customer_id" },
-  { table: "loyalty_transactions", column: "customer_id" },
-  { table: "media_uploads", column: "customer_id" },
-  { table: "social_share_claims", column: "customer_id" },
-  { table: "referral_codes", column: "customer_id" },
-  { table: "referrals", column: "referrer_customer_id" },
-  { table: "redemptions", column: "customer_id" },
-];
-
 // Repairs a customer_accounts row that has no matching Supabase Auth user —
 // this happens whenever a row gets created without a linked Auth account
 // (e.g. the admin "Add User" flow before it checked the Auth-creation
@@ -43,35 +30,37 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ repaired: false, message: "This account already has a working login — nothing to repair." });
   }
 
-  // No matching Auth user — create one and re-key customer_accounts (and
-  // everything that references it) onto the new Auth user's id.
+  // No matching Auth user — create one with the SAME id customer_accounts
+  // already uses. GoTrue's admin createUser accepts a caller-supplied `id`
+  // (undocumented in the supabase-js types but supported by the API,
+  // specifically for cases like this — migrating/repairing a user without
+  // disturbing other tables). This sidesteps ever having to re-key
+  // customer_accounts.id and repoint every table that references it, which
+  // is fragile: those foreign keys are NOT DEFERRABLE, so there is no
+  // ordering of the two updates that satisfies both constraints atomically
+  // outside a single transaction with deferred constraints.
   const tempPassword = generatePassword();
   const { data: authUser, error: authErr } = await supabaseAdmin.auth.admin.createUser({
+    id: oldId,
     email: account.email,
     password: tempPassword,
     email_confirm: true,
     user_metadata: { first_name: account.first_name, last_name: account.last_name },
-  });
+  } as any);
 
   if (authErr || !authUser?.user) {
     return NextResponse.json({ error: authErr?.message || "Failed to create login" }, { status: 500 });
   }
 
-  const newId = authUser.user.id;
-
-  for (const ref of CUSTOMER_ID_REFERENCES) {
-    const { error: repointErr } = await db.from(ref.table).update({ [ref.column]: newId }).eq(ref.column, oldId);
-    if (repointErr) {
-      // Roll back the Auth user we just created so we don't leave a dangling login
-      await supabaseAdmin.auth.admin.deleteUser(newId).catch(() => {});
-      return NextResponse.json({ error: `Failed to repoint ${ref.table}.${ref.column}: ${repointErr.message}` }, { status: 500 });
-    }
-  }
-
-  const { error: caErr } = await db.from("customer_accounts").update({ id: newId }).eq("id", oldId);
-  if (caErr) {
-    await supabaseAdmin.auth.admin.deleteUser(newId).catch(() => {});
-    return NextResponse.json({ error: `Failed to update customer_accounts.id: ${caErr.message}` }, { status: 500 });
+  // Verify the API actually honored our requested id rather than silently
+  // generating its own — if it didn't, we now have a stray, mismatched Auth
+  // user that would break login just as badly as before. Delete it and fail
+  // loudly instead of reporting success on a still-broken account.
+  if (authUser.user.id !== oldId) {
+    await supabaseAdmin.auth.admin.deleteUser(authUser.user.id).catch(() => {});
+    return NextResponse.json({
+      error: `Auth API did not honor the requested id (got ${authUser.user.id} instead of ${oldId}) — this account needs a different repair approach. No changes were made.`,
+    }, { status: 500 });
   }
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.tequilafestusa.com";
@@ -101,5 +90,5 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     console.error("repair-login welcome email failed:", err);
   }
 
-  return NextResponse.json({ repaired: true, newId, tempPassword });
+  return NextResponse.json({ repaired: true, tempPassword });
 }
