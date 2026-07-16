@@ -140,6 +140,7 @@ function StatusBadge({ status }: { status: string }) {
     draft:          "bg-white/5 text-white/30 border-white/10",
     "auto-replied": "bg-blue-500/15 text-blue-400 border-blue-500/30",
     "needs-review": "bg-orange-500/15 text-orange-400 border-orange-500/30",
+    closed: "bg-white/5 text-white/25 border-white/10",
   };
   return (
     <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full border uppercase tracking-wide ${styles[status as keyof typeof styles] || "bg-white/10 text-white/50 border-white/20"}`}>
@@ -2378,8 +2379,30 @@ function ContactSection({ adminToken }: { adminToken: string }) {
     setDeleting(false);
   };
 
+  const [closing, setClosing] = useState(false);
+  const handleToggleClose = async (id: string, currentStatus: string) => {
+    const nextStatus = currentStatus === "closed" ? "new" : "closed";
+    setClosing(true);
+    try {
+      const res = await fetch("/api/admin/contact", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", "x-admin-token": adminToken },
+        body: JSON.stringify({ id, status: nextStatus }),
+      });
+      if (res.ok) {
+        setSubmissions(prev => prev.map(s => s.id === id ? { ...s, status: nextStatus } : s));
+        setSelected(s => s && s.id === id ? { ...s, status: nextStatus } as ContactSubmission : s);
+      }
+    } catch { /* ignore */ }
+    setClosing(false);
+  };
+
   const inbox = INBOXES.find(i => i.id === activeInbox) || INBOXES[0];
-  const filtered = submissions.filter(s => (s.inbox || "Support") === activeInbox);
+  // Closed threads sink to the bottom, everything else keeps its existing order.
+  const filtered = submissions
+    .filter(s => (s.inbox || "Support") === activeInbox)
+    .slice()
+    .sort((a, b) => (a.status === "closed" ? 1 : 0) - (b.status === "closed" ? 1 : 0));
   const unread = (id: string) => submissions.filter(s => (s.inbox || "Support") === id && (s.status === "new" || s.status === "needs-review")).length;
 
   const handleSendReply = async () => {
@@ -2521,6 +2544,14 @@ function ContactSection({ adminToken }: { adminToken: string }) {
                   )}
                   <StatusBadge status={s.status} />
                   <button
+                    onClick={e => { e.stopPropagation(); handleToggleClose(s.id, s.status); }}
+                    disabled={closing}
+                    className="p-1 rounded-lg bg-white/5 hover:bg-green-500/20 border border-white/10 hover:border-green-500/30 text-white/40 hover:text-green-400 transition-all cursor-pointer"
+                    title={s.status === "closed" ? "Reopen" : "Close"}
+                  >
+                    <CheckCircle size={11} />
+                  </button>
+                  <button
                     onClick={e => { e.stopPropagation(); handleDelete(s.id); }}
                     disabled={deleting}
                     className="p-1 rounded-lg bg-red-500/10 hover:bg-red-500/25 border border-red-500/20 text-red-400 transition-all cursor-pointer"
@@ -2547,6 +2578,10 @@ function ContactSection({ adminToken }: { adminToken: string }) {
                     <button onClick={() => { setForwardOpen(o => !o); setForwardStatus(""); }}
                       className="flex items-center gap-1 text-xs text-white/50 hover:text-yellow-400 transition-all cursor-pointer">
                       <Send size={12} /> Forward
+                    </button>
+                    <button onClick={() => handleToggleClose(selected.id, selected.status)} disabled={closing}
+                      className="flex items-center gap-1 text-xs text-white/50 hover:text-green-400 transition-all cursor-pointer">
+                      <CheckCircle size={12} /> {selected.status === "closed" ? "Reopen" : "Close"}
                     </button>
                     <button onClick={() => handleDelete(selected.id)} disabled={deleting}
                       className="flex items-center gap-1 text-xs text-red-400/60 hover:text-red-400 transition-all cursor-pointer">

@@ -161,3 +161,17 @@ export async function DELETE(req: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ success: true });
 }
+
+// Close/reopen a thread — closing sinks it to the bottom of the inbox list
+// (see ContactSection's sort) without deleting anything.
+export async function PATCH(req: NextRequest) {
+  if (!verifyAdminToken(req)) return unauthorizedResponse();
+  const { id, status } = await req.json();
+  if (!id || !["closed", "new"].includes(status)) {
+    return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+  }
+  const db = supabaseAdmin as any;
+  const { error } = await db.from("contact_submissions").update({ status }).eq("id", id);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ success: true });
+}
