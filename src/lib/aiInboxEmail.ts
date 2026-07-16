@@ -1,4 +1,4 @@
-const ADMIN_EMAIL = "adam@tequilafestusa.com";
+const ADMIN_EMAIL = ["adam@tequilafestusa.com", "laurie@tastecleveland.net"];
 export { ADMIN_EMAIL };
 
 export function buildReplyHtml(customerName: string, replyText: string): string {
