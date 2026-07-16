@@ -182,8 +182,8 @@ ${orderInfo && !emailMismatch ? `**Their order history found in our system:**\n$
 
 Instructions:
 
-PRIME DIRECTIVE — DON'T INVENT FACTS, AND WHEN IN DOUBT, ESCALATE:
-Your answer can ONLY use facts that are clearly covered by:
+PRIME DIRECTIVE — ONLY REPLY WHEN YOU ARE CERTAIN, ESCALATE BY DEFAULT:
+Your bar for replying directly is high. Default to ESCALATE. Only answer if you are fully certain every single fact in your reply is directly and unambiguously sourced from:
 - The "Event Details" block (auto-generated from the canonical event data)
 - The "What an All Inclusive ticket includes" / "What a GA Entry ticket includes" sections
 - The "Ticket Types & Pricing" section
@@ -191,16 +191,20 @@ Your answer can ONLY use facts that are clearly covered by:
 - The "Common Questions & Answers" Q/A block
 - The "Admin Knowledge Base" block (added by the admin via the knowledge_base table) — this is the AUTHORITATIVE source and overrides everything else when it covers the same topic
 
-If the customer asks something that none of those sources answer, output the single word ESCALATE (nothing else). It is EXPECTED and ENCOURAGED to escalate while the admin knowledge base is being built — a wrong auto-reply is much worse than a delayed correct one.
+Before answering, silently check: "Is every fact in this reply directly stated above, with zero interpretation or filling-in-the-gaps?" If there's any hesitation, ESCALATE instead — a wrong auto-reply is much worse than a delayed correct one, and a human reviewing it now grows the Admin Knowledge Base above for next time, so escalating is never wasted effort.
+
+If the customer asks something that none of those sources answer, or you're only moderately (not fully) confident, output the single word ESCALATE (nothing else). It is EXPECTED and ENCOURAGED to escalate liberally — this system is designed to get smarter over time as admins answer escalated tickets, not to guess in the meantime.
 
 DO NOT extrapolate, generalize, or stitch a partial answer together from generic knowledge. If a fact isn't in the sources above, you don't know it. ESCALATE.
 
-ALWAYS ESCALATE (regardless of the knowledge base):
-- Anything emotionally charged (angry, threatening, legal language, mentions of attorney, chargeback, BBB)
+ALWAYS ESCALATE (regardless of the knowledge base) — these are hard triggers, not judgment calls:
+- Anything emotionally charged: angry, threatening, or legal language, mentions of attorney/chargeback/BBB, profanity/swearing, ALL-CAPS shouting, or repeated exclamation points/question marks — these are all signs of a frustrated customer who needs a human, even if the underlying question looks answerable
+- The customer says a previous reply didn't work, didn't help, or that they already asked this — repeating the same advice a second time is worse than escalating
 - Messages in a language other than English
 - Group bookings, buyouts, bottle service, private events
 - Sponsorship / vendor / press / affiliate inquiries
 - Any specific dollar amount, headcount, brand name, performer, or food specific not present in the sources above
+- Requests for a phone number or to speak to a person directly
 
 HARD RULES WHEN YOU DO ANSWER:
 1. NEVER INVENT FACTS. Prices, sample counts, inclusions, food vendor names, sampling hours, venue addresses, dates, times, GA availability MUST be quoted from the sources above. If the city isn't named and the answer differs by city, ESCALATE (or ask which city, only if the rest of the answer is otherwise solid).
@@ -233,6 +237,7 @@ Respond with ONLY:
   const response = await openai.chat.completions.create({
     model: "gpt-4o-mini",
     max_tokens: 600,
+    temperature: 0.2, // low temperature — favor consistent, conservative ESCALATE calls over creative guessing
     messages: [{ role: "user", content: prompt }],
   });
 

@@ -51,8 +51,12 @@ export async function POST(req: NextRequest) {
 
   // Fetch the submission BEFORE updating it, so we know whether this reply
   // is filling a gap the AI escalated (status was "needs-review") — that's
-  // the signal to learn from it. Also need the customer's original message
-  // as the "question" half of the Q&A pair being taught to the AI.
+  // the signal to learn from it. Also need the customer's actual question
+  // as the "question" half of the Q&A pair being taught to the AI. Threads
+  // can now have multiple customer messages merged in (see the contact-form
+  // and email-inbound merge fallback), so use the customer's MOST RECENT
+  // inbound message — not the submission's original first message, which
+  // may be stale and not what the admin is actually answering here.
   let priorStatus: string | null = null;
   let originalMessage: string | null = null;
   let submissionInbox: string | null = null;
@@ -66,6 +70,15 @@ export async function POST(req: NextRequest) {
     priorStatus = existing?.status || null;
     originalMessage = existing?.message || null;
     submissionInbox = existing?.inbox || null;
+
+    const { data: latestInbound } = await db
+      .from("contact_replies")
+      .select("body")
+      .eq("submission_id", submissionId)
+      .eq("direction", "inbound")
+      .order("created_at", { ascending: false })
+      .limit(1);
+    if (latestInbound?.length) originalMessage = latestInbound[0].body;
   }
 
   // Send reply email

@@ -22,12 +22,42 @@ export async function POST(req: NextRequest) {
   const routing = INBOX_ROUTING[subject] || { from: FROM_SUPPORT, to: "help@mail.tequilafestusa.com", label: "Support" };
 
   const db = supabaseAdmin as any;
-  const { data: inserted } = await db.from("contact_submissions").insert({
-    name, email, phone: phone || null, subject, message, status: "new",
-    inbox: routing.label,
-  }).select("id").single();
 
-  if (routing.label === "Support" && inserted?.id) {
+  // Merge into a recent open thread for the same customer + inbox instead of
+  // creating a parallel duplicate — mirrors the email-inbound webhook's
+  // fallback. Without this, a customer re-submitting the contact form (e.g.
+  // because an earlier auto-reply didn't solve their issue) fragmented the
+  // same problem across many separate tickets.
+  const mergeWindow = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
+  const { data: recentSubmission } = await db
+    .from("contact_submissions")
+    .select("id")
+    .ilike("email", email)
+    .eq("inbox", routing.label)
+    .gte("created_at", mergeWindow)
+    .order("created_at", { ascending: false })
+    .limit(1);
+
+  let submissionId: string | undefined;
+  if (recentSubmission?.length) {
+    submissionId = recentSubmission[0].id;
+    await db.from("contact_replies").insert({
+      submission_id: submissionId,
+      direction: "inbound",
+      sent_by: "customer",
+      from_email: email,
+      from_name: name,
+      body: message,
+    });
+  } else {
+    const { data: inserted } = await db.from("contact_submissions").insert({
+      name, email, phone: phone || null, subject, message, status: "new",
+      inbox: routing.label,
+    }).select("id").single();
+    submissionId = inserted?.id;
+  }
+
+  if (routing.label === "Support" && submissionId) {
     // Run AI inline so Vercel doesn't kill it before it finishes
     try {
       // Look up order history for context — first by email, then by name as fallback
@@ -96,10 +126,10 @@ export async function POST(req: NextRequest) {
           admin_reply: result.reply,
           replied_at: new Date().toISOString(),
           ai_handled: true,
-        }).eq("id", inserted.id);
+        }).eq("id", submissionId);
 
         await db.from("contact_replies").insert({
-          submission_id: inserted.id,
+          submission_id: submissionId,
           direction: "outbound",
           sent_by: "ai",
           from_email: "help@mail.tequilafestusa.com",
@@ -127,7 +157,7 @@ export async function POST(req: NextRequest) {
         await db.from("contact_submissions").update({
           status: "needs-review",
           ai_handled: false,
-        }).eq("id", inserted.id);
+        }).eq("id", submissionId);
       }
     } catch (err) {
       console.error("AI inbox error:", err);
@@ -139,7 +169,7 @@ export async function POST(req: NextRequest) {
           subject: `Open Ticket in Tequila Fest Inbox — ${subject}`,
           html: buildEscalationHtml(name, email, subject, message, null),
         });
-        await db.from("contact_submissions").update({ status: "needs-review", ai_handled: false }).eq("id", inserted.id);
+        await db.from("contact_submissions").update({ status: "needs-review", ai_handled: false }).eq("id", submissionId);
       } catch {}
     }
   } else {
