@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, QrCode, CheckCircle, XCircle, AlertCircle, ChevronDown, RotateCcw, Users, LogOut, X, Zap } from "lucide-react";
+import { Search, QrCode, CheckCircle, XCircle, AlertCircle, ChevronDown, RotateCcw, Users, LogOut, X, Zap, ShieldCheck } from "lucide-react";
 
 const EVENTS = [
   { slug: "cincinnati", label: "Cincinnati — Jun 13" },
@@ -60,6 +60,8 @@ interface Stats {
 export default function CheckinPortal() {
   const [token, setToken] = useState("");
   const [staffName, setStaffName] = useState("");
+  const [staffPermissions, setStaffPermissions] = useState<string[]>([]);
+  const [grantingAdmin, setGrantingAdmin] = useState(false);
   const [loginMode, setLoginMode] = useState<"staff" | "admin">("staff");
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
@@ -96,8 +98,10 @@ export default function CheckinPortal() {
       if (res.ok) {
         const t = `Bearer ${data.token}`;
         localStorage.setItem("staff_token", t);
+        localStorage.setItem("staff_permissions", JSON.stringify(data.staff.permissions || []));
         setToken(t);
         setStaffName(data.staff.name);
+        setStaffPermissions(data.staff.permissions || []);
       } else {
         setTokenError(data.error || "Invalid email or password");
       }
@@ -119,7 +123,35 @@ export default function CheckinPortal() {
   useEffect(() => {
     const stored = localStorage.getItem("staff_token");
     if (stored && !token) setToken(stored);
+    const storedPerms = localStorage.getItem("staff_permissions");
+    if (storedPerms) {
+      try { setStaffPermissions(JSON.parse(storedPerms)); } catch { /* ignore malformed value */ }
+    }
   }, []);
+
+  // ── Jump to /admin using this staff member's own login (only shown if
+  // they have the "admin" permission) — exchanges their staff token for the
+  // shared admin token server-side, so they don't need to know it. ────────
+  const goToAdminDashboard = async () => {
+    setGrantingAdmin(true);
+    try {
+      const res = await fetch("/api/staff/admin-access", {
+        method: "POST",
+        headers: { Authorization: token },
+      });
+      const data = await res.json();
+      if (res.ok && data.adminToken) {
+        sessionStorage.setItem("admin_token", data.adminToken);
+        window.location.href = "/admin";
+      } else {
+        alert(data.error || "Unable to access admin dashboard");
+      }
+    } catch {
+      alert("Network error — try again");
+    } finally {
+      setGrantingAdmin(false);
+    }
+  };
 
   // ── Stats ─────────────────────────────────────────────────────────────────
   const loadStats = useCallback(async (t: string, ev: string) => {
@@ -380,6 +412,13 @@ export default function CheckinPortal() {
           <p className="text-white/70 text-xs">{staffName ? `Hi, ${staffName}` : "Check-In Portal"}</p>
         </div>
         <div className="flex items-center gap-3">
+          {staffPermissions.includes("admin") && (
+            <button onClick={goToAdminDashboard} disabled={grantingAdmin}
+              title="Admin Dashboard"
+              className="flex items-center gap-1.5 bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/20 disabled:opacity-60 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-all cursor-pointer">
+              <ShieldCheck size={13} /> {grantingAdmin ? "Loading…" : "Admin"}
+            </button>
+          )}
           <div className="relative">
             <select value={selectedEvent}
               onChange={e => { setSelectedEvent(e.target.value); setResults([]); setSearchQ(""); setActiveTicket(null); }}
@@ -388,7 +427,7 @@ export default function CheckinPortal() {
             </select>
             <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none" />
           </div>
-          <button onClick={() => { setToken(""); localStorage.removeItem("staff_token"); }}
+          <button onClick={() => { setToken(""); localStorage.removeItem("staff_token"); localStorage.removeItem("staff_permissions"); }}
             className="text-white/70 hover:text-white/60 transition-colors cursor-pointer">
             <LogOut size={16} />
           </button>

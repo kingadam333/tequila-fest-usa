@@ -61,10 +61,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ success: true });
   }
 
-  // Update permissions
+  // Update name / email / permissions
   const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (body.permissions) updates.permissions = body.permissions;
   if (body.name) updates.name = body.name;
+  if (body.email) updates.email = body.email.trim().toLowerCase();
 
   const { error } = await db.from("staff_members").update(updates).eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

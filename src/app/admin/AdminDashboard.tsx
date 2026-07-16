@@ -3511,6 +3511,7 @@ const PERMISSION_OPTIONS = [
   { id: "orders",  label: "View Orders",      desc: "Read-only access to order list" },
   { id: "inbox",   label: "Contact Inbox",    desc: "View and reply to contact messages" },
   { id: "events",  label: "View Events",      desc: "View event details and ticket counts" },
+  { id: "admin",   label: "Full Admin Access", desc: "Complete access to the admin dashboard — grants a link on their check-in profile straight into /admin" },
 ];
 
 interface StaffMember {
@@ -3533,6 +3534,13 @@ function StaffSection({ adminToken }: { adminToken: string }) {
   const [inviting, setInviting] = useState(false);
   const [inviteError, setInviteError] = useState("");
   const [inviteSuccess, setInviteSuccess] = useState("");
+
+  const [editingStaff, setEditingStaff] = useState<StaffMember | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editPerms, setEditPerms] = useState<string[]>([]);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [editError, setEditError] = useState("");
 
   const headers = { "x-admin-token": adminToken };
 
@@ -3584,6 +3592,39 @@ function StaffSection({ adminToken }: { adminToken: string }) {
 
   const togglePerm = (perm: string) => {
     setInvitePerms(prev => prev.includes(perm) ? prev.filter(p => p !== perm) : [...prev, perm]);
+  };
+
+  const startEdit = (member: StaffMember) => {
+    setEditingStaff(member);
+    setEditName(member.name);
+    setEditEmail(member.email);
+    setEditPerms(member.permissions || []);
+    setEditError("");
+  };
+
+  const toggleEditPerm = (perm: string) => {
+    setEditPerms(prev => prev.includes(perm) ? prev.filter(p => p !== perm) : [...prev, perm]);
+  };
+
+  const saveEdit = async () => {
+    if (!editingStaff) return;
+    setEditError("");
+    if (!editName.trim() || !editEmail.trim()) { setEditError("Name and email required"); return; }
+    if (!editPerms.length) { setEditError("Select at least one permission"); return; }
+    setSavingEdit(true);
+    const res = await fetch(`/api/admin/staff/${editingStaff.id}`, {
+      method: "PATCH",
+      headers: { ...headers, "Content-Type": "application/json" } as any,
+      body: JSON.stringify({ name: editName.trim(), email: editEmail.trim(), permissions: editPerms }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      setEditingStaff(null);
+      load();
+    } else {
+      setEditError(data.error || "Failed to save changes");
+    }
+    setSavingEdit(false);
   };
 
   const STATUS_COLORS: Record<string, string> = {
@@ -3723,12 +3764,76 @@ function StaffSection({ adminToken }: { adminToken: string }) {
                       Resend
                     </button>
                   )}
+                  <button onClick={() => startEdit(member)}
+                    className="text-white/40 hover:text-yellow-400 p-1.5 rounded-lg hover:bg-white/5 transition-all cursor-pointer">
+                    <Edit2 size={14} />
+                  </button>
                   <button onClick={() => removeStaff(member.id, member.name)}
                     className="text-red-400/50 hover:text-red-400 p-1.5 rounded-lg hover:bg-red-500/10 transition-all cursor-pointer">
                     <Trash2 size={14} />
                   </button>
                 </div>
               </div>
+
+              {/* Inline edit form */}
+              <AnimatePresence>
+                {editingStaff?.id === member.id && (
+                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
+                    className="overflow-hidden">
+                    <div className="mt-4 pt-4 border-t border-white/10 space-y-4">
+                      {editError && (
+                        <p className="text-red-400 text-sm bg-red-900/20 border border-red-500/30 rounded-xl px-4 py-2">{editError}</p>
+                      )}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Full Name</label>
+                          <input value={editName} onChange={e => setEditName(e.target.value)}
+                            className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-2.5 text-white outline-none text-sm" />
+                        </div>
+                        <div>
+                          <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Email</label>
+                          <input type="email" value={editEmail} onChange={e => setEditEmail(e.target.value)}
+                            className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-2.5 text-white outline-none text-sm" />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-white/30 text-xs uppercase tracking-wider mb-3 block">Permissions / Areas</label>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {PERMISSION_OPTIONS.map(opt => {
+                            const checked = editPerms.includes(opt.id);
+                            return (
+                              <button key={opt.id} type="button" onClick={() => toggleEditPerm(opt.id)}
+                                className={`flex items-start gap-3 p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                                  checked ? "bg-yellow-500/10 border-yellow-500/40" : "bg-white/[0.02] border-white/10 hover:border-white/20"
+                                }`}>
+                                <div className={`w-4 h-4 rounded border flex-shrink-0 mt-0.5 flex items-center justify-center transition-all ${
+                                  checked ? "bg-yellow-500 border-yellow-500" : "border-white/30"
+                                }`}>
+                                  {checked && <span className="text-black text-[10px] font-black">✓</span>}
+                                </div>
+                                <div>
+                                  <p className={`text-sm font-semibold ${checked ? "text-yellow-400" : "text-white/70"}`}>{opt.label}</p>
+                                  <p className="text-white/30 text-xs mt-0.5">{opt.desc}</p>
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      <div className="flex gap-3">
+                        <button onClick={saveEdit} disabled={savingEdit}
+                          className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-60 text-black font-bold text-sm px-5 py-2.5 rounded-xl transition-all cursor-pointer">
+                          {savingEdit ? "Saving..." : "Save Changes"}
+                        </button>
+                        <button onClick={() => setEditingStaff(null)}
+                          className="text-white/40 hover:text-white/70 text-sm px-4 py-2.5 rounded-xl border border-white/10 hover:border-white/20 transition-all cursor-pointer">
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           ))}
         </div>
