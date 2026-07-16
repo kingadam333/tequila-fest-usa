@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 const CITY_STYLE: Record<string, Partial<EventData>> = {
   cincinnati: { color: "#F5A623", gradient: "from-yellow-900/60 to-orange-950/80", border: "border-yellow-500/30", tag: "Flagship City",   emoji: "🏙️" },
   cleveland:  { color: "#C8102E", gradient: "from-red-900/60 to-rose-950/80",      border: "border-red-500/30",    tag: "Lake Erie Edition", emoji: "🌊" },
-  columbus:   { color: "#00A878", gradient: "from-emerald-900/60 to-teal-950/80",  border: "border-emerald-500/30", tag: "Capital City",     emoji: "🌿" },
+  columbus:   { color: "#00A878", gradient: "from-emerald-900/60 to-teal-950/80",  border: "border-emerald-500/30", tag: "Capital City",     emoji: "🌿", foodVendor: { name: "2 Specialty Tacos", ticketNote: "From Condado Tacos" } },
   phoenix:    { color: "#7B2FBE", gradient: "from-purple-900/60 to-violet-950/80", border: "border-purple-500/30",  tag: "Desert Edition",   emoji: "🌵" },
 };
 
@@ -91,6 +91,7 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
     border: style.border || "border-white/20",
     tag: style.tag || ev.tag || "",
     emoji: style.emoji || ev.emoji || "🥃",
+    foodVendor: style.foodVendor,
   };
 
   return (
