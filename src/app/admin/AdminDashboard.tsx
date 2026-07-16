@@ -2238,7 +2238,7 @@ function AiAssistantSection({ adminToken }: { adminToken: string }) {
           ) : !messages.length ? (
             <div className="text-center py-10">
               <Sparkles className="mx-auto text-yellow-500/40 mb-3" size={28} />
-              <p className="text-white/40 text-sm">Ask me to look someone up, fix a wrong email on an order, resend tickets, reset a password, or repair a broken login.</p>
+              <p className="text-white/40 text-sm">Ask me to look someone up, fix a wrong email on an order, resend tickets, reset a password, repair a broken login, or manage events — create one, adjust dates, or change ticket capacity.</p>
             </div>
           ) : messages.map((msg, i) => (
             <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
