@@ -1,5 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase";
-import { resend, FROM_EMAIL, passwordResetHtml, qrTicketHtml } from "@/lib/resend";
+import { resend, FROM_EMAIL, FROM_SUPPORT, passwordResetHtml, qrTicketHtml, generatePassword } from "@/lib/resend";
 import { getEvent } from "@/lib/events";
 import { TICKET_LABELS } from "@/lib/stripe";
 import crypto from "crypto";
@@ -111,4 +111,141 @@ export async function lookupAccount(email: string): Promise<{ hasAccount: boolea
     .eq("email", email.trim().toLowerCase())
     .maybeSingle();
   return data ? { hasAccount: true, loyaltyPoints: data.loyalty_points } : { hasAccount: false };
+}
+
+// Free-text search across customer_accounts and ticket_orders by email,
+// name, or order number — the core lookup used by the admin AI Assistant so
+// it can find "the right person" from a vague description before acting.
+export async function searchCustomers(query: string) {
+  const db = supabaseAdmin as any;
+  const q = query.trim();
+
+  const { data: accounts } = await db
+    .from("customer_accounts")
+    .select("id, email, first_name, last_name, phone, loyalty_points, created_at")
+    .or(`email.ilike.%${q}%,first_name.ilike.%${q}%,last_name.ilike.%${q}%`)
+    .limit(10);
+
+  const { data: orders } = await db
+    .from("ticket_orders")
+    .select("order_number, customer_email, customer_name, event_city, ticket_type, quantity, total, status, created_at")
+    .or(`customer_email.ilike.%${q}%,customer_name.ilike.%${q}%,order_number.ilike.%${q}%`)
+    .order("created_at", { ascending: false })
+    .limit(10);
+
+  return { accounts: accounts || [], orders: orders || [] };
+}
+
+// Full detail for one order — used by the AI Assistant before taking any
+// action on it (e.g. reassigning the email), so it works off real ticket
+// data instead of guessing from the search snippet.
+export async function getOrderDetails(orderNumber: string) {
+  const db = supabaseAdmin as any;
+  const { data: order } = await db.from("ticket_orders").select("*").eq("order_number", orderNumber).single();
+  if (!order) return { found: false };
+
+  const { data: tickets } = await db
+    .from("ticket_instances")
+    .select("ticket_number, holder_name, status, checked_in_at")
+    .eq("order_id", order.id)
+    .order("ticket_number", { ascending: true });
+
+  return { found: true, order, tickets: tickets || [] };
+}
+
+// Reassigns an order (and its ticket instances) to the correct email —
+// for when a customer typed the wrong address at checkout. Re-links
+// customer_id to whatever account (if any) owns the new email, since the
+// old customer_id almost certainly belongs to the wrong person.
+export async function reassignOrderEmail(orderNumber: string, newEmail: string, newName?: string) {
+  const db = supabaseAdmin as any;
+  const cleanEmail = newEmail.trim().toLowerCase();
+
+  const { data: order } = await db.from("ticket_orders").select("id").eq("order_number", orderNumber).single();
+  if (!order) return { success: false, reason: "order_not_found" };
+
+  const { data: account } = await db.from("customer_accounts").select("id").eq("email", cleanEmail).maybeSingle();
+  const newCustomerId = account?.id || null;
+
+  const orderUpdates: Record<string, unknown> = { customer_email: cleanEmail, customer_id: newCustomerId };
+  if (newName) orderUpdates.customer_name = newName;
+
+  const { error: orderErr } = await db.from("ticket_orders").update(orderUpdates).eq("id", order.id);
+  if (orderErr) return { success: false, reason: orderErr.message };
+
+  await db.from("ticket_instances").update({ customer_id: newCustomerId }).eq("order_id", order.id);
+
+  return { success: true, linkedToExistingAccount: !!newCustomerId };
+}
+
+// Repairs a customer_accounts row that has no matching Supabase Auth user —
+// shared by the admin "Repair Login" button and the AI Assistant. See
+// api/admin/users/[id]/repair-login/route.ts for the full story on why the
+// Auth user must be created with the SAME id customer_accounts already uses
+// rather than re-keying across non-deferrable foreign keys.
+export async function repairCustomerLogin(email: string): Promise<
+  { repaired: true; tempPassword: string } | { repaired: false; message: string }
+> {
+  const db = supabaseAdmin as any;
+  const cleanEmail = email.trim().toLowerCase();
+
+  const { data: account } = await db
+    .from("customer_accounts")
+    .select("id, email, first_name, last_name")
+    .eq("email", cleanEmail)
+    .maybeSingle();
+  if (!account) return { repaired: false, message: "No account found for that email." };
+
+  const { data: { users }, error: listErr } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
+  if (listErr) return { repaired: false, message: "Failed to look up Auth users." };
+
+  if (users.find(u => u.email?.toLowerCase() === cleanEmail)) {
+    return { repaired: false, message: "This account already has a working login — nothing to repair." };
+  }
+
+  const tempPassword = generatePassword();
+  const { data: authUser, error: authErr } = await supabaseAdmin.auth.admin.createUser({
+    id: account.id,
+    email: account.email,
+    password: tempPassword,
+    email_confirm: true,
+    user_metadata: { first_name: account.first_name, last_name: account.last_name },
+  } as any);
+
+  if (authErr || !authUser?.user) {
+    return { repaired: false, message: authErr?.message || "Failed to create login." };
+  }
+  if (authUser.user.id !== account.id) {
+    await supabaseAdmin.auth.admin.deleteUser(authUser.user.id).catch(() => {});
+    return { repaired: false, message: "Auth API did not honor the requested id — needs manual repair." };
+  }
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.tequilafestusa.com";
+  try {
+    await resend.emails.send({
+      from: FROM_SUPPORT,
+      to: account.email,
+      subject: "Your Tequila Fest USA account is ready",
+      html: `<!DOCTYPE html><html><body style="background:#0d0500;font-family:Arial,sans-serif;color:#fff8f0;padding:40px 20px">
+<div style="max-width:560px;margin:0 auto">
+  <p style="font-size:26px;font-weight:900;letter-spacing:4px;color:#F5A623;margin:0 0 24px">TEQUILA FEST USA</p>
+  <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:28px">
+    <p style="font-size:17px;font-weight:700;margin:0 0 8px">Hi ${account.first_name || "there"},</p>
+    <p style="color:rgba(255,248,240,0.6);font-size:15px;line-height:1.6;margin:0 0 20px">
+      We found and fixed an issue with your account login. Here's a fresh temporary password — please change it after logging in.
+    </p>
+    <table cellpadding="0" cellspacing="0" border="0" style="background:rgba(0,0,0,0.3);border-radius:10px;padding:12px 16px;width:100%">
+      <tr><td><p style="margin:0;color:rgba(255,248,240,0.4);font-size:11px;text-transform:uppercase;letter-spacing:1px">Temporary Password</p><p style="margin:4px 0 0;color:#F5A623;font-family:monospace;font-size:18px;font-weight:900;letter-spacing:2px">${tempPassword}</p></td></tr>
+    </table>
+    <div style="text-align:center;margin-top:20px">
+      <a href="${appUrl}/login" style="display:inline-block;background:#F5A623;color:#000;font-weight:700;font-size:15px;padding:14px 32px;border-radius:10px;text-decoration:none">LOG IN NOW</a>
+    </div>
+  </div>
+</div></body></html>`,
+    });
+  } catch (err) {
+    console.error("repairCustomerLogin welcome email failed:", err);
+  }
+
+  return { repaired: true, tempPassword };
 }

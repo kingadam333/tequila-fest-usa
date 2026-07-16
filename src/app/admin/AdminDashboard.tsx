@@ -9,7 +9,7 @@ import {
   MessageSquare, FileText, LogOut, Menu, X, TrendingUp, DollarSign,
   RefreshCw, Download, Send, CheckCircle, Search, Plus,
   Trash2, Edit2, Eye, AlertCircle, BarChart2, Mail, Utensils, Share2, Copy,
-  Star, Gift, UserCheck, ChevronRight, Megaphone, ShieldCheck, Wrench,
+  Star, Gift, UserCheck, ChevronRight, Megaphone, ShieldCheck, Wrench, Sparkles, Bot,
 } from "lucide-react";
 import SocialShareSection from "./SocialShareSection";
 import SecuritySection from "./SecuritySection";
@@ -2113,6 +2113,176 @@ const INBOXES = [
   { id: "Sponsors",   label: "Sponsors",   email: "sponsors@mail.tequilafestusa.com",   color: "#C0C0C0", icon: "⭐" },
   { id: "Affiliates", label: "Affiliates", email: "affiliates@mail.tequilafestusa.com", color: "#C8102E", icon: "🤝" },
 ];
+
+interface AiConversation { id: string; title: string; created_at: string; updated_at: string; }
+interface AiMessage { id?: string; role: "user" | "assistant"; content: string; }
+
+function AiAssistantSection({ adminToken }: { adminToken: string }) {
+  const [conversations, setConversations] = useState<AiConversation[]>([]);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<AiMessage[]>([]);
+  const [input, setInput] = useState("");
+  const [loadingMessages, setLoadingMessages] = useState(false);
+  const [sending, setSending] = useState(false);
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  const headers = { "x-admin-token": adminToken };
+
+  const loadConversations = useCallback(async () => {
+    const res = await fetch("/api/admin/ai/conversations", { headers: headers as any });
+    if (res.ok) {
+      const data = await res.json();
+      setConversations(data.conversations || []);
+    }
+  }, [adminToken]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => { loadConversations(); }, [loadConversations]);
+
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+
+  const openConversation = async (id: string) => {
+    setActiveId(id);
+    setLoadingMessages(true);
+    const res = await fetch(`/api/admin/ai/conversations/${id}`, { headers: headers as any });
+    if (res.ok) {
+      const data = await res.json();
+      setMessages((data.messages || []).map((m: any) => ({ id: m.id, role: m.role, content: m.content })));
+    }
+    setLoadingMessages(false);
+  };
+
+  const newConversation = () => {
+    setActiveId(null);
+    setMessages([]);
+    setInput("");
+  };
+
+  const deleteConversation = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    await fetch(`/api/admin/ai/conversations/${id}`, { method: "DELETE", headers: headers as any });
+    if (activeId === id) newConversation();
+    loadConversations();
+  };
+
+  const send = async () => {
+    const text = input.trim();
+    if (!text || sending) return;
+    setInput("");
+    setMessages(prev => [...prev, { role: "user", content: text }]);
+    setSending(true);
+
+    try {
+      const res = await fetch("/api/admin/ai/chat", {
+        method: "POST",
+        headers: { ...headers, "Content-Type": "application/json" } as any,
+        body: JSON.stringify({ conversationId: activeId, message: text }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        if (!activeId) setActiveId(data.conversationId);
+        setMessages(prev => [...prev, { role: "assistant", content: data.reply }]);
+        loadConversations();
+      } else {
+        setMessages(prev => [...prev, { role: "assistant", content: `Error: ${data.error || "Something went wrong."}` }]);
+      }
+    } catch {
+      setMessages(prev => [...prev, { role: "assistant", content: "Network error — please try again." }]);
+    }
+    setSending(false);
+  };
+
+  return (
+    <div className="flex gap-4 h-[calc(100vh-140px)]">
+      {/* Conversations list */}
+      <div className="w-64 flex-shrink-0 bg-white/[0.03] border border-white/10 rounded-2xl flex flex-col overflow-hidden">
+        <div className="p-3 border-b border-white/10">
+          <button onClick={newConversation}
+            className="w-full flex items-center justify-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-black font-bold text-sm px-4 py-2.5 rounded-xl transition-all cursor-pointer">
+            <Plus size={14} /> New Chat
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-2 space-y-1">
+          {conversations.map(c => (
+            <div key={c.id} onClick={() => openConversation(c.id)}
+              className={`group flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl cursor-pointer transition-all ${
+                activeId === c.id ? "bg-yellow-500/15 border border-yellow-500/30" : "hover:bg-white/5 border border-transparent"
+              }`}>
+              <p className={`text-sm truncate ${activeId === c.id ? "text-yellow-400 font-semibold" : "text-white/70"}`}>{c.title}</p>
+              <button onClick={(e) => deleteConversation(c.id, e)}
+                className="opacity-0 group-hover:opacity-100 text-white/30 hover:text-red-400 transition-all cursor-pointer flex-shrink-0">
+                <Trash2 size={13} />
+              </button>
+            </div>
+          ))}
+          {!conversations.length && (
+            <p className="text-white/25 text-xs text-center py-6">No conversations yet</p>
+          )}
+        </div>
+      </div>
+
+      {/* Chat panel */}
+      <div className="flex-1 bg-white/[0.03] border border-white/10 rounded-2xl flex flex-col overflow-hidden">
+        <div className="flex items-center gap-2.5 px-5 py-4 border-b border-white/10 flex-shrink-0">
+          <div className="w-8 h-8 rounded-full bg-yellow-500/20 border border-yellow-500/30 flex items-center justify-center">
+            <Bot size={15} className="text-yellow-400" />
+          </div>
+          <div>
+            <p className="text-white font-semibold text-sm">AI Assistant</p>
+            <p className="text-white/30 text-xs">Orders, tickets, users — search, fix, resend, reset</p>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
+          {loadingMessages ? (
+            <p className="text-white/30 text-sm text-center py-10">Loading…</p>
+          ) : !messages.length ? (
+            <div className="text-center py-10">
+              <Sparkles className="mx-auto text-yellow-500/40 mb-3" size={28} />
+              <p className="text-white/40 text-sm">Ask me to look someone up, fix a wrong email on an order, resend tickets, reset a password, or repair a broken login.</p>
+            </div>
+          ) : messages.map((msg, i) => (
+            <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+              <div className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap ${
+                msg.role === "user"
+                  ? "bg-yellow-500 text-black font-medium rounded-br-sm"
+                  : "bg-white/[0.06] border border-white/10 text-white/85 rounded-bl-sm"
+              }`}>
+                {msg.content}
+              </div>
+            </div>
+          ))}
+          {sending && (
+            <div className="flex justify-start">
+              <div className="bg-white/[0.06] border border-white/10 rounded-2xl rounded-bl-sm px-4 py-3">
+                <div className="flex gap-1">
+                  {[0, 1, 2].map(i => (
+                    <div key={i} className="w-1.5 h-1.5 rounded-full bg-white/40 animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+          <div ref={bottomRef} />
+        </div>
+
+        <div className="flex-shrink-0 border-t border-white/10 px-4 py-3 flex gap-2">
+          <input
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && !e.shiftKey && send()}
+            placeholder="e.g. Look up jane@email.com"
+            disabled={sending}
+            className="flex-1 bg-white/[0.06] border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-3 text-white placeholder-white/25 outline-none text-sm"
+          />
+          <button onClick={send} disabled={sending || !input.trim()}
+            className="w-11 h-11 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-40 text-black rounded-xl flex items-center justify-center transition-all cursor-pointer flex-shrink-0">
+            <Send size={16} />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function ContactSection({ adminToken }: { adminToken: string }) {
   const [activeInbox, setActiveInbox] = useState("Support");
@@ -5127,6 +5297,7 @@ const NAV_ITEMS = [
   { id: "coupons",    label: "Coupons",     icon: <Tag size={17} /> },
   { id: "checkin",    label: "Check-In",    icon: <QrCode size={17} /> },
   { id: "contacts",   label: "Inbox",       icon: <MessageSquare size={17} /> },
+  { id: "ai-assistant", label: "AI Assistant", icon: <Sparkles size={17} /> },
   { id: "social",     label: "Social Claims", icon: <Share2 size={17} /> },
   { id: "social-share", label: "Social Share", icon: <Megaphone size={17} /> },
   { id: "staff",      label: "Staff",       icon: <Users size={17} /> },
@@ -5235,6 +5406,7 @@ export default function AdminDashboard() {
     coupons:   <CouponsSection />,
     checkin:   <CheckInSection adminToken={adminToken} />,
     contacts:  <ContactSection adminToken={adminToken} />,
+    "ai-assistant": <AiAssistantSection adminToken={adminToken} />,
     social:    <SocialClaimsSection adminToken={adminToken} />,
     "social-share": <SocialShareSection adminToken={adminToken} />,
     staff:     <StaffSection adminToken={adminToken} />,
