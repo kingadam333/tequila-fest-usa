@@ -2351,18 +2351,29 @@ function ContactSection({ adminToken }: { adminToken: string }) {
     setForwarding(false);
   };
 
-  useEffect(() => {
-    const load = async () => {
-      const res = await fetch("/api/admin/contact", {
-        headers: { "x-admin-token": adminToken },
-      });
-      if (res.ok) {
-        const json = await res.json();
-        setSubmissions(json.submissions || []);
-      }
-    };
-    if (adminToken) load();
+  const loadSubmissions = useCallback(async (): Promise<ContactSubmission[]> => {
+    const res = await fetch("/api/admin/contact", { headers: { "x-admin-token": adminToken } });
+    if (!res.ok) return [];
+    const json = await res.json();
+    const fresh = json.submissions || [];
+    setSubmissions(fresh);
+    return fresh;
   }, [adminToken]);
+
+  useEffect(() => { if (adminToken) loadSubmissions(); }, [adminToken, loadSubmissions]);
+
+  // Opening a thread refetches from the server rather than trusting the
+  // list snapshot from whenever the Inbox tab first loaded — otherwise any
+  // replies/emails that arrived since then (customer replies, AI auto-replies)
+  // silently wouldn't show until a full page reload.
+  const openSubmission = async (s: ContactSubmission) => {
+    setSelected(s);
+    setReply("");
+    setSent(false);
+    const fresh = await loadSubmissions();
+    const updated = fresh.find(f => f.id === s.id);
+    if (updated) setSelected(updated);
+  };
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this message?")) return;
@@ -2534,7 +2545,7 @@ function ContactSection({ adminToken }: { adminToken: string }) {
               <p className="text-sm">No {activeInbox.toLowerCase()} messages yet.</p>
             </div>
           ) : filtered.map(s => (
-            <button key={s.id} onClick={() => { setSelected(s); setReply(""); setSent(false); }}
+            <button key={s.id} onClick={() => openSubmission(s)}
               className={`w-full text-left bg-white/[0.03] border rounded-2xl px-4 py-3.5 transition-all cursor-pointer ${selected?.id === s.id ? "border-yellow-500/40 bg-yellow-500/5" : s.status === "needs-review" ? "border-orange-500/30 bg-orange-500/5 hover:border-orange-500/50" : "border-white/10 hover:border-white/20"}`}>
               <div className="flex items-center justify-between mb-1">
                 <p className="text-white font-semibold text-sm">{s.name}</p>
