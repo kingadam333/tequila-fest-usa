@@ -11,6 +11,18 @@ export const FROM_VENDORS    = "Tequila Fest USA Vendors <vendors@mail.tequilafe
 export const FROM_BRANDS     = "Adam Bossin <brands@mail.tequilafestusa.com>";
 export const FROM_PARTNERS   = FROM_SPONSORS; // alias kept for backward compatibility
 
+// Shared "don't reply, use the contact form" block for ticket/account emails.
+// Replies to help@mail.tequilafestusa.com go to an inbox that isn't
+// monitored the same way the contact form's AI Inbox pipeline is, so we
+// steer people to the form instead.
+function supportButtonBlock() {
+  return `
+        <tr><td style="text-align:center">
+          <a href="https://www.tequilafestusa.com/contact" style="display:inline-block;background:rgba(245,166,35,0.1);border:1px solid rgba(245,166,35,0.35);color:#F5A623;font-weight:700;font-size:13px;letter-spacing:1px;text-transform:uppercase;text-decoration:none;padding:12px 30px;border-radius:50px">Contact Support</a>
+          <p style="color:rgba(255,248,240,0.25);font-size:11px;margin:12px 0 0">Please don't reply to this email — use the button above so our support team can help you faster.</p>
+        </td></tr>`;
+}
+
 export const INBOX_ROUTING: Record<string, { from: string; to: string; label: string }> = {
   // Support inbox — help@
   "General Inquiry":        { from: FROM_SUPPORT,    to: "help@mail.tequilafestusa.com",       label: "Support" },
@@ -127,6 +139,9 @@ export function ticketConfirmationHtml({
           <a href="https://www.tequilafestusa.com/account" style="display:inline-block;background:#F5A623;color:#0d0500;font-weight:900;font-size:16px;letter-spacing:2px;text-transform:uppercase;text-decoration:none;padding:16px 40px;border-radius:50px">VIEW MY TICKETS</a>
         </td></tr>
 
+        <tr><td style="height:24px"></td></tr>
+        ${supportButtonBlock()}
+
         <tr><td style="height:40px"></td></tr>
 
         <!-- Footer -->
@@ -213,6 +228,9 @@ export function welcomeAccountHtml({
           </a>
           <p style="color:rgba(255,248,240,0.25);font-size:12px;margin-top:16px">Or go to: ${accountUrl}</p>
         </td></tr>
+
+        <tr><td style="height:24px"></td></tr>
+        ${supportButtonBlock()}
 
         <tr><td style="height:40px"></td></tr>
         <tr><td style="text-align:center;border-top:1px solid rgba(255,255,255,0.08);padding-top:24px">
@@ -362,9 +380,12 @@ export function qrTicketHtml({
           <a href="${appUrl}/account" style="display:inline-block;background:#F5A623;color:#0d0500;font-weight:900;font-size:14px;letter-spacing:2px;text-transform:uppercase;text-decoration:none;padding:14px 36px;border-radius:50px">VIEW MY TICKETS</a>
         </td></tr>
 
+        <tr><td style="height:24px"></td></tr>
+        ${supportButtonBlock()}
+
         <tr><td style="height:32px"></td></tr>
         <tr><td style="text-align:center;border-top:1px solid rgba(255,255,255,0.08);padding-top:20px">
-          <p style="color:rgba(255,248,240,0.2);font-size:11px;margin:0">Questions? Email help@tequilafestusa.com · TequilaFestUSA.com</p>
+          <p style="color:rgba(255,248,240,0.2);font-size:11px;margin:0">TequilaFestUSA.com</p>
         </td></tr>
 
       </table>
@@ -595,6 +616,10 @@ export function claimAccountHtml({ firstName, signupUrl, points }: { firstName: 
           </table>
         </td></tr>
 
+        <tr><td style="height:8px"></td></tr>
+        ${supportButtonBlock()}
+
+        <tr><td style="height:16px"></td></tr>
         <tr><td style="text-align:center;border-top:1px solid rgba(255,255,255,0.08);padding-top:24px">
           <p style="color:rgba(255,248,240,0.25);font-size:12px;margin:0">Tequila Fest USA · tequilafestusa.com</p>
           <p style="color:rgba(255,248,240,0.15);font-size:11px;margin:8px 0 0">Must be 21+ · Tickets are non-transferable</p>
