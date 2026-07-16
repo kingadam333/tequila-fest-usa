@@ -122,11 +122,26 @@ export default function CheckinPortal() {
   // ── Auto-login from localStorage ─────────────────────────────────────────
   useEffect(() => {
     const stored = localStorage.getItem("staff_token");
-    if (stored && !token) setToken(stored);
+    if (!stored) return;
+    if (!token) setToken(stored);
+
+    // Show cached permissions immediately, but always refresh from the DB —
+    // an admin may have changed this staff member's permissions since their
+    // last login, and localStorage would otherwise never learn about it.
     const storedPerms = localStorage.getItem("staff_permissions");
     if (storedPerms) {
       try { setStaffPermissions(JSON.parse(storedPerms)); } catch { /* ignore malformed value */ }
     }
+
+    fetch("/api/staff/me", { headers: { Authorization: stored } })
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data?.staff?.permissions) {
+          setStaffPermissions(data.staff.permissions);
+          localStorage.setItem("staff_permissions", JSON.stringify(data.staff.permissions));
+        }
+      })
+      .catch(() => { /* stay on cached permissions if the refresh fails */ });
   }, []);
 
   // ── Jump to /admin using this staff member's own login (only shown if
