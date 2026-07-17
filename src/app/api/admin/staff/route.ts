@@ -95,7 +95,7 @@ export async function POST(req: NextRequest) {
         </td></tr>
         <tr><td style="height:24px"></td></tr>
         <tr><td style="text-align:center;border-top:1px solid rgba(255,255,255,0.08);padding-top:20px">
-          <p style="color:rgba(255,248,240,0.2);font-size:11px;margin:0">Tequila Fest USA · help@tequilafestusa.com</p>
+          <p style="color:rgba(255,248,240,0.2);font-size:11px;margin:0">Tequila Fest USA · help@mail.tequilafestusa.com</p>
         </td></tr>
       </table>
     </td></tr>

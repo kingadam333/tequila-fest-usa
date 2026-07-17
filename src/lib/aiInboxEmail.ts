@@ -19,7 +19,7 @@ export function buildReplyHtml(customerName: string, replyText: string): string 
         </td></tr>
         <tr><td style="height:24px"></td></tr>
         <tr><td style="text-align:center;border-top:1px solid rgba(255,255,255,0.08);padding-top:20px">
-          <p style="color:rgba(255,248,240,0.2);font-size:11px;margin:0">Tequila Fest USA · help@tequilafestusa.com · tequilafestusa.com</p>
+          <p style="color:rgba(255,248,240,0.2);font-size:11px;margin:0">Tequila Fest USA · help@mail.tequilafestusa.com · tequilafestusa.com</p>
           <p style="color:rgba(255,248,240,0.15);font-size:10px;margin:6px 0 0">Need further help? Reply to this email.</p>
         </td></tr>
       </table>

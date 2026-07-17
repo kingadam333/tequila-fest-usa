@@ -149,7 +149,7 @@ const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
 
 export async function POST(req: NextRequest) {
   if (!process.env.OPENAI_API_KEY) {
-    return NextResponse.json({ reply: "AI support is not currently available. Please email help@tequilafestusa.com." });
+    return NextResponse.json({ reply: "AI support is not currently available. Please email help@mail.tequilafestusa.com." });
   }
 
   const { messages } = await req.json();
@@ -236,6 +236,6 @@ Rules:
     return NextResponse.json({ reply: choice.message.content || "Something went wrong." });
   } catch (err: any) {
     console.error("Chat error:", err);
-    return NextResponse.json({ reply: "I'm having trouble right now. Please email help@tequilafestusa.com for assistance." });
+    return NextResponse.json({ reply: "I'm having trouble right now. Please email help@mail.tequilafestusa.com for assistance." });
   }
 }

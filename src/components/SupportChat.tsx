@@ -47,7 +47,7 @@ export default function SupportChat() {
       const data = await res.json();
       setMessages(prev => [...prev, { role: "assistant", content: data.reply || "Something went wrong." }]);
     } catch {
-      setMessages(prev => [...prev, { role: "assistant", content: "I'm having trouble connecting. Please try again or email help@tequilafestusa.com." }]);
+      setMessages(prev => [...prev, { role: "assistant", content: "I'm having trouble connecting. Please try again or email help@mail.tequilafestusa.com." }]);
     } finally {
       setLoading(false);
     }

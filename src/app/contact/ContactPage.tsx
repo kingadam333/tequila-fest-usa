@@ -24,7 +24,7 @@ const CONTACT_CARDS = [
   {
     icon: <Mail size={20} />,
     label: "Email",
-    value: "help@tequilafestusa.com",
+    value: "help@mail.tequilafestusa.com",
     href: "mailto:help@mail.tequilafestusa.com",
     color: "#F5A623",
   },
