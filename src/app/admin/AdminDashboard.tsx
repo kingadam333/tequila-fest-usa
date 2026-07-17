@@ -4523,6 +4523,18 @@ function VendorsSection({ adminToken }: { adminToken: string }) {
 
   const unpaidApprovedCount = apps.filter(a => a.status === "approved" && !a.paid).length;
 
+  // Paid vendors grouped by city — a vendor can register for multiple
+  // cities (apps.cities is an array), so they're counted once per city.
+  const paidByCity = apps
+    .filter(a => a.paid)
+    .reduce((acc: Record<string, { business_name: string; name: string }[]>, a) => {
+      for (const city of a.cities || []) {
+        (acc[city] ||= []).push({ business_name: a.business_name, name: a.name });
+      }
+      return acc;
+    }, {});
+  const citiesSorted = Object.keys(paidByCity).sort((a, b) => paidByCity[b].length - paidByCity[a].length);
+
   const resendAllUnpaid = async () => {
     if (!confirm(`Resend the payment link email to all ${unpaidApprovedCount} approved, unpaid vendors?`)) return;
     setResendingAll(true);
@@ -4564,6 +4576,30 @@ function VendorsSection({ adminToken }: { adminToken: string }) {
           </div>
         )}
       </div>
+
+      {/* Paid vendors by city */}
+      {!loading && citiesSorted.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {citiesSorted.map(city => (
+            <div key={city} className="bg-white/[0.03] border border-white/10 rounded-2xl p-5">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-white font-bold text-sm uppercase tracking-wider">{city}</h3>
+                <span className="text-xs font-bold px-2.5 py-0.5 rounded-full border bg-green-500/15 text-green-400 border-green-500/30">
+                  {paidByCity[city].length} Paid
+                </span>
+              </div>
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {paidByCity[city].map((v, i) => (
+                  <div key={i} className="border-b border-white/5 pb-1.5 last:border-0 last:pb-0">
+                    <p className="text-white/80 text-sm font-medium truncate">{v.business_name}</p>
+                    <p className="text-white/35 text-xs truncate">{v.name}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Filter tabs */}
       <div className="flex flex-wrap gap-2">
