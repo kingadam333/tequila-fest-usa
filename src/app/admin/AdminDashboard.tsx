@@ -5292,6 +5292,35 @@ function ToolsSection({ adminToken }: { adminToken: string }) {
   const qrUrl = (slug: string, size = 300) =>
     `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&margin=10&data=${encodeURIComponent(`${SITE_URL}/go/${slug}`)}`;
 
+  const [repairQueue, setRepairQueue] = useState<{ pending: number; repaired: number; failed: number } | null>(null);
+  const [runningBatch, setRunningBatch] = useState(false);
+  const [batchResult, setBatchResult] = useState("");
+
+  const loadRepairQueue = useCallback(async () => {
+    const res = await fetch("/api/admin/repair-logins/status", { headers: { "x-admin-token": adminToken } });
+    if (res.ok) setRepairQueue(await res.json());
+  }, [adminToken]);
+
+  useEffect(() => { if (adminToken) loadRepairQueue(); }, [adminToken, loadRepairQueue]);
+
+  const runRepairBatch = async () => {
+    setRunningBatch(true);
+    setBatchResult("");
+    try {
+      const res = await fetch("/api/cron/repair-logins", { headers: { "x-admin-token": adminToken } });
+      const data = await res.json();
+      if (res.ok) {
+        setBatchResult(data.done ? "All done — nothing left to repair" : `Repaired ${data.repaired}, ${data.failed} failed this batch`);
+        loadRepairQueue();
+      } else {
+        setBatchResult(`Error: ${data.error || "failed"}`);
+      }
+    } catch {
+      setBatchResult("Network error");
+    }
+    setRunningBatch(false);
+  };
+
   const [blasting, setBlasting] = useState(false);
   const [blastResult, setBlastResult] = useState<{ sent: number; failed: number; total: number } | null>(null);
   const [blastError, setBlastError] = useState("");
@@ -5431,6 +5460,33 @@ function ToolsSection({ adminToken }: { adminToken: string }) {
           </div>
         )}
       </div>
+
+      {/* Login Repair Backfill */}
+      {repairQueue && (repairQueue.pending > 0 || repairQueue.repaired > 0 || repairQueue.failed > 0) && (
+        <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-6">
+          <div className="flex items-start justify-between mb-4 flex-wrap gap-3">
+            <div>
+              <h3 className="text-white font-bold text-lg flex items-center gap-2">
+                <Wrench size={18} className="text-yellow-400" /> Login Repair Backfill
+              </h3>
+              <p className="text-white/40 text-sm mt-1">
+                One-time fix for accounts stuck without a working login (see the pre-checkout bug fix). A cron job runs a batch of 20 every 2 hours automatically — you don't need to do anything, but you can run one now.
+              </p>
+            </div>
+            <button onClick={runRepairBatch} disabled={runningBatch || repairQueue.pending === 0}
+              className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-50 text-black font-bold px-4 py-2.5 rounded-xl text-sm transition-all cursor-pointer flex-shrink-0">
+              <RefreshCw size={15} className={runningBatch ? "animate-spin" : ""} />
+              {runningBatch ? "Running…" : "Run Batch Now"}
+            </button>
+          </div>
+          <div className="flex gap-3 text-sm">
+            <span className="text-white/50">Pending: <span className="text-white font-semibold">{repairQueue.pending}</span></span>
+            <span className="text-white/50">Repaired: <span className="text-green-400 font-semibold">{repairQueue.repaired}</span></span>
+            <span className="text-white/50">Failed: <span className="text-red-400 font-semibold">{repairQueue.failed}</span></span>
+          </div>
+          {batchResult && <p className="text-white/60 text-xs mt-2">{batchResult}</p>}
+        </div>
+      )}
 
       {/* Claim Account Email Blast */}
       <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-6">
