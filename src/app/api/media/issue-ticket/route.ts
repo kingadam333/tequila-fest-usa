@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { verifyMediaAccess } from "@/lib/mediaAuth";
-import { resend, FROM_EMAIL, generatePassword, qrTicketHtml } from "@/lib/resend";
+import { resend, FROM_EMAIL, qrTicketHtml } from "@/lib/resend";
+import { ensureCustomerLogin } from "@/lib/accountActions";
 import crypto from "crypto";
 
 // Media partners (radio, news, etc.) issue free contest-winner tickets
@@ -88,39 +89,8 @@ export async function POST(req: NextRequest) {
   // 3. Auto-create an account for the winner, same as a real purchase
   let newAccountPassword: string | null = null;
   try {
-    const { data: existingAccount } = await db
-      .from("customer_accounts")
-      .select("id")
-      .eq("email", customerEmail)
-      .maybeSingle();
-
-    if (!existingAccount) {
-      const { createClient } = await import("@supabase/supabase-js");
-      const adminAuth = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!,
-        { auth: { autoRefreshToken: false, persistSession: false } }
-      );
-      const password = generatePassword();
-      const nameParts = customerName.split(" ");
-      const { data: authUser, error: authErr } = await adminAuth.auth.admin.createUser({
-        email: customerEmail,
-        password,
-        email_confirm: true,
-        user_metadata: { first_name: nameParts[0] || firstName, last_name: nameParts.slice(1).join(" ") || "" },
-      });
-      if (!authErr && authUser?.user) {
-        await db.from("customer_accounts").upsert({
-          id: authUser.user.id,
-          email: customerEmail,
-          first_name: nameParts[0] || firstName,
-          last_name: nameParts.slice(1).join(" ") || null,
-        }, { onConflict: "email" });
-        newAccountPassword = password;
-      } else if (authErr) {
-        console.error("Media comp auth createUser error:", authErr);
-      }
-    }
+    const nameParts = customerName.split(" ");
+    newAccountPassword = await ensureCustomerLogin(customerEmail, nameParts[0] || firstName, nameParts.slice(1).join(" "), "");
   } catch (err) {
     console.error("Media comp account creation error:", err);
   }

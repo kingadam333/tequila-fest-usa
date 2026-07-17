@@ -12,15 +12,20 @@ export async function POST(req: NextRequest) {
   const captchaOk = await verifyTurnstile(captchaToken || "", ip);
   if (!captchaOk) return NextResponse.json({ error: "CAPTCHA failed" }, { status: 400 });
 
-  // Check if this email has a registered account
+  // Check if this email has a real, working login — NOT just a
+  // customer_accounts row. /api/pre-checkout upserts a bare "lead" row (no
+  // Auth user) the moment someone starts checkout, before they ever set a
+  // password. Checking customer_accounts alone used to send these leads a
+  // reset link that could never actually work (no Auth user to reset),
+  // which is exactly what several customers hit — "it sent me the email but
+  // then says no account exists." They need to go set an initial password
+  // via signup (which now correctly claims the lead row) instead.
   const db = supabaseAdmin as any;
-  const { data: account } = await db
-    .from("customer_accounts")
-    .select("id")
-    .eq("email", email.toLowerCase())
-    .single();
+  const cleanEmail = email.toLowerCase();
+  const { data: { users }, error: listErr } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
+  const hasRealLogin = !listErr && users.some(u => u.email?.toLowerCase() === cleanEmail);
 
-  if (!account) {
+  if (!hasRealLogin) {
     // Check if they have a ticket order — if so, direct them to sign up
     const { data: order } = await db
       .from("ticket_orders")
@@ -32,7 +37,7 @@ export async function POST(req: NextRequest) {
     if (order) {
       return NextResponse.json({ noAccount: true, hasTickets: true });
     }
-    // No account and no tickets — still return generic success to avoid email enumeration
+    // No login and no tickets — still return generic success to avoid email enumeration
     return NextResponse.json({ success: true });
   }
 

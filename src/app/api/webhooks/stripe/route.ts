@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
-import { resend, FROM_EMAIL, generatePassword, qrTicketHtml } from "@/lib/resend";
+import { resend, FROM_EMAIL, qrTicketHtml } from "@/lib/resend";
 import { getEvent } from "@/lib/events";
 import { syncTicketBuyerToMarketingLists } from "@/lib/marketingSync";
+import { ensureCustomerLogin } from "@/lib/accountActions";
 import { TICKET_LABELS } from "@/lib/stripe";
 import type Stripe from "stripe";
 import crypto from "crypto";
@@ -172,51 +173,11 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
         let newAccountPassword: string | null = null;
         if (customerEmail) {
           try {
-            const { createClient } = await import("@supabase/supabase-js");
-            const adminAuth = createClient(
-              process.env.NEXT_PUBLIC_SUPABASE_URL!,
-              process.env.SUPABASE_SERVICE_ROLE_KEY!,
-              { auth: { autoRefreshToken: false, persistSession: false } }
+            const nameParts = customerName.split(" ");
+            newAccountPassword = await ensureCustomerLogin(
+              customerEmail, nameParts[0] || firstName, nameParts.slice(1).join(" "), customerPhone || ""
             );
-
-            // Check if auth user already exists by email lookup (not listUsers which is paginated/slow)
-            const { data: existingAccount } = await db
-              .from("customer_accounts")
-              .select("id")
-              .eq("email", customerEmail)
-              .maybeSingle();
-
-            if (!existingAccount) {
-              const password = generatePassword();
-              newAccountPassword = password;
-              const nameParts = customerName.split(" ");
-              const { data: authUser, error: authErr } = await adminAuth.auth.admin.createUser({
-                email: customerEmail,
-                password,
-                email_confirm: true,
-                user_metadata: {
-                  first_name: nameParts[0] || firstName,
-                  last_name: nameParts.slice(1).join(" ") || "",
-                  phone: customerPhone || "",
-                },
-              });
-
-              if (!authErr && authUser?.user) {
-                await db.from("customer_accounts").upsert({
-                  id: authUser.user.id,
-                  email: customerEmail,
-                  first_name: nameParts[0] || firstName,
-                  last_name: nameParts.slice(1).join(" ") || null,
-                  phone: customerPhone || null,
-                }, { onConflict: "email" });
-                console.log(`🔑 Account created for ${customerEmail}`);
-              } else if (authErr) {
-                console.error("Auth createUser error:", authErr);
-                newAccountPassword = null;
-              }
-            } else {
-              console.log(`👤 Account already exists for ${customerEmail}`);
-            }
+            if (newAccountPassword) console.log(`🔑 Account login created for ${customerEmail}`);
           } catch (authErr) {
             console.error("Auth account creation error:", authErr);
           }
@@ -384,45 +345,10 @@ async function handleVendorPaid(session: Stripe.Checkout.Session) {
     let newAccountPassword: string | null = null;
     if (app.email) {
       try {
-        const { createClient } = await import("@supabase/supabase-js");
-        const adminAuth = createClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL!,
-          process.env.SUPABASE_SERVICE_ROLE_KEY!,
-          { auth: { autoRefreshToken: false, persistSession: false } }
+        const nameParts = (app.name || "").split(" ");
+        newAccountPassword = await ensureCustomerLogin(
+          app.email, nameParts[0] || firstName, nameParts.slice(1).join(" "), app.phone || ""
         );
-        const { data: existingAccount } = await db
-          .from("customer_accounts")
-          .select("id")
-          .eq("email", app.email)
-          .maybeSingle();
-
-        if (!existingAccount) {
-          const password = generatePassword();
-          newAccountPassword = password;
-          const nameParts = (app.name || "").split(" ");
-          const { data: authUser, error: authErr } = await adminAuth.auth.admin.createUser({
-            email: app.email,
-            password,
-            email_confirm: true,
-            user_metadata: {
-              first_name: nameParts[0] || firstName,
-              last_name: nameParts.slice(1).join(" ") || "",
-              phone: app.phone || "",
-            },
-          });
-          if (!authErr && authUser?.user) {
-            await db.from("customer_accounts").upsert({
-              id: authUser.user.id,
-              email: app.email,
-              first_name: nameParts[0] || firstName,
-              last_name: nameParts.slice(1).join(" ") || null,
-              phone: app.phone || null,
-            }, { onConflict: "email" });
-          } else if (authErr) {
-            console.error("Vendor auth createUser error:", authErr);
-            newAccountPassword = null;
-          }
-        }
       } catch (authErr) {
         console.error("Vendor auth account creation error:", authErr);
       }

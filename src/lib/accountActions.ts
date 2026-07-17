@@ -178,6 +178,70 @@ export async function reassignOrderEmail(orderNumber: string, newEmail: string, 
   return { success: true, linkedToExistingAccount: !!newCustomerId };
 }
 
+// Shared by the ticket-purchase and vendor-payment Stripe webhooks. Ensures
+// the given email has a working Supabase Auth login, creating one if
+// needed, and returns the new temp password (to show the customer) or null
+// if a login already existed.
+//
+// This exists because /api/pre-checkout upserts a bare customer_accounts
+// "lead" row (no Auth user) the moment someone starts checkout, BEFORE
+// payment completes. The webhooks used to only check "does a
+// customer_accounts row exist?" before deciding whether to create the Auth
+// login — but by the time the webhook runs, that lead row already exists,
+// so the check always short-circuited and no first-time buyer ever got a
+// real login. The check now looks for an actual Auth user, and links up to
+// the pre-existing lead row's id (rather than leaving the two orphaned from
+// each other) using the same id-preserving createUser trick as
+// repairCustomerLogin below.
+export async function ensureCustomerLogin(
+  email: string, firstName: string, lastName: string, phone: string
+): Promise<string | null> {
+  const cleanEmail = email.trim().toLowerCase();
+  const db = supabaseAdmin as any;
+
+  const { data: { users }, error: listErr } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
+  if (listErr) {
+    console.error("ensureCustomerLogin: failed to list Auth users:", listErr);
+    return null;
+  }
+  if (users.find(u => u.email?.toLowerCase() === cleanEmail)) {
+    return null; // already has a working login
+  }
+
+  const { data: existingAccount } = await db.from("customer_accounts").select("id").eq("email", cleanEmail).maybeSingle();
+
+  const password = generatePassword();
+  const { data: authUser, error: authErr } = await supabaseAdmin.auth.admin.createUser({
+    ...(existingAccount ? { id: existingAccount.id } : {}),
+    email: cleanEmail,
+    password,
+    email_confirm: true,
+    user_metadata: { first_name: firstName, last_name: lastName || "", phone: phone || "" },
+  } as any);
+
+  if (authErr || !authUser?.user) {
+    console.error("ensureCustomerLogin: createUser failed:", authErr);
+    return null;
+  }
+  if (existingAccount && authUser.user.id !== existingAccount.id) {
+    // Auth API didn't honor the requested id — leave the lead row as-is
+    // rather than silently creating a second, disconnected account.
+    console.error(`ensureCustomerLogin: id mismatch for ${cleanEmail} — Auth API returned ${authUser.user.id}, expected ${existingAccount.id}`);
+    await supabaseAdmin.auth.admin.deleteUser(authUser.user.id).catch(() => {});
+    return null;
+  }
+
+  await db.from("customer_accounts").upsert({
+    id: authUser.user.id,
+    email: cleanEmail,
+    first_name: firstName,
+    last_name: lastName || null,
+    phone: phone || null,
+  }, { onConflict: "id" });
+
+  return password;
+}
+
 // Repairs a customer_accounts row that has no matching Supabase Auth user —
 // shared by the admin "Repair Login" button and the AI Assistant. See
 // api/admin/users/[id]/repair-login/route.ts for the full story on why the
