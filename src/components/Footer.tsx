@@ -48,7 +48,7 @@ export default function Footer() {
               {[
                 { label: "Get Tickets", href: "/#events" },
                 { label: "Earn Points", href: "/earn-points" },
-                { label: "Contact", href: "mailto:info@tequilafestusa.com" },
+                { label: "Contact", href: "/contact" },
                 { label: "Become an Affiliate", href: "/affiliates" },
                 { label: "Sponsor Opportunities", href: "/contact" },
               ].map((link) => (

@@ -125,7 +125,7 @@ export async function sendVendorApprovalEmail(db: any, app: any) {
   </div>
 
   <p style="color:rgba(255,248,240,0.3);font-size:12px;text-align:center;line-height:1.8">
-    Questions? Reply to this email or contact <a href="mailto:partners@tequilafestusa.com" style="color:#F5A623">partners@tequilafestusa.com</a>
+    Questions? Reply to this email or contact <a href="mailto:partners@mail.tequilafestusa.com" style="color:#F5A623">partners@mail.tequilafestusa.com</a>
   </p>
 </div></body></html>`,
   });
@@ -195,7 +195,7 @@ export async function PATCH(req: NextRequest) {
     </p>
   </div>
   <p style="color:rgba(255,248,240,0.25);font-size:12px;text-align:center;margin-top:24px">
-    <a href="mailto:partners@tequilafestusa.com" style="color:#F5A623">partners@tequilafestusa.com</a>
+    <a href="mailto:partners@mail.tequilafestusa.com" style="color:#F5A623">partners@mail.tequilafestusa.com</a>
   </p>
 </div></body></html>`,
     }).catch(() => {});

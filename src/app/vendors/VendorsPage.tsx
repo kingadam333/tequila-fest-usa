@@ -192,7 +192,7 @@ export default function VendorsPage() {
             {duplicate ? (
               <div className="max-w-lg mx-auto bg-red-500/10 border border-red-500/30 rounded-3xl p-12 text-center">
                 <p className="font-display text-red-400 text-2xl mb-2">DOUBLE APPLICATION</p>
-                <p className="text-white/50">Looks like you&apos;ve already submitted an application with this email. We&apos;ve already got it on file — no need to apply again. This duplicate submission will not be saved. If you think this is a mistake, email <a href="mailto:partners@tequilafestusa.com" className="text-yellow-400 underline">partners@tequilafestusa.com</a>.</p>
+                <p className="text-white/50">Looks like you&apos;ve already submitted an application with this email. We&apos;ve already got it on file — no need to apply again. This duplicate submission will not be saved. If you think this is a mistake, email <a href="mailto:partners@mail.tequilafestusa.com" className="text-yellow-400 underline">partners@mail.tequilafestusa.com</a>.</p>
               </div>
             ) : submitted ? (
               <div className="max-w-lg mx-auto space-y-5">

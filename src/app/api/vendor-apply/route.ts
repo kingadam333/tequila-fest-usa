@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
       <tr><td style="color:rgba(255,248,240,0.4);padding:4px 0">Cities</td><td style="color:#fff8f0">${Array.isArray(cities) ? cities.join(", ") : cities || "TBD"}</td></tr>
     </table>
   </div>
-  <p style="color:rgba(255,248,240,0.3);font-size:12px;margin:0">Questions? Email <a href="mailto:partners@tequilafestusa.com" style="color:#F5A623">partners@tequilafestusa.com</a></p>
+  <p style="color:rgba(255,248,240,0.3);font-size:12px;margin:0">Questions? Email <a href="mailto:partners@mail.tequilafestusa.com" style="color:#F5A623">partners@mail.tequilafestusa.com</a></p>
 </div></body></html>`,
   }).catch(() => {});
 
