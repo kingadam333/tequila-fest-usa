@@ -5,6 +5,7 @@ import { getEvent } from "@/lib/events";
 import { verifyTurnstile } from "@/lib/turnstile";
 import { supabaseAdmin } from "@/lib/supabase";
 import { calculateFeesForCart } from "@/lib/fees";
+import { sendMetaCapiEvent } from "@/lib/metaCapi";
 
 interface CartItem { ticketType: TicketType; quantity: number; price: number; platformFee?: number; }
 
@@ -113,5 +114,25 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  return NextResponse.json({ url: session.url, sessionId: session.id });
+  // Server-side mirror of the InitiateCheckout pixel event the client fires
+  // right after this response — same orderNumber as event_id so Meta
+  // deduplicates the two instead of double-counting. _fbp/_fbc are the
+  // cookies fbevents.js sets client-side; they ride along automatically on
+  // this same-origin request.
+  sendMetaCapiEvent({
+    eventName: "InitiateCheckout",
+    eventId: orderNumber,
+    eventSourceUrl: `${appUrl}/events/${eventSlug}`,
+    userData: {
+      email,
+      phone,
+      clientIp: ip,
+      userAgent: req.headers.get("user-agent") || undefined,
+      fbp: req.cookies.get("_fbp")?.value,
+      fbc: req.cookies.get("_fbc")?.value,
+    },
+    customData: { currency: "USD", value: totalAmount, num_items: totalQty },
+  }).catch(err => console.error("InitiateCheckout CAPI failed:", err));
+
+  return NextResponse.json({ url: session.url, sessionId: session.id, orderNumber });
 }

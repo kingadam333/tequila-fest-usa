@@ -4,6 +4,7 @@ import { resend, FROM_EMAIL, qrTicketHtml } from "@/lib/resend";
 import { getEvent } from "@/lib/events";
 import { syncTicketBuyerToMarketingLists } from "@/lib/marketingSync";
 import { ensureCustomerLogin } from "@/lib/accountActions";
+import { sendMetaCapiEvent } from "@/lib/metaCapi";
 import { TICKET_LABELS } from "@/lib/stripe";
 import type Stripe from "stripe";
 import crypto from "crypto";
@@ -133,6 +134,19 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
 
         const { error: ticketError } = await db.from("ticket_instances").insert(tickets);
         if (ticketError) console.error("Ticket instances error:", ticketError);
+
+        // Server-side mirror of the Purchase pixel event — same orderNumber
+        // as event_id as the client-side fbq() call on the confirmation page
+        // (see PurchaseDataLayerPush.tsx), so Meta deduplicates instead of
+        // double-counting.
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.tequilafestusa.com";
+        sendMetaCapiEvent({
+          eventName: "Purchase",
+          eventId: orderNumber,
+          eventSourceUrl: `${appUrl}/ticket-confirmation`,
+          userData: { email: customerEmail, phone: customerPhone },
+          customData: { currency: "USD", value: amountTotal, content_type: "product", num_items: qty },
+        }).catch(err => console.error("Purchase CAPI failed:", err));
 
         // ── Award purchase points ──────────────────────────────────
         // GA Entry: 10 pts/ticket, no raffle. All other types: 100 pts/ticket + raffle eligible.
@@ -340,6 +354,14 @@ async function handleVendorPaid(session: Stripe.Checkout.Session) {
 
     const firstName = (app.name || "").split(" ")[0] || "there";
 
+    sendMetaCapiEvent({
+      eventName: "Purchase",
+      eventId: orderNumber,
+      eventSourceUrl: `${process.env.NEXT_PUBLIC_APP_URL || "https://www.tequilafestusa.com"}/vendor-payment-success`,
+      userData: { email: app.email, phone: app.phone },
+      customData: { currency: "USD", value: amountTotal, content_type: "product", content_name: "Vendor Spot" },
+    }).catch(err => console.error("Vendor Purchase CAPI failed:", err));
+
     // Auto-create an account for the vendor, same as ticket buyers, so they
     // can log in and see their vendor details — but never send a ticket email.
     let newAccountPassword: string | null = null;
@@ -496,6 +518,14 @@ async function handleBrandPackagePaid(session: Stripe.Checkout.Session) {
       console.error("brand_package_orders write failed:", err);
     }
   }
+
+  sendMetaCapiEvent({
+    eventName: "Purchase",
+    eventId: orderNumber,
+    eventSourceUrl: `${process.env.NEXT_PUBLIC_APP_URL || "https://www.tequilafestusa.com"}/brand-packages/success`,
+    userData: { email: contactEmail, phone: contactPhone },
+    customData: { currency: "USD", value: amount, content_type: "product", content_name: `${tier} Brand Package` },
+  }).catch(err => console.error("Brand package Purchase CAPI failed:", err));
 
   // Confirmation to the brand + notification to Adam
   try {

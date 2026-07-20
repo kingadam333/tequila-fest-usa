@@ -105,11 +105,13 @@ export default function TicketCartModal({
       });
       const data = await res.json();
       if (data.url) {
-        // Fire Meta Pixel InitiateCheckout
+        // Fire Meta Pixel InitiateCheckout — same eventId (orderNumber) as
+        // the server-side Conversions API call fired from /api/pre-checkout,
+        // so Meta deduplicates instead of double-counting.
         trackPixelEvent("InitiateCheckout", {
           currency: "USD",
           num_items: totalTickets,
-        });
+        }, data.orderNumber);
         window.location.href = data.url;
       } else {
         setError(data.error || "Something went wrong. Please try again.");

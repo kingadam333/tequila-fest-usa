@@ -30,9 +30,16 @@ export default function MetaPixel() {
   );
 }
 
-// Helper to fire events from anywhere
-export function trackPixelEvent(event: string, data?: Record<string, unknown>) {
+// Helper to fire events from anywhere. eventId, when provided, must match
+// the event_id used on the server-side Conversions API call for the same
+// logical event (see src/lib/metaCapi.ts) so Meta deduplicates the two
+// instead of double-counting.
+export function trackPixelEvent(event: string, data?: Record<string, unknown>, eventId?: string) {
   if (typeof window !== "undefined" && (window as any).fbq) {
-    (window as any).fbq("track", event, data);
+    if (eventId) {
+      (window as any).fbq("track", event, data, { eventID: eventId });
+    } else {
+      (window as any).fbq("track", event, data);
+    }
   }
 }
