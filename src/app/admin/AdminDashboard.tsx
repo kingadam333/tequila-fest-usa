@@ -4569,7 +4569,7 @@ function VendorsSection({ adminToken }: { adminToken: string }) {
     setFixingTwo(true);
     setFixTwoResult("");
     try {
-      const res = await fetch("/api/admin/vendors/_tmp-fix-two", {
+      const res = await fetch("/api/admin/vendors/tmp-fix-two", {
         method: "POST",
         headers: { "x-admin-token": adminToken },
       });
