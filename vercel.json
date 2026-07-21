@@ -3,6 +3,7 @@
     { "path": "/api/cron/social-auto-post?type=event", "schedule": "0 14 * * *" },
     { "path": "/api/cron/social-auto-post?type=brand", "schedule": "0 18 * * *" },
     { "path": "/api/cron/social-auto-post?type=meme",  "schedule": "0 23 * * *" },
-    { "path": "/api/cron/repair-logins", "schedule": "0 */2 * * *" }
+    { "path": "/api/cron/repair-logins", "schedule": "0 */2 * * *" },
+    { "path": "/api/cron/abandoned-checkout-recovery", "schedule": "0 23 * * 3" }
   ]
 }

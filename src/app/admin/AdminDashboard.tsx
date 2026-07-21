@@ -2308,6 +2308,50 @@ function ContactSection({ adminToken }: { adminToken: string }) {
   const [backfillSaving, setBackfillSaving] = useState(false);
   const [backfillStatus, setBackfillStatus] = useState("");
 
+  const [abandonedOpen, setAbandonedOpen] = useState(false);
+  const [abandonedGroups, setAbandonedGroups] = useState<{ eventSlug: string; city: string; count: number }[]>([]);
+  const [abandonedLoading, setAbandonedLoading] = useState(false);
+  const [sendingSlug, setSendingSlug] = useState<string | null>(null);
+  const [abandonedResult, setAbandonedResult] = useState("");
+
+  const loadAbandoned = async () => {
+    setAbandonedLoading(true);
+    setAbandonedResult("");
+    try {
+      const res = await fetch("/api/admin/abandoned-checkouts", { headers: { "x-admin-token": adminToken } });
+      const data = await res.json();
+      setAbandonedGroups(res.ok ? data.groups || [] : []);
+      if (!res.ok) setAbandonedResult(`Error: ${data.error || "failed to load"}`);
+    } catch (e: any) {
+      setAbandonedResult(`Error: ${e?.message || "failed to load"}`);
+    }
+    setAbandonedLoading(false);
+  };
+
+  const sendAbandonedRecovery = async (eventSlug: string | null) => {
+    const label = eventSlug ? abandonedGroups.find(g => g.eventSlug === eventSlug)?.city || eventSlug : "all cities";
+    if (!confirm(`Send the "your order wasn't completed" email to everyone with an abandoned checkout for ${label}?`)) return;
+    setSendingSlug(eventSlug || "all");
+    setAbandonedResult("");
+    try {
+      const res = await fetch("/api/admin/abandoned-checkouts/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-token": adminToken },
+        body: JSON.stringify({ eventSlug: eventSlug || undefined }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setAbandonedResult(`Sent ${data.sent} of ${data.total} email${data.total === 1 ? "" : "s"} across ${data.groups} cit${data.groups === 1 ? "y" : "ies"}${data.failed ? ` — ${data.failed} failed` : ""}.`);
+        loadAbandoned();
+      } else {
+        setAbandonedResult(`Error: ${data.error || "failed to send"}`);
+      }
+    } catch (e: any) {
+      setAbandonedResult(`Error: ${e?.message || "failed to send"}`);
+    }
+    setSendingSlug(null);
+  };
+
   const handleBackfillReply = async () => {
     if (!selected || !backfillBody.trim()) return;
     setBackfillSaving(true); setBackfillStatus("");
@@ -2513,6 +2557,51 @@ function ContactSection({ adminToken }: { adminToken: string }) {
 
       {activeTab === "knowledge" && <KnowledgeBaseSection adminToken={adminToken} />}
       {activeTab === "inbox" && <>
+
+      {/* Abandoned Checkout Recovery */}
+      <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-5 mb-6">
+        <button onClick={() => { setAbandonedOpen(o => !o); if (!abandonedOpen && abandonedGroups.length === 0) loadAbandoned(); }}
+          className="w-full flex items-center justify-between cursor-pointer">
+          <div className="text-left">
+            <h3 className="text-white font-bold text-sm flex items-center gap-2">🛒 Abandoned Checkout Recovery</h3>
+            <p className="text-white/40 text-xs mt-0.5">Email people whose ticket order never completed — they weren&apos;t charged. Auto-sends every Wednesday at 7pm ET.</p>
+          </div>
+          <span className="text-white/40 text-lg flex-shrink-0">{abandonedOpen ? "−" : "+"}</span>
+        </button>
+        {abandonedOpen && (
+          <div className="mt-4 pt-4 border-t border-white/5">
+            {abandonedLoading ? (
+              <p className="text-white/40 text-sm">Loading…</p>
+            ) : abandonedGroups.length === 0 ? (
+              <p className="text-white/40 text-sm">No abandoned checkouts found in the last 45 days.</p>
+            ) : (
+              <>
+                <div className="space-y-2 mb-4">
+                  {abandonedGroups.map(g => (
+                    <div key={g.eventSlug} className="flex items-center justify-between bg-white/[0.03] border border-white/5 rounded-xl px-4 py-2.5">
+                      <div>
+                        <span className="text-white font-semibold text-sm">{g.city}</span>
+                        <span className="text-white/40 text-xs ml-2">{g.count} abandoned</span>
+                      </div>
+                      <button onClick={() => sendAbandonedRecovery(g.eventSlug)} disabled={sendingSlug !== null}
+                        className="text-xs font-semibold px-3 py-1.5 rounded-full bg-yellow-500/10 text-yellow-400 border border-yellow-500/25 hover:bg-yellow-500/20 disabled:opacity-50 transition-all cursor-pointer">
+                        {sendingSlug === g.eventSlug ? "Sending…" : "Send Now"}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <button onClick={() => sendAbandonedRecovery(null)} disabled={sendingSlug !== null}
+                  className="bg-white/5 hover:bg-white/10 border border-white/15 disabled:opacity-60 text-white/70 font-semibold px-4 py-2 rounded-xl text-sm transition-all cursor-pointer">
+                  {sendingSlug === "all" ? "Sending…" : "Send to All Cities Now"}
+                </button>
+              </>
+            )}
+            {abandonedResult && (
+              <p className={`text-xs mt-3 ${abandonedResult.startsWith("Error") ? "text-red-400" : "text-green-400"}`}>{abandonedResult}</p>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* Inbox tabs */}
       <div className="grid grid-cols-4 gap-2 mb-6">
