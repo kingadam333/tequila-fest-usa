@@ -338,6 +338,19 @@ async function handleVendorPaid(session: Stripe.Checkout.Session) {
       approval_email_click_count: Math.max(app.approval_email_click_count || 0, 1),
     }).eq("id", vendorApplicationId);
 
+    // Payment Links bake payment_intent_data.description in at *link creation*
+    // time, so links generated before that field existed (or before an app
+    // was re-approved) still produce PaymentIntents with no description. Set
+    // it here instead, at actual payment time, so every vendor charge gets a
+    // readable label in the Stripe dashboard regardless of when their link
+    // was created.
+    if (paymentIntentId) {
+      const cities: string[] = app.cities?.length ? app.cities : ["Festival"];
+      stripe.paymentIntents.update(paymentIntentId, {
+        description: `Vendor - ${cities.join(", ")} (${app.business_name})`,
+      }).catch((err: any) => console.error("Vendor PaymentIntent description update failed:", err));
+    }
+
     const firstName = (app.name || "").split(" ")[0] || "there";
 
     // Auto-create an account for the vendor, same as ticket buyers, so they
