@@ -4422,6 +4422,48 @@ function VendorsSection({ adminToken }: { adminToken: string }) {
   const [resendStatus, setResendStatus] = useState("");
   const [copiedLinkId, setCopiedLinkId] = useState<string | null>(null);
 
+  const [emailModalCity, setEmailModalCity] = useState<string | null>(null);
+  const [emailSubject, setEmailSubject] = useState("");
+  const [emailBody, setEmailBody] = useState("");
+  const [emailAttachment, setEmailAttachment] = useState<File | null>(null);
+  const [sendingCityEmail, setSendingCityEmail] = useState(false);
+  const [cityEmailResult, setCityEmailResult] = useState("");
+
+  const openEmailModal = (city: string) => {
+    setEmailModalCity(city);
+    setEmailSubject(`Tequila Fest ${city} — Event Details & Load-In Info`);
+    setEmailBody("");
+    setEmailAttachment(null);
+    setCityEmailResult("");
+  };
+
+  const sendCityEmail = async () => {
+    if (!emailModalCity || !emailSubject.trim() || !emailBody.trim()) return;
+    setSendingCityEmail(true);
+    setCityEmailResult("");
+    try {
+      const fd = new FormData();
+      fd.set("city", emailModalCity);
+      fd.set("subject", emailSubject);
+      fd.set("body", emailBody);
+      if (emailAttachment) fd.set("attachment", emailAttachment);
+      const res = await fetch("/api/admin/vendors/email-city", {
+        method: "POST",
+        headers: { "x-admin-token": adminToken },
+        body: fd,
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setCityEmailResult(`Sent to ${data.sent} of ${data.total} paid vendor${data.total === 1 ? "" : "s"}${data.failed?.length ? ` — ${data.failed.length} failed` : ""}.`);
+      } else {
+        setCityEmailResult(`Error: ${data.error || "failed to send"}`);
+      }
+    } catch (e: any) {
+      setCityEmailResult(`Error: ${e?.message || "failed to send"}`);
+    }
+    setSendingCityEmail(false);
+  };
+
   const fetchApps = () => {
     fetch("/api/admin/vendors", { headers: { "x-admin-token": adminToken } })
       .then(r => r.json())
@@ -4588,11 +4630,17 @@ function VendorsSection({ adminToken }: { adminToken: string }) {
             const visible = paidByCity[city].slice(page * PAID_PAGE_SIZE, (page + 1) * PAID_PAGE_SIZE);
             return (
               <div key={city} className="bg-white/[0.03] border border-white/10 rounded-2xl p-5">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-white font-bold text-sm uppercase tracking-wider">{city}</h3>
-                  <span className="text-xs font-bold px-2.5 py-0.5 rounded-full border bg-green-500/15 text-green-400 border-green-500/30">
-                    {paidByCity[city].length} Paid
-                  </span>
+                <div className="flex items-center justify-between mb-3 gap-2">
+                  <h3 className="text-white font-bold text-sm uppercase tracking-wider truncate">{city}</h3>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <span className="text-xs font-bold px-2.5 py-0.5 rounded-full border bg-green-500/15 text-green-400 border-green-500/30">
+                      {paidByCity[city].length} Paid
+                    </span>
+                    <button onClick={() => openEmailModal(city)}
+                      className="text-xs font-semibold px-2.5 py-0.5 rounded-full border bg-yellow-500/10 text-yellow-400 border-yellow-500/25 hover:bg-yellow-500/20 transition-all cursor-pointer">
+                      ✉ Email
+                    </button>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   {visible.map((v, i) => (
@@ -4628,6 +4676,56 @@ function VendorsSection({ adminToken }: { adminToken: string }) {
           })}
         </div>
       )}
+
+      {/* ── EMAIL PAID VENDORS BY CITY MODAL ── */}
+      <AnimatePresence>
+        {emailModalCity && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+            onClick={e => { if (e.target === e.currentTarget) setEmailModalCity(null); }}>
+            <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }}
+              className="bg-[#0d0500] border border-white/10 rounded-2xl p-6 w-full max-w-xl max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-1">
+                <h3 className="text-lg font-semibold text-white">Email Paid Vendors — {emailModalCity}</h3>
+                <button onClick={() => setEmailModalCity(null)} className="text-white/40 hover:text-white cursor-pointer"><X size={18} /></button>
+              </div>
+              <p className="text-white/40 text-xs mb-5">
+                Sends to all {paidByCity[emailModalCity]?.length || 0} paid vendor{(paidByCity[emailModalCity]?.length || 0) === 1 ? "" : "s"} in {emailModalCity}, from vendors@mail.tequilafestusa.com. Replies land in the Vendors inbox.
+              </p>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs text-white/40 uppercase tracking-wider mb-1">Subject</label>
+                  <input value={emailSubject} onChange={e => setEmailSubject(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-yellow-500/50"
+                    placeholder="Event details subject line" />
+                </div>
+                <div>
+                  <label className="block text-xs text-white/40 uppercase tracking-wider mb-1">Message</label>
+                  <textarea value={emailBody} onChange={e => setEmailBody(e.target.value)} rows={8}
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-yellow-500/50"
+                    placeholder="Load-in time, venue directions, booth assignment, anything vendors need to know. Blank lines start a new paragraph." />
+                </div>
+                <div>
+                  <label className="block text-xs text-white/40 uppercase tracking-wider mb-1">Attachment (map, PDF, image — optional)</label>
+                  <input type="file" onChange={e => setEmailAttachment(e.target.files?.[0] || null)}
+                    className="w-full text-sm text-white/60 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-white/10 file:text-white/70 file:text-xs file:font-semibold hover:file:bg-white/15 file:cursor-pointer cursor-pointer" />
+                  {emailAttachment && <p className="text-white/30 text-xs mt-1">{emailAttachment.name} ({(emailAttachment.size / 1024 / 1024).toFixed(2)} MB)</p>}
+                </div>
+                {cityEmailResult && (
+                  <p className={`text-sm ${cityEmailResult.startsWith("Error") ? "text-red-400" : "text-green-400"}`}>{cityEmailResult}</p>
+                )}
+                <div className="flex gap-3 pt-2">
+                  <button onClick={() => setEmailModalCity(null)} className="flex-1 py-2.5 border border-white/10 text-white/50 rounded-xl text-sm hover:text-white transition-all cursor-pointer">Cancel</button>
+                  <button onClick={sendCityEmail} disabled={sendingCityEmail || !emailSubject.trim() || !emailBody.trim()}
+                    className="flex-1 py-2.5 bg-yellow-500 hover:bg-yellow-400 text-black font-semibold rounded-xl text-sm transition-all cursor-pointer disabled:opacity-40">
+                    {sendingCityEmail ? "Sending…" : `Send to ${paidByCity[emailModalCity]?.length || 0} Vendor${(paidByCity[emailModalCity]?.length || 0) === 1 ? "" : "s"}`}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Filter tabs */}
       <div className="flex flex-wrap gap-2">
