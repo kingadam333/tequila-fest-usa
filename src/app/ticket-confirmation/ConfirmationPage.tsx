@@ -37,6 +37,8 @@ export default function ConfirmationPage() {
             quantity: d.quantity ?? 1,
             itemName: d.ticketType ? `Tequila Fest ${d.city} - ${d.ticketType}` : "Tequila Fest Ticket",
             itemCity: d.city || "",
+            email: d.email || undefined,
+            phone: d.phone || undefined,
           });
         })
         .catch(() => {});

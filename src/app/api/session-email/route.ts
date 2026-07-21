@@ -14,7 +14,8 @@ export async function GET(req: NextRequest) {
     const city = (session.metadata?.city as string) ?? "";
     const ticketType = (session.metadata?.ticketType as string) ?? "";
     const orderNumber = (session.metadata?.orderNumber as string) ?? sessionId;
-    return NextResponse.json({ email, total, quantity, city, ticketType, orderNumber });
+    const phone = (session.metadata?.customerPhone as string) ?? "";
+    return NextResponse.json({ email, total, quantity, city, ticketType, orderNumber, phone });
   } catch {
     return NextResponse.json({ email: null });
   }

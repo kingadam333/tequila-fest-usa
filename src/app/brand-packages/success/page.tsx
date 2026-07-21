@@ -22,7 +22,7 @@ async function loadOrder(sessionId: string) {
     const db = supabaseAdmin as any;
     const { data } = await db
       .from("brand_package_orders")
-      .select("order_number, brand_name, contact_name, tier, cities, amount, status")
+      .select("order_number, brand_name, contact_name, contact_email, contact_phone, tier, cities, amount, status")
       .eq("stripe_session_id", sessionId)
       .maybeSingle();
     return data || null;
@@ -44,6 +44,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ s
             value: Number(order.amount || 0),
             itemName: `${order.tier} Brand Package — ${order.brand_name}`,
             itemCity: (order.cities || []).map((c: string) => CITY_LABELS[c] || c).join(", "),
+            email: order.contact_email || undefined,
+            phone: order.contact_phone || undefined,
           }}
         />
       )}

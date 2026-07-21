@@ -1,9 +1,9 @@
 // Google Tag Manager — split into a head script + body noscript fallback,
 // exactly as Google's own install snippet requires. Rendered directly in
 // layout.tsx (head script inside <head>, noscript right after <body> opens)
-// rather than via next/script, for the same reason as MetaPixelHead: Next's
-// script-injection strategies don't reliably land in the literal tag GTM
-// docs specify, which can cause GTM's own install-check to flag it.
+// rather than via next/script, since Next's script-injection strategies
+// don't reliably land in the literal tag GTM docs specify, which can cause
+// GTM's own install-check to flag it.
 const GTM_ID = process.env.NEXT_PUBLIC_GTM_ID;
 
 export function GTMHeadScript() {

@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Plus, Minus, User, Mail, Phone, ArrowRight, Loader2, ShoppingCart } from "lucide-react";
-import { trackPixelEvent } from "@/components/MetaPixel";
 import type { TicketType } from "@/lib/ticket-config";
 import { TICKET_LABELS } from "@/lib/ticket-config";
 import { calculateFeesForCart } from "@/lib/fees";
@@ -105,13 +104,27 @@ export default function TicketCartModal({
       });
       const data = await res.json();
       if (data.url) {
-        // Fire Meta Pixel InitiateCheckout — same eventId (orderNumber) as
-        // the server-side Conversions API call fired from /api/pre-checkout,
-        // so Meta deduplicates instead of double-counting.
-        trackPixelEvent("InitiateCheckout", {
-          currency: "USD",
-          num_items: totalTickets,
-        }, data.orderNumber);
+        // GTM's Meta Pixel template maps "begin_checkout" -> InitiateCheckout
+        // via its FBEventName variable, reading nested eventModel.* fields.
+        (window as any).dataLayer = (window as any).dataLayer || [];
+        (window as any).dataLayer.push({
+          event: "begin_checkout",
+          eventModel: {
+            currency: "USD",
+            value: data.totalAmount ?? subtotal,
+            transaction_id: data.orderNumber,
+            items: cartItems.map(i => ({
+              item_id: i.ticketType,
+              item_name: TICKET_LABELS[i.ticketType],
+              quantity: i.quantity,
+              price: i.price,
+            })),
+            user_data: {
+              email_address: form.email,
+              phone_number: form.phone || undefined,
+            },
+          },
+        });
         window.location.href = data.url;
       } else {
         setError(data.error || "Something went wrong. Please try again.");

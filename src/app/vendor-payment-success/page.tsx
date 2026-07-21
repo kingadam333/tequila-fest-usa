@@ -34,7 +34,7 @@ async function loadVendorOrder(sessionId: string) {
     const db = supabaseAdmin as any;
     const { data } = await db
       .from("vendor_applications")
-      .select("business_name, cities, paid, order_number")
+      .select("business_name, cities, paid, order_number, email, phone")
       .eq("id", vendorApplicationId)
       .maybeSingle();
     if (!data) return null;
@@ -45,6 +45,8 @@ async function loadVendorOrder(sessionId: string) {
       paid: data.paid,
       orderNumber: data.order_number,
       amount: (session.amount_total || 0) / 100,
+      email: data.email,
+      phone: data.phone,
     };
   } catch {
     return null;
@@ -64,6 +66,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ s
             value: order.amount,
             itemName: `Vendor Spot — ${order.businessName}`,
             itemCity: order.cities.map((c: string) => CITY_LABELS[c] || c).join(", "),
+            email: order.email || undefined,
+            phone: order.phone || undefined,
           }}
         />
       )}
