@@ -4563,23 +4563,6 @@ function VendorsSection({ adminToken }: { adminToken: string }) {
   const [resendingAll, setResendingAll] = useState(false);
   const [resendAllStatus, setResendAllStatus] = useState("");
 
-  const [fixingTwo, setFixingTwo] = useState(false);
-  const [fixTwoResult, setFixTwoResult] = useState("");
-  const runFixTwo = async () => {
-    setFixingTwo(true);
-    setFixTwoResult("");
-    try {
-      const res = await fetch("/api/admin/vendors/tmp-fix-two", {
-        method: "POST",
-        headers: { "x-admin-token": adminToken },
-      });
-      const data = await res.json();
-      setFixTwoResult(JSON.stringify(data));
-    } catch (e: any) {
-      setFixTwoResult(`Error: ${e?.message || "failed"}`);
-    }
-    setFixingTwo(false);
-  };
 
   const unpaidApprovedCount = apps.filter(a => a.status === "approved" && !a.paid).length;
 
@@ -4637,15 +4620,6 @@ function VendorsSection({ adminToken }: { adminToken: string }) {
             )}
           </div>
         )}
-      </div>
-
-      {/* TEMP — one-off fix for 2 vendor Stripe descriptions, remove after use */}
-      <div className="bg-red-500/5 border border-red-500/20 rounded-xl p-4">
-        <button onClick={runFixTwo} disabled={fixingTwo}
-          className="bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 disabled:opacity-60 text-red-300 font-semibold px-4 py-2 rounded-xl text-sm transition-all cursor-pointer">
-          {fixingTwo ? "Running…" : "TEMP: Fix Hawk + LT Squared Stripe Descriptions"}
-        </button>
-        {fixTwoResult && <p className="text-white/60 text-xs mt-2 font-mono break-all">{fixTwoResult}</p>}
       </div>
 
       {/* Paid vendors by city */}
