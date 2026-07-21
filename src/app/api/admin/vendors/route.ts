@@ -60,6 +60,10 @@ export async function createVendorPaymentSession(app: any) {
     line_items: prices.map(priceId => ({ price: priceId, quantity: 1 })),
     metadata: { type: "vendor", vendor_application_id: app.id, business_name: app.business_name },
     restrictions: { completed_sessions: { limit: 1 } },
+    payment_intent_data: {
+      description: `Vendor - ${cityList.join(", ")} (${app.business_name})`,
+      metadata: { type: "vendor", vendor_application_id: app.id, business_name: app.business_name },
+    },
     after_completion: {
       type: "redirect",
       redirect: { url: `${appUrl}/vendor-payment-success?session_id={CHECKOUT_SESSION_ID}` },

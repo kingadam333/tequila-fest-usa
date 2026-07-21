@@ -4527,13 +4527,15 @@ function VendorsSection({ adminToken }: { adminToken: string }) {
   // cities (apps.cities is an array), so they're counted once per city.
   const paidByCity = apps
     .filter(a => a.paid)
-    .reduce((acc: Record<string, { business_name: string; name: string }[]>, a) => {
+    .reduce((acc: Record<string, { business_name: string; name: string; stripe_payment_intent_id?: string }[]>, a) => {
       for (const city of a.cities || []) {
-        (acc[city] ||= []).push({ business_name: a.business_name, name: a.name });
+        (acc[city] ||= []).push({ business_name: a.business_name, name: a.name, stripe_payment_intent_id: a.stripe_payment_intent_id });
       }
       return acc;
     }, {});
   const citiesSorted = Object.keys(paidByCity).sort((a, b) => paidByCity[b].length - paidByCity[a].length);
+  const PAID_PAGE_SIZE = 4;
+  const [cityPage, setCityPage] = useState<Record<string, number>>({});
 
   const resendAllUnpaid = async () => {
     if (!confirm(`Resend the payment link email to all ${unpaidApprovedCount} approved, unpaid vendors?`)) return;
@@ -4580,24 +4582,50 @@ function VendorsSection({ adminToken }: { adminToken: string }) {
       {/* Paid vendors by city */}
       {!loading && citiesSorted.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {citiesSorted.map(city => (
-            <div key={city} className="bg-white/[0.03] border border-white/10 rounded-2xl p-5">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-white font-bold text-sm uppercase tracking-wider">{city}</h3>
-                <span className="text-xs font-bold px-2.5 py-0.5 rounded-full border bg-green-500/15 text-green-400 border-green-500/30">
-                  {paidByCity[city].length} Paid
-                </span>
-              </div>
-              <div className="space-y-2 max-h-48 overflow-y-auto">
-                {paidByCity[city].map((v, i) => (
-                  <div key={i} className="border-b border-white/5 pb-1.5 last:border-0 last:pb-0">
-                    <p className="text-white/80 text-sm font-medium truncate">{v.business_name}</p>
-                    <p className="text-white/35 text-xs truncate">{v.name}</p>
+          {citiesSorted.map(city => {
+            const page = cityPage[city] || 0;
+            const totalPages = Math.ceil(paidByCity[city].length / PAID_PAGE_SIZE);
+            const visible = paidByCity[city].slice(page * PAID_PAGE_SIZE, (page + 1) * PAID_PAGE_SIZE);
+            return (
+              <div key={city} className="bg-white/[0.03] border border-white/10 rounded-2xl p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-white font-bold text-sm uppercase tracking-wider">{city}</h3>
+                  <span className="text-xs font-bold px-2.5 py-0.5 rounded-full border bg-green-500/15 text-green-400 border-green-500/30">
+                    {paidByCity[city].length} Paid
+                  </span>
+                </div>
+                <div className="space-y-2">
+                  {visible.map((v, i) => (
+                    <div key={i} className="border-b border-white/5 pb-1.5 last:border-0 last:pb-0 flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-white/80 text-sm font-medium truncate">{v.business_name}</p>
+                        <p className="text-white/35 text-xs truncate">{v.name}</p>
+                      </div>
+                      {v.stripe_payment_intent_id && (
+                        <a href={`https://dashboard.stripe.com/payments/${v.stripe_payment_intent_id}`} target="_blank" rel="noopener noreferrer"
+                          className="text-[11px] text-yellow-500/70 hover:text-yellow-400 underline underline-offset-2 flex-shrink-0">Stripe</a>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between mt-3 pt-2 border-t border-white/5">
+                    <button onClick={() => setCityPage(p => ({ ...p, [city]: Math.max(0, page - 1) }))}
+                      disabled={page === 0}
+                      className="text-xs text-white/40 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer">
+                      ← Prev
+                    </button>
+                    <span className="text-[11px] text-white/30">{page + 1} / {totalPages}</span>
+                    <button onClick={() => setCityPage(p => ({ ...p, [city]: Math.min(totalPages - 1, page + 1) }))}
+                      disabled={page >= totalPages - 1}
+                      className="text-xs text-white/40 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer">
+                      Next →
+                    </button>
                   </div>
-                ))}
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
