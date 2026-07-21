@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
-import { resend, FROM_SUPPORT } from "@/lib/resend";
+import { resend, FROM_SUPPORT, FROM_VENDORS } from "@/lib/resend";
 import { verifyTurnstile } from "@/lib/turnstile";
 
 export async function POST(req: NextRequest) {
@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
 
   // Send confirmation to applicant
   resend.emails.send({
-    from: FROM_SUPPORT,
+    from: FROM_VENDORS,
     to: email.trim(),
     subject: "Vendor Application Received — Tequila Fest USA",
     html: `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#0d0500;font-family:Arial,sans-serif;color:#fff8f0">
@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
       <tr><td style="color:rgba(255,248,240,0.4);padding:4px 0">Cities</td><td style="color:#fff8f0">${Array.isArray(cities) ? cities.join(", ") : cities || "TBD"}</td></tr>
     </table>
   </div>
-  <p style="color:rgba(255,248,240,0.3);font-size:12px;margin:0">Questions? Email <a href="mailto:partners@mail.tequilafestusa.com" style="color:#F5A623">partners@mail.tequilafestusa.com</a></p>
+  <p style="color:rgba(255,248,240,0.3);font-size:12px;margin:0">Questions? Email <a href="mailto:vendors@mail.tequilafestusa.com" style="color:#F5A623">vendors@mail.tequilafestusa.com</a></p>
 </div></body></html>`,
   }).catch(() => {});
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
-import { resend, FROM_EMAIL, qrTicketHtml } from "@/lib/resend";
+import { resend, FROM_EMAIL, FROM_VENDORS, qrTicketHtml } from "@/lib/resend";
 import { getEvent } from "@/lib/events";
 import { syncTicketBuyerToMarketingLists } from "@/lib/marketingSync";
 import { ensureCustomerLogin } from "@/lib/accountActions";
@@ -357,7 +357,7 @@ async function handleVendorPaid(session: Stripe.Checkout.Session) {
     if (app.email) {
       const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.tequilafestusa.com";
       await resend.emails.send({
-        from: FROM_EMAIL,
+        from: FROM_VENDORS,
         to: app.email,
         subject: `You're Confirmed! Vendor Spot Payment Received — ${orderNumber}`,
         html: vendorConfirmationHtml({

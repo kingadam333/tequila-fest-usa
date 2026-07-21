@@ -5324,6 +5324,29 @@ function ToolsSection({ adminToken }: { adminToken: string }) {
   const [runningBatch, setRunningBatch] = useState(false);
   const [batchResult, setBatchResult] = useState("");
 
+  const [runningVendorBackfill, setRunningVendorBackfill] = useState(false);
+  const [vendorBackfillResult, setVendorBackfillResult] = useState("");
+
+  const runVendorStripeBackfill = async () => {
+    setRunningVendorBackfill(true);
+    setVendorBackfillResult("");
+    try {
+      const res = await fetch("/api/admin/vendors/backfill-stripe-descriptions", {
+        method: "POST",
+        headers: { "x-admin-token": adminToken },
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setVendorBackfillResult(`Done — ${data.updated} updated, ${data.skipped} skipped (not found in Stripe), ${data.failed} failed out of ${data.total} paid vendors.`);
+      } else {
+        setVendorBackfillResult(`Error: ${data.error || "failed"}`);
+      }
+    } catch (e: any) {
+      setVendorBackfillResult(`Error: ${e?.message || "failed"}`);
+    }
+    setRunningVendorBackfill(false);
+  };
+
   const loadRepairQueue = useCallback(async () => {
     const res = await fetch("/api/admin/repair-logins/status", { headers: { "x-admin-token": adminToken } });
     if (res.ok) setRepairQueue(await res.json());
@@ -5515,6 +5538,26 @@ function ToolsSection({ adminToken }: { adminToken: string }) {
           {batchResult && <p className="text-white/60 text-xs mt-2">{batchResult}</p>}
         </div>
       )}
+
+      {/* Vendor Stripe Description Backfill */}
+      <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-6">
+        <div className="flex items-start justify-between mb-4 flex-wrap gap-3">
+          <div>
+            <h3 className="text-white font-bold text-lg flex items-center gap-2">
+              <Wrench size={18} className="text-yellow-400" /> Vendor Stripe Description Backfill
+            </h3>
+            <p className="text-white/40 text-sm mt-1">
+              One-time fix — sets a readable description ("Vendor - City (Business Name)") on every existing paid vendor&apos;s Stripe transaction, so they show up cleanly in the Stripe dashboard instead of as raw payment IDs. New vendor payments already get this automatically.
+            </p>
+          </div>
+          <button onClick={runVendorStripeBackfill} disabled={runningVendorBackfill}
+            className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-50 text-black font-bold px-4 py-2.5 rounded-xl text-sm transition-all cursor-pointer flex-shrink-0">
+            <RefreshCw size={15} className={runningVendorBackfill ? "animate-spin" : ""} />
+            {runningVendorBackfill ? "Running…" : "Run Backfill Now"}
+          </button>
+        </div>
+        {vendorBackfillResult && <p className="text-white/60 text-xs">{vendorBackfillResult}</p>}
+      </div>
 
       {/* Claim Account Email Blast */}
       <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-6">

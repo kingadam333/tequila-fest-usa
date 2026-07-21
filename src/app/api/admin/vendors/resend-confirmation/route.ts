@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAdminToken, unauthorizedResponse } from "@/lib/adminAuth";
 import { supabaseAdmin } from "@/lib/supabase";
-import { resend, FROM_EMAIL, vendorConfirmationHtml } from "@/lib/resend";
+import { resend, FROM_VENDORS, vendorConfirmationHtml } from "@/lib/resend";
 
 // Resends the post-payment vendor confirmation email (order #, QR, vendor
 // reminders) — for vendors who already paid but got the wrong email (e.g.
@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
 
   try {
     await resend.emails.send({
-      from: FROM_EMAIL,
+      from: FROM_VENDORS,
       to: app.email,
       subject: `You're Confirmed! Vendor Spot Payment Received — ${app.order_number}`,
       html: vendorConfirmationHtml({
