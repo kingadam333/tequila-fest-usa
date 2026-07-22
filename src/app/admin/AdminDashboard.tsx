@@ -4619,7 +4619,11 @@ function LoadInSection({ adminToken }: { adminToken: string }) {
     fetch("/api/admin/events", { headers: { "x-admin-token": adminToken } })
       .then(r => r.json())
       .then(d => {
-        const sorted = (d.events || []).filter((e: any) => e.status !== "cancelled")
+        const now = Date.now();
+        // Only upcoming events need load-in info set — matches the same
+        // filter the public /loadin page uses to decide what to show.
+        const sorted = (d.events || [])
+          .filter((e: any) => e.status !== "cancelled" && e.status !== "completed" && (!e.date_iso || new Date(e.date_iso).getTime() >= now))
           .sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0));
         setEvents(sorted);
         setLoading(false);
