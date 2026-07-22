@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { MapPin, Clock, Calendar, ExternalLink, ArrowLeft } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import OfficialBanner from "@/components/OfficialBanner";
@@ -48,9 +48,9 @@ export default function LoadInPageClient({ events }: { events: LoadInEvent[] }) 
 
       <main className="min-h-screen bg-[#0d0500] px-4 py-16">
         <div className="max-w-3xl mx-auto">
-          <AnimatePresence mode="wait">
+          <>
             {!selected ? (
-              <motion.div key="selector" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+              <motion.div key="selector" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
                 <div className="text-center mb-10">
                   <p className="text-yellow-500/60 text-xs font-bold tracking-[0.3em] uppercase mb-3">Vendor & Food Truck Load-In</p>
                   <h1 className="font-display text-white leading-none mb-4" style={{ fontSize: "clamp(2.2rem, 6vw, 3.5rem)" }}>
@@ -81,7 +81,7 @@ export default function LoadInPageClient({ events }: { events: LoadInEvent[] }) 
                 )}
               </motion.div>
             ) : (
-              <motion.div key="detail" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+              <motion.div key="detail" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
                 <button onClick={() => setSelected(null)}
                   className="flex items-center gap-1.5 text-white/40 hover:text-white text-sm mb-6 transition-colors cursor-pointer">
                   <ArrowLeft size={14} /> Choose a different city
@@ -161,7 +161,7 @@ export default function LoadInPageClient({ events }: { events: LoadInEvent[] }) 
                 )}
               </motion.div>
             )}
-          </AnimatePresence>
+          </>
         </div>
       </main>
 
