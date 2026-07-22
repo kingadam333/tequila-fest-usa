@@ -4815,15 +4815,48 @@ function VendorsSection({ adminToken }: { adminToken: string }) {
   // cities (apps.cities is an array), so they're counted once per city.
   const paidByCity = apps
     .filter(a => a.paid)
-    .reduce((acc: Record<string, { business_name: string; name: string; stripe_payment_intent_id?: string }[]>, a) => {
+    .reduce((acc: Record<string, { business_name: string; name: string; phone?: string; stripe_payment_intent_id?: string }[]>, a) => {
       for (const city of a.cities || []) {
-        (acc[city] ||= []).push({ business_name: a.business_name, name: a.name, stripe_payment_intent_id: a.stripe_payment_intent_id });
+        (acc[city] ||= []).push({ business_name: a.business_name, name: a.name, phone: a.phone, stripe_payment_intent_id: a.stripe_payment_intent_id });
       }
       return acc;
     }, {});
   const citiesSorted = Object.keys(paidByCity).sort((a, b) => paidByCity[b].length - paidByCity[a].length);
   const PAID_PAGE_SIZE = 4;
   const [cityPage, setCityPage] = useState<Record<string, number>>({});
+
+  const exportVendorPdf = async (onlyCity?: string) => {
+    const { jsPDF } = await import("jspdf");
+    const autoTable = (await import("jspdf-autotable")).default;
+    const doc = new jsPDF();
+    const cities = onlyCity ? [onlyCity] : citiesSorted;
+    let first = true;
+
+    for (const city of cities) {
+      const rows = paidByCity[city] || [];
+      if (rows.length === 0) continue;
+      if (!first) doc.addPage();
+      first = false;
+
+      doc.setFontSize(16);
+      doc.text(`Tequila Fest ${city} — Vendor List`, 14, 18);
+      doc.setFontSize(10);
+      doc.setTextColor(120);
+      doc.text(`${rows.length} paid vendor${rows.length === 1 ? "" : "s"} · Generated ${new Date().toLocaleDateString()}`, 14, 25);
+      doc.setTextColor(0);
+
+      autoTable(doc, {
+        startY: 32,
+        head: [["Business Name", "Contact Name", "Phone"]],
+        body: rows.map(v => [v.business_name || "", v.name || "", v.phone || ""]),
+        headStyles: { fillColor: [245, 166, 35], textColor: [20, 10, 0] },
+        styles: { fontSize: 10 },
+      });
+    }
+
+    if (first) return; // nothing to export
+    doc.save(onlyCity ? `vendors-${onlyCity.toLowerCase().replace(/\s+/g, "-")}.pdf` : "vendors-all-cities.pdf");
+  };
 
   const resendAllUnpaid = async () => {
     if (!confirm(`Resend the payment link email to all ${unpaidApprovedCount} approved, unpaid vendors?`)) return;
@@ -4854,6 +4887,12 @@ function VendorsSection({ adminToken }: { adminToken: string }) {
           <h2 className="font-display text-white text-3xl mb-1">VENDORS</h2>
           <p className="text-white/30 text-sm">{apps.length} application{apps.length !== 1 ? "s" : ""}</p>
         </div>
+        {citiesSorted.length > 0 && (
+          <button onClick={() => exportVendorPdf()}
+            className="bg-white/5 hover:bg-white/10 border border-white/15 text-white/70 font-semibold px-4 py-2 rounded-xl text-sm transition-all cursor-pointer">
+            📄 Export PDF (All Cities)
+          </button>
+        )}
         {unpaidApprovedCount > 0 && (
           <div className="text-right">
             <button onClick={resendAllUnpaid} disabled={resendingAll}
@@ -4882,6 +4921,10 @@ function VendorsSection({ adminToken }: { adminToken: string }) {
                     <span className="text-xs font-bold px-2.5 py-0.5 rounded-full border bg-green-500/15 text-green-400 border-green-500/30">
                       {paidByCity[city].length} Paid
                     </span>
+                    <button onClick={() => exportVendorPdf(city)}
+                      className="text-xs font-semibold px-2.5 py-0.5 rounded-full border bg-white/5 text-white/60 border-white/15 hover:bg-white/10 transition-all cursor-pointer">
+                      📄 PDF
+                    </button>
                     <button onClick={() => openEmailModal(city)}
                       className="text-xs font-semibold px-2.5 py-0.5 rounded-full border bg-yellow-500/10 text-yellow-400 border-yellow-500/25 hover:bg-yellow-500/20 transition-all cursor-pointer">
                       ✉ Email
