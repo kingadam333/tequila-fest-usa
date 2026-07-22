@@ -134,7 +134,7 @@ export default function LoadInPageClient({ events }: { events: LoadInEvent[] }) 
                       {selected.loadInStart || "TBD"} <span className="text-white/30 mx-1">→</span> {selected.loadInEnd || "TBD"}
                     </p>
                     {selected.loadInEnd && (
-                      <p className="text-white/50 text-sm mt-1">You must be fully set up and on-site by {selected.loadInEnd}.</p>
+                      <p className="text-white/50 text-sm mt-1">You must be on-site and unloaded by {selected.loadInEnd}. Setup after.</p>
                     )}
                   </div>
                 )}
