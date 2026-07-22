@@ -9,7 +9,7 @@ import {
   MessageSquare, FileText, LogOut, Menu, X, TrendingUp, DollarSign,
   RefreshCw, Download, Send, CheckCircle, Search, Plus,
   Trash2, Edit2, Eye, AlertCircle, BarChart2, Mail, Utensils, Share2, Copy,
-  Star, Gift, UserCheck, ChevronRight, Megaphone, ShieldCheck, Wrench, Sparkles, Bot, Link2,
+  Star, Gift, UserCheck, ChevronRight, Megaphone, ShieldCheck, Wrench, Sparkles, Bot, Link2, MapPin,
 } from "lucide-react";
 import SocialShareSection from "./SocialShareSection";
 import SecuritySection from "./SecuritySection";
@@ -4493,6 +4493,139 @@ function NewsletterSection({ adminToken }: { adminToken: string }) {
   );
 }
 
+// ─── Load In Section ────────────────────────────────────────────────────────
+function LoadInEventCard({ event, adminToken }: { event: any; adminToken: string }) {
+  const [loadInStart, setLoadInStart] = useState(event.load_in_start || "");
+  const [loadInEnd, setLoadInEnd] = useState(event.load_in_end || "");
+  const [notes, setNotes] = useState(event.load_in_notes || "");
+  const [mapUrl, setMapUrl] = useState(event.load_in_map_url || "");
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const save = async () => {
+    setSaving(true);
+    setSaved(false);
+    await fetch(`/api/admin/events/${event.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", "x-admin-token": adminToken },
+      body: JSON.stringify({ load_in_start: loadInStart, load_in_end: loadInEnd, load_in_notes: notes }),
+    });
+    setSaving(false);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  };
+
+  const uploadMap = async (file: File) => {
+    setUploading(true);
+    try {
+      const form = new FormData();
+      form.append("eventId", event.id);
+      form.append("file", file);
+      const res = await fetch("/api/admin/events/upload-loadin-map", {
+        method: "POST",
+        headers: { "x-admin-token": adminToken },
+        body: form,
+      });
+      const data = await res.json();
+      if (data.url) setMapUrl(data.url);
+      else alert(data.error || "Upload failed");
+    } catch (err: any) {
+      alert("Upload error: " + err.message);
+    }
+    setUploading(false);
+  };
+
+  return (
+    <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-5">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h3 className="text-white font-bold text-lg">{event.city}</h3>
+          <p className="text-white/40 text-xs">{event.date} · {event.venue}</p>
+        </div>
+        <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full border bg-white/5 text-white/40 border-white/10">{event.status}</span>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 mb-3">
+        <div>
+          <label className="block text-xs text-white/40 uppercase tracking-wider mb-1">Load-In Start</label>
+          <input value={loadInStart} onChange={e => setLoadInStart(e.target.value)}
+            placeholder="e.g. 12:00 PM"
+            className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-yellow-500/50" />
+        </div>
+        <div>
+          <label className="block text-xs text-white/40 uppercase tracking-wider mb-1">Must Be In By</label>
+          <input value={loadInEnd} onChange={e => setLoadInEnd(e.target.value)}
+            placeholder="e.g. 2:00 PM"
+            className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-yellow-500/50" />
+        </div>
+      </div>
+
+      <div className="mb-3">
+        <label className="block text-xs text-white/40 uppercase tracking-wider mb-1">Load-In Info (shown as a paragraph on the public page)</label>
+        <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={4}
+          placeholder="Where to park, who to check in with, booth setup rules, etc."
+          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-yellow-500/50" />
+      </div>
+
+      <div className="mb-4">
+        <label className="block text-xs text-white/40 uppercase tracking-wider mb-1">Venue Map</label>
+        {mapUrl && (
+          <a href={mapUrl} target="_blank" rel="noopener noreferrer" className="block mb-2">
+            <img src={mapUrl} alt="Venue map" className="max-h-48 rounded-lg border border-white/10" />
+          </a>
+        )}
+        <input ref={fileInputRef} type="file" accept="image/*" className="hidden"
+          onChange={e => { const f = e.target.files?.[0]; if (f) uploadMap(f); }} />
+        <button onClick={() => fileInputRef.current?.click()} disabled={uploading}
+          className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/15 text-white/70 disabled:opacity-50 transition-all cursor-pointer">
+          {uploading ? "Uploading…" : mapUrl ? "Replace Map" : "Upload Map"}
+        </button>
+      </div>
+
+      <button onClick={save} disabled={saving}
+        className="bg-yellow-500 hover:bg-yellow-400 disabled:opacity-60 text-black font-bold px-4 py-2 rounded-xl text-sm transition-all cursor-pointer">
+        {saving ? "Saving…" : saved ? "Saved ✓" : "Save"}
+      </button>
+    </div>
+  );
+}
+
+function LoadInSection({ adminToken }: { adminToken: string }) {
+  const [events, setEvents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/admin/events", { headers: { "x-admin-token": adminToken } })
+      .then(r => r.json())
+      .then(d => {
+        const sorted = (d.events || []).filter((e: any) => e.status !== "cancelled")
+          .sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0));
+        setEvents(sorted);
+        setLoading(false);
+      });
+  }, [adminToken]);
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="font-display text-white text-3xl mb-1">LOAD IN</h2>
+        <p className="text-white/30 text-sm">Set load-in windows, info, and the venue map shown on the public /loadin page for each city.</p>
+      </div>
+      {loading ? (
+        <p className="text-white/40 text-sm">Loading…</p>
+      ) : events.length === 0 ? (
+        <p className="text-white/40 text-sm">No events found.</p>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {events.map(ev => <LoadInEventCard key={ev.id} event={ev} adminToken={adminToken} />)}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Vendors Section ───────────────────────────────────────────────────────────
 const VENDOR_STATUS_STYLES: Record<string, string> = {
   pending:  "bg-yellow-500/10 text-yellow-400 border-yellow-500/30",
@@ -5787,6 +5920,7 @@ const NAV_ITEMS = [
   { id: "social-share", label: "Social Share", icon: <Megaphone size={17} /> },
   { id: "staff",      label: "Staff",       icon: <Users size={17} /> },
   { id: "vendors",    label: "Vendors",     icon: <Utensils size={17} /> },
+  { id: "loadin",     label: "Load In",     icon: <MapPin size={17} /> },
   { id: "media",      label: "Media Partners", icon: <Gift size={17} /> },
   { id: "newsletter", label: "Newsletter",  icon: <Mail size={17} /> },
   { id: "tools",      label: "Tools",       icon: <RefreshCw size={17} /> },
@@ -5896,6 +6030,7 @@ export default function AdminDashboard() {
     "social-share": <SocialShareSection adminToken={adminToken} />,
     staff:     <StaffSection adminToken={adminToken} />,
     vendors:    <VendorsSection adminToken={adminToken} />,
+    loadin:     <LoadInSection adminToken={adminToken} />,
     media:      <MediaPartnersSection adminToken={adminToken} events={events} />,
     newsletter: <NewsletterSection adminToken={adminToken} />,
     tools:     <ToolsSection adminToken={adminToken} />,
