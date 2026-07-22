@@ -21,6 +21,7 @@ export interface LoadInEvent {
   loadInEnd: string;
   loadInNotes: string;
   mapUrl: string;
+  mapUrl2: string;
 }
 
 const CITY_COLORS: Record<string, string> = {
@@ -148,10 +149,20 @@ export default function LoadInPageClient({ events }: { events: LoadInEvent[] }) 
 
                 {/* Map */}
                 {selected.mapUrl && (
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 mb-5">
                     <p className="text-white/40 text-xs uppercase tracking-wider mb-3 px-2">Venue Map</p>
                     <a href={selected.mapUrl} target="_blank" rel="noopener noreferrer">
                       <img src={selected.mapUrl} alt={`${selected.city} venue map`} className="w-full rounded-xl" />
+                    </a>
+                  </div>
+                )}
+
+                {/* Second map */}
+                {selected.mapUrl2 && (
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                    <p className="text-white/40 text-xs uppercase tracking-wider mb-3 px-2">Additional Map</p>
+                    <a href={selected.mapUrl2} target="_blank" rel="noopener noreferrer">
+                      <img src={selected.mapUrl2} alt={`${selected.city} additional map`} className="w-full rounded-xl" />
                     </a>
                   </div>
                 )}

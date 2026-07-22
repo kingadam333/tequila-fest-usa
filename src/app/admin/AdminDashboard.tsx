@@ -4499,10 +4499,13 @@ function LoadInEventCard({ event, adminToken }: { event: any; adminToken: string
   const [loadInEnd, setLoadInEnd] = useState(event.load_in_end || "");
   const [notes, setNotes] = useState(event.load_in_notes || "");
   const [mapUrl, setMapUrl] = useState(event.load_in_map_url || "");
+  const [mapUrl2, setMapUrl2] = useState(event.load_in_map_url_2 || "");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploading2, setUploading2] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef2 = useRef<HTMLInputElement>(null);
 
   const save = async () => {
     setSaving(true);
@@ -4517,24 +4520,25 @@ function LoadInEventCard({ event, adminToken }: { event: any; adminToken: string
     setTimeout(() => setSaved(false), 2000);
   };
 
-  const uploadMap = async (file: File) => {
-    setUploading(true);
+  const uploadMap = async (file: File, slot: "1" | "2") => {
+    slot === "2" ? setUploading2(true) : setUploading(true);
     try {
       const form = new FormData();
       form.append("eventId", event.id);
       form.append("file", file);
+      form.append("slot", slot);
       const res = await fetch("/api/admin/events/upload-loadin-map", {
         method: "POST",
         headers: { "x-admin-token": adminToken },
         body: form,
       });
       const data = await res.json();
-      if (data.url) setMapUrl(data.url);
+      if (data.url) { slot === "2" ? setMapUrl2(data.url) : setMapUrl(data.url); }
       else alert(data.error || "Upload failed");
     } catch (err: any) {
       alert("Upload error: " + err.message);
     }
-    setUploading(false);
+    slot === "2" ? setUploading2(false) : setUploading(false);
   };
 
   return (
@@ -4569,7 +4573,7 @@ function LoadInEventCard({ event, adminToken }: { event: any; adminToken: string
           className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-yellow-500/50" />
       </div>
 
-      <div className="mb-4">
+      <div className="mb-3">
         <label className="block text-xs text-white/40 uppercase tracking-wider mb-1">Venue Map</label>
         {mapUrl && (
           <a href={mapUrl} target="_blank" rel="noopener noreferrer" className="block mb-2">
@@ -4577,10 +4581,25 @@ function LoadInEventCard({ event, adminToken }: { event: any; adminToken: string
           </a>
         )}
         <input ref={fileInputRef} type="file" accept="image/*" className="hidden"
-          onChange={e => { const f = e.target.files?.[0]; if (f) uploadMap(f); }} />
+          onChange={e => { const f = e.target.files?.[0]; if (f) uploadMap(f, "1"); }} />
         <button onClick={() => fileInputRef.current?.click()} disabled={uploading}
           className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/15 text-white/70 disabled:opacity-50 transition-all cursor-pointer">
           {uploading ? "Uploading…" : mapUrl ? "Replace Map" : "Upload Map"}
+        </button>
+      </div>
+
+      <div className="mb-4">
+        <label className="block text-xs text-white/40 uppercase tracking-wider mb-1">Second Map (optional, shown below the main map)</label>
+        {mapUrl2 && (
+          <a href={mapUrl2} target="_blank" rel="noopener noreferrer" className="block mb-2">
+            <img src={mapUrl2} alt="Second venue map" className="max-h-48 rounded-lg border border-white/10" />
+          </a>
+        )}
+        <input ref={fileInputRef2} type="file" accept="image/*" className="hidden"
+          onChange={e => { const f = e.target.files?.[0]; if (f) uploadMap(f, "2"); }} />
+        <button onClick={() => fileInputRef2.current?.click()} disabled={uploading2}
+          className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/15 text-white/70 disabled:opacity-50 transition-all cursor-pointer">
+          {uploading2 ? "Uploading…" : mapUrl2 ? "Replace Second Map" : "Upload Second Map"}
         </button>
       </div>
 

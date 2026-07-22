@@ -12,6 +12,8 @@ export async function POST(req: NextRequest) {
   const formData = await req.formData();
   const eventId = formData.get("eventId") as string;
   const file = formData.get("file") as File | null;
+  const slot = (formData.get("slot") as string) === "2" ? "2" : "1";
+  const column = slot === "2" ? "load_in_map_url_2" : "load_in_map_url";
 
   if (!eventId || !file) {
     return NextResponse.json({ error: "eventId and file are required" }, { status: 400 });
@@ -19,7 +21,7 @@ export async function POST(req: NextRequest) {
 
   const buffer = Buffer.from(await file.arrayBuffer());
   const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
-  const storagePath = `loadin/${eventId}.${ext}`;
+  const storagePath = `loadin/${eventId}${slot === "2" ? "-2" : ""}.${ext}`;
 
   const db = supabaseAdmin as any;
 
@@ -39,7 +41,7 @@ export async function POST(req: NextRequest) {
 
   await db
     .from("events")
-    .update({ load_in_map_url: urlData.publicUrl, updated_at: new Date().toISOString() })
+    .update({ [column]: urlData.publicUrl, updated_at: new Date().toISOString() })
     .eq("id", eventId);
 
   return NextResponse.json({ url: publicUrl });

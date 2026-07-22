@@ -11,10 +11,13 @@ export const metadata = {
 export default async function Page() {
   const db = supabaseAdmin as any;
 
+  const today = new Date().toISOString();
+
   const { data } = await db
     .from("events")
-    .select("id, slug, city, state, date, time, venue, venue_detail, venue_address, load_in_start, load_in_end, load_in_notes, load_in_map_url, sort_order, status")
-    .not("status", "in", '("draft","cancelled")')
+    .select("id, slug, city, state, date, time, venue, venue_detail, venue_address, load_in_start, load_in_end, load_in_notes, load_in_map_url, load_in_map_url_2, sort_order, status, date_iso")
+    .not("status", "in", '("draft","cancelled","completed")')
+    .gte("date_iso", today)
     .order("sort_order", { ascending: true });
 
   const events: LoadInEvent[] = (data || []).map((e: any) => ({
@@ -31,6 +34,7 @@ export default async function Page() {
     loadInEnd: e.load_in_end || "",
     loadInNotes: e.load_in_notes || "",
     mapUrl: e.load_in_map_url || "",
+    mapUrl2: e.load_in_map_url_2 || "",
   }));
 
   return <LoadInPageClient events={events} />;
