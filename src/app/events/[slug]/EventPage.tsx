@@ -70,7 +70,7 @@ const VIP_PERKS = [
   "Build-your-own taco bar",
   "Priority entry — skip the line",
   "Dedicated VIP bartenders",
-  "VIP-only gift bag",
+  "VIP-only souvenir",
 ];
 
 function useCartModal(event: EventData, liveTypes: LiveTicketType[]) {
