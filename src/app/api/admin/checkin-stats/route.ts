@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
   const db = supabaseAdmin as any;
 
   // Ticket stats from ticket_instances (status = 'used' for checked-in)
-  let q = db.from("ticket_instances").select("status, ticket_type, event_city, event_slug");
+  let q = db.from("ticket_instances").select("status, ticket_type, event_city, event_slug").limit(20000);
   if (city) q = q.ilike("event_city", city);
   const { data: tickets } = await q;
 

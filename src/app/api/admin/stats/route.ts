@@ -27,7 +27,8 @@ async function getSupabaseStats(cityFilter: string, yearFilter: string) {
     .from("ticket_orders")
     .select("id, event_city, event_slug, total, created_at, status")
     .eq("status", "paid")
-    .neq("source", "media_comp");
+    .neq("source", "media_comp")
+    .limit(20000); // override Supabase's default 1000-row cap
 
   if (cityFilter) orderQuery = orderQuery.ilike("event_city", `%${cityFilter}%`);
   if (yearFilter) {
@@ -43,7 +44,8 @@ async function getSupabaseStats(cityFilter: string, yearFilter: string) {
   // Fetch ticket_instances filtered to matching orders
   let instanceQuery = db
     .from("ticket_instances")
-    .select("ticket_type, event_slug, event_city, event_id, order_id");
+    .select("ticket_type, event_slug, event_city, event_id, order_id")
+    .limit(20000); // override Supabase's default 1000-row cap
 
   if (orderIds.length > 0) {
     instanceQuery = instanceQuery.in("order_id", orderIds);

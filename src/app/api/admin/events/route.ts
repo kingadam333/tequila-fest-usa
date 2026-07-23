@@ -26,7 +26,8 @@ export async function GET(req: NextRequest) {
   // set at purchase time and never changes.
   const { data: instances } = await db
     .from("ticket_instances")
-    .select("ticket_type, event_id");
+    .select("ticket_type, event_id")
+    .limit(20000); // override Supabase's default 1000-row cap
 
   // Build lookup: "eventId:normalizedType" → count
   const countMap = new Map<string, number>();

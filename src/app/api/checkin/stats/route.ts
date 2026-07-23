@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
 
   const db = supabaseAdmin as any;
 
-  let query = db.from("ticket_instances").select("status, ticket_type, event_slug");
+  let query = db.from("ticket_instances").select("status, ticket_type, event_slug").limit(20000);
   if (eventSlug) query = query.eq("event_slug", eventSlug);
 
   const { data } = await query;
