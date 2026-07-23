@@ -59,9 +59,9 @@ function useAdminData(adminToken: string) {
     setError("");
     try {
       const [ordersRes, statsRes, eventsRes] = await Promise.all([
-        fetch("/api/admin/orders", { headers }),
-        fetch("/api/admin/stats", { headers }),
-        fetch("/api/admin/events", { headers }),
+        fetch("/api/admin/orders", { headers, cache: "no-store" }),
+        fetch("/api/admin/stats", { headers, cache: "no-store" }),
+        fetch("/api/admin/events", { headers, cache: "no-store" }),
       ]);
 
       if (ordersRes.status === 401 || statsRes.status === 401) {

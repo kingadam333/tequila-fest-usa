@@ -3,6 +3,10 @@ import { verifyAdminToken, unauthorizedResponse } from "@/lib/adminAuth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { normalizeTicketType } from "@/lib/normalizeTicketType";
 
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+export const revalidate = 0;
+
 export async function GET(req: NextRequest) {
   if (!verifyAdminToken(req)) return unauthorizedResponse();
   const db = supabaseAdmin as any;

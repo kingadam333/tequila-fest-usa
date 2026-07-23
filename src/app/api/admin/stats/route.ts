@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyAdminToken, unauthorizedResponse } from "@/lib/adminAuth";
 import { normalizeTicketType, sortByType } from "@/lib/normalizeTicketType";
 
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+export const revalidate = 0;
+
 export async function GET(req: NextRequest) {
   if (!verifyAdminToken(req)) return unauthorizedResponse();
 
