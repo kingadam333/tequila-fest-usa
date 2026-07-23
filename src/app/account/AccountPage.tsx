@@ -33,42 +33,32 @@ interface RealOrder {
   status: string;
   created_at: string;
   stripe_payment_intent_id: string | null;
-  ticket_instances: { id: string; qr_code: string; ticket_number: number; status: string; holder_name: string; ticket_type: string }[];
+  ticket_instances: { id: string; qr_code: string; ticket_number: number; status: string; holder_name: string; ticket_type: string; checked_in_at?: string | null }[];
 }
 
 type Tab = "dashboard" | "profile" | "orders" | "tickets" | "refer" | "rewards";
 
 // Simple QR placeholder using SVG pattern
-function QRPlaceholder({ value }: { value: string }) {
+function TicketQRCode({ value }: { value: string }) {
+  const [dataUrl, setDataUrl] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    QRCode.toDataURL(value, { width: 288, margin: 1, color: { dark: "#000000", light: "#ffffff" } })
+      .then(url => { if (!cancelled) setDataUrl(url); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [value]);
+
   return (
     <div className="bg-white p-3 rounded-xl inline-block">
-      <div className="w-36 h-36 relative">
-        {/* Outer frame */}
-        <div className="absolute inset-0 grid grid-cols-7 grid-rows-7 gap-0.5 p-1">
-          {Array.from({ length: 49 }).map((_, i) => {
-            const row = Math.floor(i / 7);
-            const col = i % 7;
-            // Corner squares
-            const inTopLeft = row < 3 && col < 3;
-            const inTopRight = row < 3 && col >= 4;
-            const inBottomLeft = row >= 4 && col < 3;
-            const isCorner = inTopLeft || inTopRight || inBottomLeft;
-            // Pseudo-random fill for data area
-            const seed = (value.charCodeAt(i % value.length) + i * 7) % 3;
-            const filled = isCorner || (!isCorner && seed === 0);
-            return (
-              <div key={i} className={`rounded-sm ${filled ? "bg-black" : "bg-white"}`} />
-            );
-          })}
-        </div>
-        {/* Center logo */}
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="bg-white p-1 rounded-md">
-            <div className="w-6 h-6 bg-black rounded-sm flex items-center justify-center">
-              <span className="text-white text-xs font-black">TF</span>
-            </div>
-          </div>
-        </div>
+      <div className="w-36 h-36 flex items-center justify-center">
+        {dataUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={dataUrl} alt="Ticket QR code" className="w-full h-full" />
+        ) : (
+          <div className="w-full h-full bg-black/5 animate-pulse rounded" />
+        )}
       </div>
       <p className="text-black text-center text-[9px] font-mono mt-1 tracking-wider">{value}</p>
     </div>
@@ -306,16 +296,47 @@ function TicketsTab({ highlightOrderId, orders }: { highlightOrderId?: string; o
       ticketNumber: idx + 1,
       totalInOrder: order.ticket_instances?.length || order.quantity,
       status: t.status,
+      checkedInAt: t.checked_in_at || null,
     }))
   );
 
-  // checkedIn state: ticketId → timestamp string
-  const [checkedIn, setCheckedIn] = useState<Record<string, string>>({});
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
-  const handleSimulateCheckin = (ticketId: string) => {
-    const now = new Date();
-    const ts = now.toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true });
-    setCheckedIn(prev => ({ ...prev, [ticketId]: ts }));
+  const downloadTicketPdf = async (ticket: (typeof allTickets)[number]) => {
+    setDownloadingId(ticket.id);
+    try {
+      const [{ default: jsPDF }, qrDataUrl] = await Promise.all([
+        import("jspdf"),
+        QRCode.toDataURL(ticket.id, { width: 400, margin: 1 }),
+      ]);
+      const doc = new jsPDF({ unit: "pt", format: [320, 480] });
+      doc.setFillColor(13, 5, 0);
+      doc.rect(0, 0, 320, 480, "F");
+      doc.setTextColor(245, 166, 35);
+      doc.setFontSize(11);
+      doc.text("TEQUILA FEST USA", 160, 36, { align: "center" });
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(16);
+      doc.text(ticket.event, 160, 60, { align: "center" });
+      doc.setFontSize(10);
+      doc.setTextColor(200, 200, 200);
+      doc.text(ticket.date, 160, 78, { align: "center" });
+      doc.addImage(qrDataUrl, "PNG", 60, 100, 200, 200);
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(12);
+      doc.text(ticket.name, 160, 322, { align: "center" });
+      doc.setFontSize(10);
+      doc.setTextColor(245, 166, 35);
+      doc.text(ticket.type, 160, 340, { align: "center" });
+      doc.setTextColor(150, 150, 150);
+      doc.setFontSize(8);
+      doc.text(ticket.id, 160, 360, { align: "center" });
+      doc.text("Show this QR code at the door - one scan per entry", 160, 378, { align: "center", maxWidth: 260 });
+      doc.save(`tequila-fest-ticket-${ticket.id}.pdf`);
+    } catch {
+      alert("Couldn't generate the PDF — please try again or use the QR code shown here.");
+    }
+    setDownloadingId(null);
   };
 
   return (
@@ -324,7 +345,7 @@ function TicketsTab({ highlightOrderId, orders }: { highlightOrderId?: string; o
       <p className="text-white/40 text-sm mb-8">Show this QR code at the door — one scan per entry.</p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
         {allTickets.map(ticket => {
-          const isCheckedIn = !!checkedIn[ticket.id];
+          const isCheckedIn = ticket.status === "used";
           const typeStyle = TYPE_STYLES[ticket.type] || TYPE_STYLES["GA Entry"];
 
           return (
@@ -369,7 +390,7 @@ function TicketsTab({ highlightOrderId, orders }: { highlightOrderId?: string; o
               <div className={`px-5 py-4 flex items-start gap-5 transition-colors duration-500 ${isCheckedIn ? "bg-red-950/30" : "bg-black/30"}`}>
                 {/* QR — greyed out if checked in */}
                 <div className={`flex-shrink-0 transition-opacity duration-500 ${isCheckedIn ? "opacity-30 grayscale" : ""}`}>
-                  <QRPlaceholder value={ticket.id} />
+                  <TicketQRCode value={ticket.id} />
                 </div>
 
                 <div className="flex-1 min-w-0 flex flex-col gap-3">
@@ -405,25 +426,23 @@ function TicketsTab({ highlightOrderId, orders }: { highlightOrderId?: string; o
                   {isCheckedIn && (
                     <div>
                       <p className="text-red-400/70 text-xs font-semibold uppercase tracking-wider mb-0.5">Checked In</p>
-                      <p className="text-red-300 text-xs font-bold">{checkedIn[ticket.id]}</p>
+                      <p className="text-red-300 text-xs font-bold">
+                        {ticket.checkedInAt
+                          ? new Date(ticket.checkedInAt).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true })
+                          : "Already used for entry"}
+                      </p>
                     </div>
                   )}
 
                   {/* Download PDF */}
                   <div className="flex gap-2 mt-1">
-                    <button className="flex-1 text-xs text-white/40 hover:text-white/60 border border-white/10 hover:border-white/20 py-2 rounded-lg transition-all duration-200 cursor-pointer">
-                      Download PDF
+                    <button
+                      onClick={() => downloadTicketPdf(ticket)}
+                      disabled={downloadingId === ticket.id}
+                      className="flex-1 text-xs text-white/40 hover:text-white/60 border border-white/10 hover:border-white/20 py-2 rounded-lg transition-all duration-200 cursor-pointer disabled:opacity-50"
+                    >
+                      {downloadingId === ticket.id ? "Generating…" : "Download PDF"}
                     </button>
-                    {/* Dev/demo only — remove in prod */}
-                    {!isCheckedIn && (
-                      <button
-                        onClick={() => handleSimulateCheckin(ticket.id)}
-                        className="text-xs text-white/20 hover:text-red-400/60 border border-white/5 hover:border-red-500/20 px-3 py-2 rounded-lg transition-all duration-200 cursor-pointer"
-                        title="Simulate check-in (demo)"
-                      >
-                        Scan
-                      </button>
-                    )}
                   </div>
                 </div>
               </div>

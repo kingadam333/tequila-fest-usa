@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
 
   const { data: orders, error } = await db
     .from("ticket_orders")
-    .select(`*, ticket_instances(id, qr_code, ticket_number, status, holder_name, ticket_type)`)
+    .select(`*, ticket_instances(id, qr_code, ticket_number, status, holder_name, ticket_type, checked_in_at)`)
     .eq("customer_email", user.email)
     .eq("status", "paid")
     .order("created_at", { ascending: false });
