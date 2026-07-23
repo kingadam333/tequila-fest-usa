@@ -25,8 +25,19 @@ export async function GET(req: NextRequest) {
   // city URL strategy), so slug-based counting would misattribute every past
   // year's sales to whichever event currently holds that slug. event_id is
   // set at purchase time and never changes.
-  const instances = await fetchAllRows<{ ticket_type: string; event_id: string }>(
-    (from, to) => db.from("ticket_instances").select("ticket_type, event_id").range(from, to)
+  //
+  // Joined to ticket_orders and filtered to status=paid, source!=media_comp —
+  // same rule Overview/admin-stats uses — so a comp/giveaway ticket never
+  // inflates "sold" here while Overview (correctly) excludes it, which is
+  // exactly the kind of mismatch that showed up as Overview vs Events
+  // disagreeing on the same event's VIP count.
+  const instances = await fetchAllRows<{ ticket_type: string; event_id: string }>((from, to) =>
+    db
+      .from("ticket_instances")
+      .select("ticket_type, event_id, ticket_orders!inner(status, source)")
+      .eq("ticket_orders.status", "paid")
+      .neq("ticket_orders.source", "media_comp")
+      .range(from, to)
   );
 
   // Build lookup: "eventId:normalizedType" → count
