@@ -21,74 +21,72 @@ async function getSupabaseStats(cityFilter: string, yearFilter: string) {
   const { supabaseAdmin } = await import("@/lib/supabase");
   const db = supabaseAdmin as any;
 
-  // Build order query with optional city/year filters. Media-partner comp
-  // tickets ($0, source: "media_comp") are excluded so giveaways never
-  // appear as real revenue/sales in these numbers.
-  const orders = await fetchAllRows<any>((from, to) => {
+  // Fetch ticket_instances with their parent order embedded via a single
+  // inner-joined query, filtered server-side in Postgres — avoids ever
+  // building a giant order_id IN(...) list client-side, which broke once
+  // order counts grew past a few hundred (the resulting URL/query got
+  // rejected outright). Media-partner comp tickets ($0, source:
+  // "media_comp") are excluded so giveaways never appear as real
+  // revenue/sales in these numbers.
+  const instances = await fetchAllRows<any>((from, to) => {
     let q = db
-      .from("ticket_orders")
-      .select("id, event_city, event_slug, total, created_at, status")
-      .eq("status", "paid")
-      .neq("source", "media_comp")
+      .from("ticket_instances")
+      .select("ticket_type, event_id, order_id, ticket_orders!inner(id, event_city, event_slug, total, created_at, status, source)")
+      .eq("ticket_orders.status", "paid")
+      .neq("ticket_orders.source", "media_comp")
       .range(from, to);
-    if (cityFilter) q = q.ilike("event_city", `%${cityFilter}%`);
+    if (cityFilter) q = q.ilike("ticket_orders.event_city", `%${cityFilter}%`);
     if (yearFilter) {
-      q = q.gte("created_at", `${yearFilter}-01-01`).lte("created_at", `${yearFilter}-12-31T23:59:59`);
+      q = q.gte("ticket_orders.created_at", `${yearFilter}-01-01`).lte("ticket_orders.created_at", `${yearFilter}-12-31T23:59:59`);
     }
     return q;
   });
 
-  const orderIds = orders.map((o: any) => o.id);
-
-  if (orderIds.length === 0) {
-    if (cityFilter || yearFilter) {
-      // Filters active but no matching orders — return zeros
-      return NextResponse.json({
-        source: "supabase",
-        totalRevenue: 0, totalTickets: 0, totalOrders: 0, ordersToday: 0,
-        byCity: {}, byEvent: {}, totalServiceFees: 0, totalPlatformFees: 0,
-        totalStripeFees: 0, totalTicketRevenue: 0,
-      });
-    }
+  if (instances.length === 0) {
+    return NextResponse.json({
+      source: "supabase",
+      totalRevenue: 0, totalTickets: 0, totalOrders: 0, ordersToday: 0,
+      byCity: {}, byEvent: {}, totalServiceFees: 0, totalPlatformFees: 0,
+      totalStripeFees: 0, totalTicketRevenue: 0,
+    });
   }
 
-  // Fetch ticket_instances filtered to matching orders. Supabase's .in()
-  // filter itself has no practical size issue with ~600+ ids, but the
-  // RESULT set needs the same pagination as orders above.
-  const instances = orderIds.length > 0
-    ? await fetchAllRows<any>((from, to) =>
-        db.from("ticket_instances")
-          .select("ticket_type, event_slug, event_city, event_id, order_id")
-          .in("order_id", orderIds)
-          .range(from, to)
-      )
-    : [];
-
+  // Dedup orders from the embedded join (every paid order has ≥1 instance)
   const orderMap = new Map<string, { total: number; created_at: string; event_city: string }>();
-  for (const o of orders || []) {
-    orderMap.set(o.id, { total: Number(o.total), created_at: o.created_at, event_city: o.event_city });
+  const ticketCountByOrder = new Map<string, number>();
+  for (const ti of instances) {
+    const o = ti.ticket_orders;
+    if (o && !orderMap.has(o.id)) {
+      orderMap.set(o.id, { total: Number(o.total), created_at: o.created_at, event_city: o.event_city });
+    }
+    ticketCountByOrder.set(ti.order_id, (ticketCountByOrder.get(ti.order_id) || 0) + 1);
   }
+  const orders = Array.from(orderMap.values());
 
   const today = new Date().toISOString().split("T")[0];
-  const totalTickets = (instances || []).length;
-  const totalRevenue = (orders || []).reduce((s: number, o: any) => s + Number(o.total), 0);
-  const ordersToday = (orders || []).filter((o: any) => String(o.created_at).startsWith(today)).length;
-  const totalOrders = (orders || []).length;
+  const totalTickets = instances.length;
+  const totalRevenue = orders.reduce((s, o) => s + o.total, 0);
+  const ordersToday = orders.filter(o => String(o.created_at).startsWith(today)).length;
+  const totalOrders = orders.length;
 
   // Per-city breakdown
   const byCity: Record<string, { revenue: number; tickets: number; byType: Record<string, number> }> = {};
 
-  for (const ti of instances || []) {
+  for (const ti of instances) {
     const order = orderMap.get(ti.order_id);
     if (!order) continue;
-    const city = order.event_city || ti.event_city || "Unknown";
+    const city = order.event_city || ti.ticket_orders?.event_city || "Unknown";
     if (!byCity[city]) byCity[city] = { revenue: 0, tickets: 0, byType: {} };
     byCity[city].tickets++;
     const type = normalizeTicketType(ti.ticket_type);
     byCity[city].byType[type] = (byCity[city].byType[type] || 0) + 1;
   }
 
-  for (const o of orders || []) {
+  const cityRevenueAttributed = new Set<string>();
+  for (const ti of instances) {
+    const o = ti.ticket_orders;
+    if (!o || cityRevenueAttributed.has(o.id)) continue;
+    cityRevenueAttributed.add(o.id);
     const city = o.event_city || "Unknown";
     if (!byCity[city]) byCity[city] = { revenue: 0, tickets: 0, byType: {} };
     byCity[city].revenue += Number(o.total);
@@ -106,7 +104,7 @@ async function getSupabaseStats(cityFilter: string, yearFilter: string) {
   const byEvent: Record<string, { revenue: number; tickets: number; byType: Record<string, number> }> = {};
   const revenueAttributed = new Set<string>();
 
-  for (const ti of instances || []) {
+  for (const ti of instances) {
     if (!ti.event_id) continue;
     const order = orderMap.get(ti.order_id);
     if (!order) continue;
@@ -131,9 +129,9 @@ async function getSupabaseStats(cityFilter: string, yearFilter: string) {
   let totalPlatformFees = 0;
   let totalStripeFees = 0;
   let totalTicketRevenue = 0;
-  for (const o of orders || []) {
-    const qty = (instances || []).filter((ti: any) => ti.order_id === o.id).length || 1;
-    const f = calculateFees(Number(o.total), qty);
+  for (const [orderId, o] of orderMap) {
+    const qty = ticketCountByOrder.get(orderId) || 1;
+    const f = calculateFees(o.total, qty);
     totalServiceFees += f.serviceFee;
     totalPlatformFees += f.platformFee;
     totalStripeFees += f.stripeFee;
