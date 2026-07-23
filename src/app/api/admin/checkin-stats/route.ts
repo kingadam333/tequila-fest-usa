@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyAdminToken, unauthorizedResponse } from "@/lib/adminAuth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { normalizeTicketType, sortByType } from "@/lib/normalizeTicketType";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 
 export async function GET(req: NextRequest) {
   if (!verifyAdminToken(req)) return unauthorizedResponse();
@@ -12,15 +13,17 @@ export async function GET(req: NextRequest) {
   const db = supabaseAdmin as any;
 
   // Ticket stats from ticket_instances (status = 'used' for checked-in)
-  let q = db.from("ticket_instances").select("status, ticket_type, event_city, event_slug").limit(20000);
-  if (city) q = q.ilike("event_city", city);
-  const { data: tickets } = await q;
+  const tickets = await fetchAllRows<any>((from, to) => {
+    let q = db.from("ticket_instances").select("status, ticket_type, event_city, event_slug").range(from, to);
+    if (city) q = q.ilike("event_city", city);
+    return q;
+  });
 
-  const total = tickets?.length ?? 0;
-  const checkedIn = tickets?.filter((t: any) => t.status === "used").length ?? 0;
+  const total = tickets.length;
+  const checkedIn = tickets.filter((t: any) => t.status === "used").length;
 
   const byTypeRaw: Record<string, { total: number; checkedIn: number }> = {};
-  for (const t of (tickets ?? [])) {
+  for (const t of tickets) {
     const key = normalizeTicketType(t.ticket_type);
     if (!byTypeRaw[key]) byTypeRaw[key] = { total: 0, checkedIn: 0 };
     byTypeRaw[key].total++;

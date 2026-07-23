@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAdminToken, unauthorizedResponse } from "@/lib/adminAuth";
 import { normalizeTicketType, sortByType } from "@/lib/normalizeTicketType";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
@@ -23,44 +24,45 @@ async function getSupabaseStats(cityFilter: string, yearFilter: string) {
   // Build order query with optional city/year filters. Media-partner comp
   // tickets ($0, source: "media_comp") are excluded so giveaways never
   // appear as real revenue/sales in these numbers.
-  let orderQuery = db
-    .from("ticket_orders")
-    .select("id, event_city, event_slug, total, created_at, status")
-    .eq("status", "paid")
-    .neq("source", "media_comp")
-    .limit(20000); // override Supabase's default 1000-row cap
+  const orders = await fetchAllRows<any>((from, to) => {
+    let q = db
+      .from("ticket_orders")
+      .select("id, event_city, event_slug, total, created_at, status")
+      .eq("status", "paid")
+      .neq("source", "media_comp")
+      .range(from, to);
+    if (cityFilter) q = q.ilike("event_city", `%${cityFilter}%`);
+    if (yearFilter) {
+      q = q.gte("created_at", `${yearFilter}-01-01`).lte("created_at", `${yearFilter}-12-31T23:59:59`);
+    }
+    return q;
+  });
 
-  if (cityFilter) orderQuery = orderQuery.ilike("event_city", `%${cityFilter}%`);
-  if (yearFilter) {
-    orderQuery = orderQuery
-      .gte("created_at", `${yearFilter}-01-01`)
-      .lte("created_at", `${yearFilter}-12-31T23:59:59`);
+  const orderIds = orders.map((o: any) => o.id);
+
+  if (orderIds.length === 0) {
+    if (cityFilter || yearFilter) {
+      // Filters active but no matching orders — return zeros
+      return NextResponse.json({
+        source: "supabase",
+        totalRevenue: 0, totalTickets: 0, totalOrders: 0, ordersToday: 0,
+        byCity: {}, byEvent: {}, totalServiceFees: 0, totalPlatformFees: 0,
+        totalStripeFees: 0, totalTicketRevenue: 0,
+      });
+    }
   }
 
-  const { data: orders } = await orderQuery;
-
-  const orderIds = (orders || []).map((o: any) => o.id);
-
-  // Fetch ticket_instances filtered to matching orders
-  let instanceQuery = db
-    .from("ticket_instances")
-    .select("ticket_type, event_slug, event_city, event_id, order_id")
-    .limit(20000); // override Supabase's default 1000-row cap
-
-  if (orderIds.length > 0) {
-    instanceQuery = instanceQuery.in("order_id", orderIds);
-  } else if (cityFilter || yearFilter) {
-    // Filters active but no matching orders — return zeros
-    return NextResponse.json({
-      source: "supabase",
-      totalRevenue: 0, totalTickets: 0, totalOrders: 0, ordersToday: 0,
-      byCity: {}, byEvent: {}, totalServiceFees: 0, totalPlatformFees: 0,
-      totalStripeFees: 0, totalTicketRevenue: 0,
-    });
-  }
-
-  const { data: instances, error } = await instanceQuery;
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  // Fetch ticket_instances filtered to matching orders. Supabase's .in()
+  // filter itself has no practical size issue with ~600+ ids, but the
+  // RESULT set needs the same pagination as orders above.
+  const instances = orderIds.length > 0
+    ? await fetchAllRows<any>((from, to) =>
+        db.from("ticket_instances")
+          .select("ticket_type, event_slug, event_city, event_id, order_id")
+          .in("order_id", orderIds)
+          .range(from, to)
+      )
+    : [];
 
   const orderMap = new Map<string, { total: number; created_at: string; event_city: string }>();
   for (const o of orders || []) {

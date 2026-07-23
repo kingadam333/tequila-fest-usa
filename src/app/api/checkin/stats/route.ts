@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { verifyCheckinAccess } from "@/lib/checkinAuth";
 import { normalizeTicketType, sortByType } from "@/lib/normalizeTicketType";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 
 export async function GET(req: NextRequest) {
   if (!await verifyCheckinAccess(req)) {
@@ -13,11 +14,11 @@ export async function GET(req: NextRequest) {
 
   const db = supabaseAdmin as any;
 
-  let query = db.from("ticket_instances").select("status, ticket_type, event_slug").limit(20000);
-  if (eventSlug) query = query.eq("event_slug", eventSlug);
-
-  const { data } = await query;
-  if (!data) return NextResponse.json({ total: 0, checkedIn: 0, byType: {} });
+  const data = await fetchAllRows<any>((from, to) => {
+    let q = db.from("ticket_instances").select("status, ticket_type, event_slug").range(from, to);
+    if (eventSlug) q = q.eq("event_slug", eventSlug);
+    return q;
+  });
 
   const total = data.length;
   const checkedIn = data.filter((t: any) => t.status === "used").length;
