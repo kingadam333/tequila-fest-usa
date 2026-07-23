@@ -202,14 +202,14 @@ export default function TicketCartModal({
                       {!isUnavailable ? (
                         <div className="flex items-center gap-3 flex-shrink-0">
                           <button onClick={() => updateQty(tt.key, -1)} disabled={qty === 0}
-                            className="w-8 h-8 rounded-full border border-white/20 flex items-center justify-center text-white/60 hover:text-white hover:border-white/40 disabled:opacity-30 transition-all cursor-pointer">
-                            <Minus size={14} />
+                            className="w-11 h-11 rounded-full border border-white/20 flex items-center justify-center text-white/60 hover:text-white hover:border-white/40 disabled:opacity-30 transition-all cursor-pointer touch-manipulation">
+                            <Minus size={16} />
                           </button>
                           <span className="font-bold text-white w-4 text-center text-lg">{qty}</span>
                           <button onClick={() => updateQty(tt.key, 1)} disabled={qty >= 10}
-                            className="w-8 h-8 rounded-full border flex items-center justify-center font-bold transition-all cursor-pointer"
+                            className="w-11 h-11 rounded-full border flex items-center justify-center font-bold transition-all cursor-pointer touch-manipulation"
                             style={qty > 0 ? { borderColor: eventColor, color: eventColor } : { borderColor: "rgba(255,255,255,0.2)", color: "rgba(255,255,255,0.6)" }}>
-                            <Plus size={14} />
+                            <Plus size={16} />
                           </button>
                         </div>
                       ) : (
