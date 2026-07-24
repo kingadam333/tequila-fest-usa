@@ -448,6 +448,7 @@ export default function EventPage({ event, ogImage, dbStatus }: { event: EventDa
                       <div className="text-right">
                         <p className="font-display text-white text-5xl">$5</p>
                         <p className="text-white/30 text-xs">per person</p>
+                        <p className="text-white/30 text-xs mt-0.5">$10 at the door</p>
                       </div>
                     </div>
                     {gaTicket.limited && (
