@@ -21,11 +21,14 @@ This project runs on **port 4002** locally.
 
 - **Frontend:** Next.js 16 + TypeScript + Tailwind CSS v4 + Framer Motion
 - **Database:** Supabase PostgreSQL (project ID: `igktkkjnyxeiflnvfzdw`)
-- **Payments:** Stripe (Checkout Sessions + Webhooks)
+- **Payments:** Stripe (Checkout Sessions, Payment Links for vendors, Webhooks)
 - **Email:** Resend (domain: `mail.tequilafestusa.com` — verified sending domain)
 - **Hosting:** Vercel (GitHub repo: `kingadam333/tequila-fest-usa`, auto-deploy on push to `main`)
 - **CDN/Security:** Cloudflare (proxying `tequilafestusa.com` and `www.tequilafestusa.com`)
 - **AI Inbox:** OpenAI (wired up in admin dashboard)
+- **Tracking:** Google Tag Manager is the single source of truth for Meta Pixel/CAPI, GA4, and Roku — the app does **not** call Meta's Pixel or Conversions API directly (see Tracking section below)
+- **PDF generation:** `jspdf` + `jspdf-autotable` (client-side) — vendor list exports, ticket PDF download
+- **QR codes:** `qrcode` npm package — used for both the referral QR and the real ticket QR (see My Tickets note below)
 
 ---
 
@@ -49,13 +52,15 @@ npx vercel env add VARIABLE_NAME production
 npx vercel env pull .env.local   # pulls to local (values will be empty strings — secrets are protected)
 ```
 
+**Local dev cannot exercise anything that touches Supabase/Stripe** — `.env.local` only ever has blank placeholder values for protected/secret vars (see Critical Notes #6). Any page or admin section backed by live data will error locally with `supabaseUrl is required` or similar. Verify DB-backed changes by pushing and checking the live site instead of relying on local dev for those.
+
 ---
 
 ## Live URLs
 
 - **Production:** `https://www.tequilafestusa.com`
-- **Vercel project ID:** `prj_AC1DQ2W2sbRXqTLxrFEi6RNAulQH`
-- **Team ID:** `team_uNpBDSx22K4MFIS59wN7Qmwv`
+- **Vercel project ID:** `prj_fhJE6gJ9IStaRkfcshg2FHCcFYM5`
+- **Vercel team/org ID:** `team_fqhJaDCMFxA9Oj0tNWaJ8deq`
 - **Supabase project:** `https://igktkkjnyxeiflnvfzdw.supabase.co`
 
 ---
@@ -65,16 +70,27 @@ npx vercel env pull .env.local   # pulls to local (values will be empty strings 
 Event pages are keyed by **city**, not by year — `/events/cincinnati` always resolves to whatever the current/next upcoming event is for Cincinnati, pulled live from the `events` DB table (`src/app/events/[slug]/page.tsx`). This lets a city run the same URL every year: when a city's event finishes, mark that year's row `status: "completed"` (blocks ticket sales) and either create a new row for next year or use the admin **Copy** button to duplicate the completed event with a new date.
 
 - **`cityKey(slug)`** (`page.tsx`) resolves any slug variant (`cincinnati`, `cincinnati-2027`, etc.) down to the base city name, then queries the DB for the next event `date_iso >= today` for that city. Falls back to the most recent (even if completed) so the page never 404s.
-- **`CITY_STYLE`** map in `page.tsx` holds visual theming (color, gradient, emoji, tag) per city — this does NOT change year to year, only event data (date, venue, ticket types) comes from the DB row.
+- **`CITY_STYLE`** map in `page.tsx` holds visual theming (color, gradient, emoji, tag) per city — this does NOT change year to year, only event data (date, venue, ticket types) comes from the DB row. Columbus's entry also carries a `foodVendor` override (`{ name: "2 Specialty Tacos", ticketNote: "From Condado Tacos" }`) — this is the actual live data source for that copy, **not** the static `src/lib/events.ts` file (which is unused by this route and can drift out of sync silently).
 - **Status values**: `draft`, `on_sale`, `sold_out`, `cancelled`, `coming_soon`, `completed`. `completed` blocks all ticket purchase buttons ("EVENT COMPLETED") — added specifically so a past year's event page can't sell tickets once superseded.
 
 **Homepage event cards** (`src/components/EventCards.tsx`) are **dynamic** — fetch from `GET /api/events`, which filters to `date_iso >= today` and excludes `draft`/`cancelled`/`completed`, sorted ascending by date. Farthest-out event appears last. No code change needed to add/remove/reorder homepage cards — manage entirely from admin → Events.
 
 **Admin → Events** (`AdminDashboard.tsx`): "New Event" and "Copy" buttons (`POST /api/admin/events` — `copy_from_id` duplicates an event + its ticket types with sold counts reset to 0, defaults new date to `2027-01-01` as a placeholder). Events are grouped by year in the list, with year shown on each card. Date field uses a calendar picker.
 
-**Sold-count bug (fixed this session):** `/api/admin/events` GET used to compute each ticket type's `sold_count` by matching `ticket_instances.event_slug` to the current event row's slug. Since the year-rollover reassigns a city's slug to the new event, this misattributed 100% of a completed year's historical sales to the new year's (unsold) event, while the real completed event showed all zeros. Fixed by counting via `ticket_instances.event_id` instead (see DB Schema section) — confirmed against real data: Cincinnati's 495 real June 2026 sales now correctly show under `cincinnati-2026`, not the 2027 event.
-
 **GA ticket type** is optional per event (not every city has one). `EventPage.tsx` derives GA availability live from the DB ticket type (`liveTypes.find(t => t.name === "GA")`) — do NOT hardcode a static `gaTicket` flag on the event object; a prior version did this and silently hid GA everywhere even when actively for sale. Homepage cards (`EventCards.tsx`) show GA price via `event.gaPrice`, computed server-side in `/api/events` by joining `ticket_types`.
+
+---
+
+## Ticket Sold-Count Accuracy — Two Bugs, Both Fixed
+
+This is a recurring failure mode (two separate real incidents), so the rules are spelled out explicitly:
+
+1. **Never join/count `ticket_instances` by `event_slug`** — always use `event_id`. A city's slug gets reassigned to the next year's event when the old one completes, so slug-based counting misattributes a completed year's historical sales to whichever event currently holds that slug now. `event_id` is set once at purchase time in the Stripe webhook and never changes.
+2. **Never count a "sold" ticket without excluding comp/giveaway tickets.** `ticket_orders.source` is `"stripe"` for real paid sales and `"media_comp"` for free media-partner giveaway tickets ($0, no real payment). Every admin count/revenue query must join to `ticket_orders` and filter `status = 'paid' AND source != 'media_comp'`. Two admin routes (`/api/admin/stats` and `/api/admin/events`) briefly disagreed on VIP sold counts (100 vs 101) because only one of them excluded comps — fixed by applying the identical filter to both. **Exception:** check-in stats (`/api/admin/checkin-stats`, `/api/checkin/stats`) intentionally do **not** exclude comps — comp ticket holders are real attendees who still need to check in at the door.
+
+**Supabase's default 1000-row cap** — this bit twice in one session and is worth remembering precisely:
+- Any Supabase/PostgREST query without an explicit `.range()`/pagination silently truncates at 1000 rows, enforced **server-side** at the API gateway level. A client-side `.limit(20000)` does **not** override this — it gets silently clamped back down to whatever the project's configured max-rows is. The only real fix is actual pagination: loop with `.range(from, to)` in pages of 1000 until a short page confirms nothing's left. See `src/lib/fetchAllRows.ts` — use it for any aggregate query that could plausibly cross 1000 rows as the season's ticket sales grow (currently `ticket_instances` sits around ~1050 rows and climbing).
+- **Never build a giant `.in("order_id", [...hundreds of ids])` list** to join two tables client-side — once the order count crossed a few hundred, combining that with `.range()` pagination produced a request Supabase's gateway rejected outright with a bare `{ message: 'Bad Request' }` (no JSON detail), which took the entire Overview page down to a blank screen. The fix: let Postgres do the join server-side instead, via PostgREST's embedded-resource syntax — `ticket_instances!inner(...)` style joins with filters applied to the joined table's columns (`.eq("ticket_orders.status", "paid")`) — so no ID list is ever built in application code. See `src/app/api/admin/stats/route.ts` for the current pattern.
 
 ---
 
@@ -82,22 +98,22 @@ Event pages are keyed by **city**, not by year — `/events/cincinnati` always r
 
 | Table | Purpose |
 |---|---|
-| `ticket_orders` | Purchase records — order_number, customer_email, event_slug, ticket_type, quantity, total, stripe_session_id, status |
-| `ticket_instances` | Individual QR-coded tickets — one row per ticket, linked to order_id |
+| `ticket_orders` | Purchase records — order_number, customer_email, event_slug, event_city, ticket_type, quantity, total, stripe_session_id, stripe_payment_intent_id, status (`paid`/`refunded`), **source** (`stripe` = real sale, `media_comp` = free giveaway — always exclude `media_comp` from sales/revenue reporting) |
+| `ticket_instances` | Individual QR-coded tickets — one row per ticket, linked to `order_id`. `status`: `valid`, `used`, `cancelled`, `refunded`, `pending`, `transferred`. `checked_in_at` timestamp set on check-in. |
 | `customer_accounts` | User profiles — linked to Supabase Auth by UUID |
-| `contact_submissions` | Contact form submissions — inbox, status, admin_reply |
-| `events` | Event rows managed in admin — status check constraint: `draft`, `on_sale`, `sold_out`, `cancelled`, `coming_soon` |
-| `ticket_types` | Per-event ticket type config |
+| `contact_submissions` | Contact form + inbound-reply threads — `inbox` label (Support/Vendors/Sponsors/Affiliates), status, admin_reply |
+| `events` | Event rows managed in admin — status check constraint: `draft`, `on_sale`, `sold_out`, `cancelled`, `coming_soon`, `completed`. Also carries **load-in fields**: `load_in_start`, `load_in_end` (free-text times, e.g. `"12:00 PM"`), `load_in_notes` (free-text paragraph), `load_in_map_url`, `load_in_map_url_2` (second/additional map) — see Load In section below |
+| `ticket_types` | Per-event ticket type config — capacity, price, sold_count (this column is a stored/stale value; **always recompute live from `ticket_instances`**, never trust `ticket_types.sold_count` directly for reporting) |
 | `affiliates` | Affiliate accounts + commission tracking |
 | `blog_posts` | Blog content |
 | `coupons` | Discount codes |
 | `brand_contacts` | Tequila brand contacts — contact_name, contact_email, contact_phone, contact_type (distributor/supplier/self_distributed), brands (JSONB: [{name, price_per_bottle}]), distributor, supplier, notes |
 | `brand_invoices` | Brand invoices — linked to brand_contacts, line_items JSONB, total, status (draft/sent/paid/cancelled), stripe_payment_link_id/url |
-| `brand_package_orders` | Brand package purchases (self-serve checkout at `/brand-packages`) — order_number, brand_name, contact_name/email/phone, tier (Value/Standard/Premium), cities (JSONB array), amount, stripe_session_id, stripe_payment_intent_id, status (pending/paid), paid_at, **brand_contact_id** (FK — auto-linked/created by the Stripe webhook by matching contact_email, so paid orders always surface under the right Brands → Contacts card). Non-Stripe payments (e.g. Zelle) can be inserted manually with `status: 'paid'`, `stripe_session_id: null`. |
+| `brand_package_orders` | Brand package purchases (self-serve checkout at `/brand-packages`) — order_number, brand_name, contact_name/email/phone, tier (Value/Standard/Premium), cities (JSONB array), amount, stripe_session_id, stripe_payment_intent_id, status (pending/paid), paid_at, **brand_contact_id** (FK — auto-linked/created by the Stripe webhook by matching contact_email) |
 | `staff_members` | Check-in staff — id, name, email, password_hash (bcrypt), permissions (array), status, last_login_at |
-| `vendor_applications` | Vendor form submissions — business_name, cities (array), status (pending/approved/rejected), **paid** (bool), **order_number**, **qr_code**, **paid_at**, **stripe_payment_intent_id**, **payment_link**, and email-tracking columns: `approval_email_id`, `approval_email_sent_at/delivered_at/opened_at/clicked_at/bounced_at`, `approval_email_open_count/click_count` |
+| `vendor_applications` | Vendor form submissions — business_name, name, email, phone, cities (array), status (pending/approved/rejected), **paid** (bool), **order_number**, **qr_code**, **paid_at**, **stripe_payment_intent_id**, **payment_link**, and email-tracking columns: `approval_email_id`, `approval_email_sent_at/delivered_at/opened_at/clicked_at/bounced_at`, `approval_email_open_count/click_count` |
 
-**`ticket_instances.event_id`** (uuid, FK → `events.id`) — added this session. **Always join/count by this, never by `event_slug`.** A city's slug gets reassigned to the next year's event when the old one completes (see Events section below), so any code matching tickets to an event by slug string will silently misattribute historical sales to whichever event currently holds that slug. `event_id` is set once at purchase time in the Stripe webhook and never changes. Backfilled for all pre-existing rows via a one-time migration matching each ticket's `created_at` to the closest `events.date_iso` for the same city.
+**`ticket_instances.event_id`** (uuid, FK → `events.id`) — **always join/count by this, never by `event_slug`** (see Ticket Sold-Count Accuracy section above for the full year-rollover bug this caused).
 
 ---
 
@@ -105,44 +121,49 @@ Event pages are keyed by **city**, not by year — `/events/cincinnati` always r
 
 | File | Purpose |
 |---|---|
-| `src/lib/events.ts` | Event data definitions (city, date, venue, slug) |
+| `src/lib/events.ts` | Static event data definitions — largely superseded by the DB `events` table for anything the live site reads; only used as a fallback/reference in a few spots. Don't assume editing this changes what's shown on `/events/[slug]`. |
 | `src/lib/stripe.ts` | Stripe client + TICKET_LABELS map |
-| `src/lib/resend.ts` | Resend client + all email HTML templates |
+| `src/lib/resend.ts` | Resend client + all email HTML templates + `FROM_*` sender constants (`FROM_EMAIL`/`FROM_SUPPORT` = help@, `FROM_VENDORS` = vendors@, `FROM_SPONSORS`/`FROM_PARTNERS` = sponsors@, `FROM_AFFILIATES` = affiliates@, `FROM_BRANDS` = brands@) |
 | `src/lib/supabase.ts` | Supabase client (anon + admin) |
+| `src/lib/fetchAllRows.ts` | Pagination helper for any Supabase query that could cross the 1000-row default cap — loops `.range()` in pages of 1000 until done. Use for aggregate/reporting queries. |
 | `src/lib/turnstile.ts` | Cloudflare Turnstile server-side verification (enforced — see CAPTCHA section) |
 | `src/components/Turnstile.tsx` | Turnstile widget React component (renders once, no remount loop) |
-| `src/lib/adminAuth.ts` | Admin token verification |
-| `src/app/api/webhooks/stripe/route.ts` | Stripe webhook handler — creates order, QR tickets, auth account, sends ONE combined email |
+| `src/lib/adminAuth.ts` | Admin token verification (`verifyAdminToken`/`unauthorizedResponse`) — also doubles as the auth check for Vercel Cron routes via the shared `authorized()` pattern (`CRON_SECRET` bearer token OR `x-admin-token` header) |
+| `src/lib/normalizeTicketType.ts` | Canonicalizes raw ticket type strings (`"vip"`, `"VIP Experience"`, `"vip_experience"` all → `"VIP Experience"`) — every sold-count aggregation must run raw DB values through this before grouping, or the same ticket type splits into multiple buckets |
+| `src/app/api/webhooks/stripe/route.ts` | Stripe webhook handler — routes by `session.metadata.type` (`"vendor"` → `handleVendorPaid`, `"brand_package"` → `handleBrandPackagePaid`, unset → `handleCheckoutComplete` for tickets). Sets the vendor PaymentIntent's Stripe dashboard `description` at payment time here (not at link-creation time — see Vendor Flow section). |
 | `src/app/api/admin/resend-email/route.ts` | Admin: resend ticket email for any order (uses qrTicketHtml) |
 | `src/app/api/admin/contact/route.ts` | Admin: GET submissions, POST reply |
-| `src/app/api/session-email/route.ts` | Fetches customer email from Stripe session (for post-purchase flow) |
-| `src/app/admin/AdminDashboard.tsx` | Full admin dashboard (orders, events, users, inbox, AI, staff, check-in, brands) |
+| `src/app/api/session-email/route.ts` | Fetches customer email/phone/orderNumber from Stripe session (for post-purchase flow + tracking `user_data`) |
+| `src/app/admin/AdminDashboard.tsx` | Full admin dashboard — one large client component file (~6000 lines) containing every section as its own function component (OverviewSection, EventsSection, VendorsSection, ContactSection/Inbox, LoadInSection, ToolsSection, etc.) |
 | `src/components/EventCards.tsx` | Homepage city event cards — **dynamic**, fetches `/api/events`, upcoming-only |
 | `src/app/api/events/route.ts` | Public — upcoming events (`date_iso >= today`, excludes draft/cancelled/completed) for homepage + city pages |
 | `src/app/events/[slug]/page.tsx` | Server component — resolves permanent city slug to current/next DB event via `cityKey()`, applies `CITY_STYLE` theming |
-| `src/app/api/brands/route.ts` | Public — brand names for the rolling scroller. Only brands with a **paid** `brand_package_orders` row; `?city=` scopes to one city, no param = all cities (used on homepage) |
-| `src/lib/normalizeBrandName.ts` | Strips the standalone word "Tequila" from brand names at checkout time + display time, so "Dulce Vida" and "Dulce Vida Tequila" don't show as duplicate scroller entries |
-| `src/app/api/brand-checkout/route.ts` | Self-serve brand package Stripe Checkout — creates pending `brand_package_orders` row, sets `payment_intent_data.description` to `"{brand} — {tier} Brand Package ({cities})"` so Stripe dashboard/receipts show the brand name instead of the raw PaymentIntent ID |
-| `src/app/api/admin/brand-orders/route.ts` | Admin — list all `brand_package_orders` |
-| `src/app/api/admin/resend-old-qr/route.ts` | Admin — bulk-resends QR ticket emails for orders whose `qr_code` was generated by the old Replit format (`TKT-______-___-%` pattern) so the customer's saved QR matches the current DB value |
-| `src/components/TicketCartModal.tsx` | Ticket purchase modal on city event pages |
-| `src/components/PreCheckoutModal.tsx` | Pre-checkout info collection modal |
+| `src/app/api/brands/route.ts` | Public — brand names for the rolling scroller. Only brands with a **paid** `brand_package_orders` row |
+| `src/components/TicketCartModal.tsx` | Ticket purchase cart modal on city event pages — quantity +/- buttons are 44×44px with `touch-manipulation` (fixed from 32px after a mobile customer couldn't reliably increase quantity); pushes `dataLayer.push({event: "begin_checkout", eventModel: {...}})` on checkout start (GTM maps this to Meta's `InitiateCheckout`) |
+| `src/components/PurchaseDataLayerPush.tsx` | Shared by all post-payment confirmation pages (tickets, brand packages, vendor spots) — pushes `{ event: "purchase", eventModel: { transaction_id, value, currency, items[], user_data: {email_address, phone_number} } }` to `window.dataLayer`. The nested `eventModel` shape (not flat top-level keys) is required — GTM's existing Meta Pixel/GA4 tags read from `eventModel.*` |
 | `src/app/login/LoginPage.tsx` | Login page — detects staff accounts and redirects to /checkin with JWT |
-| `src/app/ticket-confirmation/ConfirmationPage.tsx` | Post-Stripe success page |
+| `src/app/ticket-confirmation/ConfirmationPage.tsx` | Post-Stripe success page — fires `PurchaseDataLayerPush` |
+| `src/app/account/AccountPage.tsx` | Customer account — Profile / My Tickets / Refer a Friend tabs. See "My Tickets Page" section below for real-QR + PDF download details. |
 | `src/app/checkin/page.tsx` | Staff check-in portal — fullscreen QR scanner, auto check-in, order progress |
-| `src/app/vendors/page.tsx` | Vendor application form — multi-select cities, $150/city pricing |
-| `src/components/MetaPixel.tsx` | Meta Pixel tracking (PageView, InitiateCheckout, Purchase) |
+| `src/app/vendors/VendorsPage.tsx` | Vendor application form — multi-select cities, $150/city pricing. Post-submit screen explicitly instructs applicants to whitelist `vendors@mail.tequilafestusa.com` as a contact. |
+| `src/app/loadin/page.tsx` + `src/app/loadin/LoadInPageClient.tsx` | **Public** `/loadin` page — a city selector ("Pick the city you'll be attending") for vendors/food trucks, opening into full event info (date/time/venue + Google Maps link), the load-in time window, a free-text info paragraph, and up to two venue map images. Only shows upcoming, non-completed/cancelled events. See Load In section below. |
+| `src/components/GoogleTagManager.tsx` | Renders `GTMHeadScript`/`GTMBodyNoscript` directly in `layout.tsx` (not via `next/script` — see Tracking section) |
+| `src/lib/abandonedCheckouts.ts` | `getAbandonedCheckoutGroups()` / `sendAbandonedCheckoutRecovery()` — finds ticket Stripe Checkout Sessions that expired or stalled `open` for 4+ hours without completing, grouped by city, excluding anyone who has a completed order for that event elsewhere. See Abandoned Checkout Recovery section. |
 | `src/components/InstallBanner.tsx` | PWA install banner — Android native prompt, iOS instructions |
 | `src/lib/checkinAuth.ts` | Verifies check-in requests — admin password OR any valid staff JWT |
 | `src/lib/staffAuth.ts` | Staff JWT sign/verify (jose, HS256, 12h expiry) |
 | `src/app/api/checkin/lookup/route.ts` | Ticket lookup by QR/name/email/order — returns orderTickets siblings |
-| `src/app/api/checkin/confirm/route.ts` | Sets ticket status to 'used' + checked_in_at timestamp |
-| `src/app/api/checkin/stats/route.ts` | Live check-in stats by event — total, used count, by type breakdown |
+| `src/app/api/checkin/confirm/route.ts` | Sets ticket status to `'used'` + `checked_in_at` timestamp |
+| `src/app/api/checkin/stats/route.ts` | Live check-in stats by event — total, used count, by type breakdown. Intentionally includes comp tickets. |
 | `src/app/api/staff/login/route.ts` | Staff login — bcrypt verify, returns JWT |
 | `src/app/api/admin/staff/[id]/route.ts` | Staff CRUD + set_password action |
-| `src/app/api/admin/checkin-stats/route.ts` | Admin check-in stats + staff roster with status |
+| `src/app/api/admin/checkin-stats/route.ts` | Admin check-in stats + staff roster with status. Intentionally includes comp tickets. |
 | `src/app/api/admin/user-tickets/route.ts` | Fetch all tickets+QR codes for a customer email |
-| `src/app/api/admin/vendors/route.ts` | Vendor application — creates Stripe line items per city ($150 each) |
+| `src/app/api/admin/vendors/route.ts` | Vendor application CRUD + `createVendorPaymentSession()` (Stripe Payment Links, one Product+Price per city, $150 each) |
+| `src/app/api/admin/vendors/email-city/route.ts` | Admin: send an ad hoc email (event details, load-in info, map attachment) to every **paid** vendor in a given city, from `vendors@mail.tequilafestusa.com` — see Vendor Flow section |
+| `src/app/api/admin/events/upload-loadin-map/route.ts` | Admin: upload a venue map image for an event's Load In info — accepts a `slot` (`1` or `2`) targeting `load_in_map_url` vs `load_in_map_url_2`. Uploaded as-is, no resize/re-encode (unlike the OG-image pipeline) since maps often have small text that compression would blur. |
+| `src/app/api/admin/abandoned-checkouts/route.ts` + `.../send/route.ts` | Admin: list abandoned-checkout groups by city, and manually trigger the recovery email for one city or all |
+| `src/app/api/cron/abandoned-checkout-recovery/route.ts` | Vercel Cron target — runs the recovery email across all cities. Scheduled Wednesdays 23:00 UTC (7pm EDT) in `vercel.json`; will read as 6pm once EST returns in November — not a concern this season since all events are before winter. |
 | `public/manifest.json` | PWA manifest — name "Tequila Fest USA", theme #F5A623 |
 | `public/icons/` | PWA icons — 11 sizes (72–512px) + 2 maskable, radial gradient + skull logo |
 
@@ -159,6 +180,7 @@ The widget component had `onVerify/onError/onExpire` in its `useEffect` dependen
 - **Client:** `src/components/Turnstile.tsx` renders the widget. Each form holds `const [captchaToken, setCaptchaToken] = useState("")`, renders `<Turnstile onVerify={setCaptchaToken} onError/onExpire={() => setCaptchaToken("")} />` above the submit button, disables submit until a token exists, sends the token in the request body, and clears the token on any failure (tokens are single-use).
 - **Server:** `src/lib/turnstile.ts` — `verifyTurnstile()` is called by every form route. Rule: **no `TURNSTILE_SECRET_KEY` set = dev skip; secret set (production) = a real token is required** or the request is rejected. There is **no `"bypass"` escape hatch**.
 - **Forms covered (9):** contact, signup, login, forgot-password, vendors, sponsors, affiliates, press, and the two checkout modals (`PreCheckoutModal`, `TicketCartModal`). Routes: `/api/contact`, `/api/vendor-apply`, `/api/auth/*`, `/api/pre-checkout`.
+- **Note for automated testing/agents:** the CAPTCHA cannot and should not be solved programmatically. To verify a checkout flow end-to-end, ask the human to click through it manually and report back, or verify server-side effects via Vercel runtime logs / Supabase after the fact.
 
 ### Required config (all three must be correct or it loops)
 1. **Cloudflare → Turnstile widget → Hostnames:** must list `tequilafestusa.com`, `www.tequilafestusa.com`, AND `tequila-fest-usa.vercel.app`. A missing hostname is the #1 cause of an infinite spinner.
@@ -202,36 +224,45 @@ With these, the widget renders, issues a dummy token, and enables the submit but
 ## Email System (Resend)
 
 **Sending domain:** `mail.tequilafestusa.com` (verified in Resend)
-**From address:** `Tequila Fest USA <help@mail.tequilafestusa.com>`
 
-### How It Works
+**Per-audience sender addresses** — always use the matching `FROM_*` constant from `src/lib/resend.ts`, never a hardcoded string:
+- `FROM_EMAIL` / `FROM_SUPPORT` → `help@mail.tequilafestusa.com` — tickets, general support, password reset
+- `FROM_VENDORS` → `vendors@mail.tequilafestusa.com` — **every** vendor-facing email (application confirmation, approval, rejection, post-payment confirmation, ad hoc city emails). The vendor application success page explicitly tells applicants to whitelist this exact address, so every vendor email must actually come from it or the whitelist instruction is useless. (Fixed this session — several vendor emails were incorrectly sending from `help@`.)
+- `FROM_SPONSORS` / `FROM_PARTNERS` → `sponsors@mail.tequilafestusa.com`
+- `FROM_AFFILIATES` → `affiliates@mail.tequilafestusa.com`
+- `FROM_BRANDS` → `brands@mail.tequilafestusa.com`
+
+**Inbound routing** (`src/app/api/webhooks/email-inbound/route.ts`) maps the `to` address prefix to an inbox label shown in admin → Inbox: `help@` → Support, `vendors@` → Vendors, `sponsors@`/`partners@` → Sponsors, `affiliates@` → Affiliates, `brands@` → Brands, `press@` → Press. **Any outbound email whose sender doesn't match its audience's real inbox will have replies route to the wrong tab** (or nowhere useful) — this is why the vendor-email sender fix above mattered beyond just branding.
+
+### How It Works (ticket purchases)
 1. Customer completes Stripe checkout → Stripe fires webhook to `https://www.tequilafestusa.com/api/webhooks/stripe`
 2. Webhook handler (`handleCheckoutComplete`) in `src/app/api/webhooks/stripe/route.ts`:
    - Inserts order into `ticket_orders`
    - Creates QR-coded rows in `ticket_instances`
-   - Checks `customer_accounts` table **by email** to see if account exists (not `listUsers()`)
-   - If **new customer**: creates Supabase Auth account with generated password
+   - Ensures a real Supabase Auth login exists for the buyer (see "Login Creation" section below — this is more than just a `customer_accounts` existence check)
    - Sends **ONE combined email** with QR tickets + order summary + (if new account) login credentials
 3. Admin can resend via the **Send icon (→)** in Admin → Orders, which calls `/api/admin/resend-email`
 
 ### Email Templates in `src/lib/resend.ts`
-- `qrTicketHtml()` — **Main post-purchase email**: QR codes + order summary + optional account credentials. Params: `firstName, eventCity, eventDate, eventTime, eventVenue, orderNumber, tickets[], appUrl, total?, ticketType?, quantity?, newPassword?`
-- `ticketConfirmationHtml()` — Legacy simple confirmation (exists but no longer sent on purchase)
-- `welcomeAccountHtml()` — Standalone account welcome (no longer sent separately — merged into `qrTicketHtml`)
+- `qrTicketHtml()` — **Main post-purchase email**: QR codes + order summary + optional account credentials
+- `vendorConfirmationHtml()` — Post-payment vendor confirmation (order #, QR, load-in reminders)
 - `passwordResetHtml()` — Password reset email
-- `INBOX_ROUTING` — Maps contact form subjects → inbox labels (all send from `@mail.tequilafestusa.com`)
+- `INBOX_ROUTING` — Maps contact form subjects → inbox labels
 
 ### Critical Rules
 - **Only ONE email per purchase** — sending two to the same recipient in the same webhook execution causes Resend to silently drop one
-- **`RESEND_API_KEY` must be active** — the previous key was silently revoked; if emails stop, generate a new key at resend.com/api-keys and update Vercel env
+- **`RESEND_API_KEY` must be active** — if emails stop, generate a new key at resend.com/api-keys and update Vercel env
 - **Contact form emails go to the admin inbox in the website** (Supabase `contact_submissions` table) — they do NOT forward to any external email
 
-### Why Emails Were Broken (History — Fixed)
-1. Resend API key was stale/revoked
-2. Turnstile was blocking all form submissions server-side with empty tokens
-3. Stripe webhook 308 redirect (bare domain → www) — Stripe doesn't follow redirects
-4. Two emails sent back-to-back to same recipient — Resend dropped the second
-5. `listUsers()` only returns 50 users — replaced with direct `customer_accounts` DB lookup
+---
+
+## Login Creation — Real Bug History, Read Before Touching Any "Does This Account Exist" Check
+
+`POST /api/pre-checkout` creates a bare `customer_accounts` **lead** row (email/name/phone only) **before** payment completes, so the checkout form can be pre-filled/validated. This is separate from a real Supabase Auth login. For a long time, 6+ different code paths across the app only checked *"does a `customer_accounts` row exist"* to decide whether to create a login — which is always true after `pre-checkout` runs, even for someone who never actually created a password. Result: 340 real accounts (256 with paid orders) silently had no way to log in, no password reset would work for them, and they'd only find out at the worst possible time.
+
+**The fix:** `src/lib/accountActions.ts` exports `ensureCustomerLogin()` (creates the real Auth user if missing, using GoTrue's caller-supplied `id` to link to the existing `customer_accounts` row instead of re-keying) and `repairCustomerLogin()` (for backfilling). Every one of the following call sites now uses these instead of a bare existence check: `webhooks/stripe/route.ts` (ticket + vendor payment), `auth/signup/route.ts`, `auth/forgot-password/route.ts`, `media/issue-ticket/route.ts`, `admin/users/route.ts`.
+
+**If you add any new path that creates or looks up a customer account, use `ensureCustomerLogin()`/`repairCustomerLogin()` — never write a fresh "does a row exist" check.** The historical backfill for the 256 affected accounts ran via a rate-limited cron (`login_repair_queue` table, `/api/cron/repair-logins`, 20/batch every 2 hours — deliberately slow to avoid spam-flagging) and has already completed; the admin UI card for it was removed once done.
 
 ---
 
@@ -242,6 +273,7 @@ With these, the widget renders, issues a dummy token, and enables the submit but
 - **Webhook signing secret:** stored as `STRIPE_WEBHOOK_SECRET` in Vercel env
 - **Success URL:** `https://www.tequilafestusa.com/ticket-confirmation?session_id={CHECKOUT_SESSION_ID}`
 - **Service fee:** shown as "Service Fee" line item only (no description breakdown)
+- **PaymentIntent descriptions:** set explicitly wherever a payment is created/completed so the Stripe Dashboard shows something readable instead of a raw `pi_...` ID — ticket purchases and brand packages set it at session-creation time; **vendor payments set it in the webhook handler at actual payment time** (`handleVendorPaid`), not at Payment Link creation time, because Payment Links bake `payment_intent_data` into the link object when it's created — a link generated before this field existed (or before a re-approval regenerated it) would otherwise still produce a blank-description PaymentIntent even after paying today.
 
 ---
 
@@ -249,10 +281,84 @@ With these, the widget renders, issues a dummy token, and enables the submit but
 
 1. Customer pays via Stripe Checkout
 2. Stripe redirects to `/ticket-confirmation?session_id=cs_xxx`
-3. `ConfirmationPage.tsx` calls `/api/session-email?session_id=cs_xxx` to get customer email
+3. `ConfirmationPage.tsx` calls `/api/session-email?session_id=cs_xxx` to get customer email/phone/orderNumber, fires `PurchaseDataLayerPush`
 4. "View My Tickets" button links to `/login?email=customer@email.com&redirect=/account`
 5. Login page pre-fills email from URL param, redirects to `/account` after login
-6. `/account` shows orders and QR tickets
+6. `/account` shows orders and QR tickets (My Tickets tab — see next section)
+
+---
+
+## My Tickets Page (`/account`, TicketsTab in AccountPage.tsx)
+
+Three real bugs were stacked on top of each other here and shipped to production for an unknown period before a customer complaint surfaced them (she accidentally triggered a fake "checked in" state trying to download her ticket for a friend, and support couldn't find anything wrong because there genuinely wasn't anything wrong server-side):
+
+1. **The QR code was never real.** `QRPlaceholder` rendered a decorative pattern hashed from the ticket ID — not an actual scannable QR — despite the page telling users "show this QR code at the door." Replaced with a real render via the `qrcode` package (`TicketQRCode` component, same library already used for the referral QR in `ReferTab`).
+2. **"Download PDF" had no `onClick` handler at all.** Now wired to `downloadTicketPdf()`, which generates a real one-page PDF (jsPDF) with a working QR code, holder name, event details.
+3. **A leftover dev-only "Scan" button** sat right next to Download PDF, explicitly commented `Dev/demo only — remove in prod` but never removed. It called `handleSimulateCheckin()`, which set pure local React state to fake a "✓ CHECKED IN" red badge — no server write at all. Removed entirely; `isCheckedIn` is now derived from the ticket's real DB `status === "used"` (and shows the real `checked_in_at` timestamp, now selected by `/api/account/orders`).
+
+**If a "ticket looks checked-in but shouldn't be" report ever comes in again:** check `ticket_instances.status` directly in the DB first — if it's still `"valid"`, the issue is client-side/visual, not a real check-in. This exact confusion already happened once and led to a customer panic-buying a duplicate ticket.
+
+---
+
+## Vendor Flow
+
+### Application → Approval → Payment
+- Vendor form (`/vendors`): multi-select city checkboxes, $150/city, Turnstile-protected. Duplicate-application guard (`POST /api/vendor-apply`) checks for an existing non-rejected application by email before inserting.
+- Admin approves → `sendVendorApprovalEmail()` (`src/app/api/admin/vendors/route.ts`) creates a Stripe **Payment Link** (not a Checkout Session — sessions cap at 24h expiry, Payment Links don't expire on their own; `restrictions.completed_sessions.limit: 1` makes it single-use instead) — one Product+Price per city at $150 each — and emails it from `FROM_VENDORS`.
+- Stripe webhook (`handleVendorPaid` in `webhooks/stripe/route.ts`) marks the application paid, creates the QR ticket + login, sends `vendorConfirmationHtml()`, and sets the PaymentIntent's Stripe dashboard description (see Stripe Configuration section — this must happen here, not at link creation, or old links keep producing blank descriptions).
+
+### Admin → Vendors tooling
+- **Paid-vendor city cards** — per-city summary with business name + contact name, paginated 4-per-page (was an unbounded scroll box before), each row has a "Stripe" link (`dashboard.stripe.com/payments/{payment_intent_id}`).
+- **PDF export** (`jsPDF` + `jspdf-autotable`) — "Export PDF (All Cities)" button and a per-city "📄 PDF" button on each card, generating Business Name / Contact Name / Phone tables, client-side, no server round-trip.
+- **"✉ Email" per city** (`POST /api/admin/vendors/email-city`) — compose modal (subject, message, optional file attachment for a venue map/PDF) sends to every **paid** vendor in that city, always from `FROM_VENDORS` so replies route into the Vendors inbox tab.
+- **Load-in info** is set separately, in the admin **Load In** section (below), not in Vendors — it applies per-event, not per-vendor.
+
+---
+
+## Load In (`/loadin` public page + admin Load In section)
+
+A public page for food trucks/vendors: pick a city, see full event info (date/time/venue with a Google Maps link), the load-in time window (start/end, e.g. "12:00pm → 2:00pm"), a free-text info paragraph, and up to **two** venue map images.
+
+- **DB fields** live on the `events` table: `load_in_start`, `load_in_end`, `load_in_notes`, `load_in_map_url`, `load_in_map_url_2`.
+- **Admin → Load In** — one card per upcoming event with editable start/end/notes fields (PATCH `/api/admin/events/[id]`) and two independent map upload buttons (`POST /api/admin/events/upload-loadin-map` with `slot: "1"|"2"`). Maps upload as-is (no compression) since venue maps often have small text.
+- **Public page** (`src/app/loadin/page.tsx` server component + `LoadInPageClient.tsx`) filters to upcoming, non-draft/cancelled/completed events only (same convention as other "upcoming events" queries elsewhere).
+- **Known-fixed bug:** the city-selector-to-detail-view transition originally used `AnimatePresence mode="wait"`, which gates the new view behind the old view's exit animation reporting complete — that completion event didn't reliably fire, so clicking a city updated React state (confirmed via fiber inspection) but the DOM never visibly switched. Removed the exit-wait gating entirely; each view now mounts immediately on state change with just an enter animation. **If any future click-to-switch-view UI silently "doesn't work" despite state clearly updating, suspect `AnimatePresence mode="wait"` first** — it's a fragile pattern for anything that must reliably respond to a single click.
+
+---
+
+## Abandoned Checkout Recovery
+
+Finds ticket purchases where a Stripe Checkout Session was started but never completed (`status: "expired"`, or `status: "open"` and stale for 4+ hours — a grace period so someone mid-checkout right now doesn't get flagged), grouped by city, excluding anyone who has a completed order for that same event under a different session.
+
+- **Manual**: Admin → Inbox → collapsible "🛒 Abandoned Checkout Recovery" panel (above the Support/Vendors/etc tabs) — per-city counts, "Send Now" per city or "Send to All Cities Now".
+- **Automatic**: Vercel Cron, `vercel.json` → `/api/cron/abandoned-checkout-recovery`, Wednesdays at `23:00 UTC` (= 7pm Eastern **Daylight** Time — correct for the entire remaining ticket-selling window this season; will read as 6pm once EST returns in November, not currently a concern).
+- Email makes clear the customer was **not charged** and links straight to that city's event page. Sent from `FROM_EMAIL` (help@) to match ticket confirmation branding.
+- Auth for the cron route follows the shared `authorized()` pattern (Vercel's `Authorization: Bearer $CRON_SECRET`, or `x-admin-token` for manual admin triggering of the same endpoint).
+
+---
+
+## Tracking — Meta Pixel / Conversions API, GTM, GA4, Roku (rebuilt this session — read before touching any of this)
+
+**Current architecture: Google Tag Manager (`GTM-P3Q33V72`) is the single source of truth for Meta Pixel, Meta Conversions API, GA4, and Roku. The app itself contains no direct Meta Pixel or CAPI code.**
+
+This is a deliberate rebuild — an earlier version of this app had its **own** direct Meta Pixel (`MetaPixelHead.tsx`/`MetaPixel.tsx`) and server-side Conversions API code (`src/lib/metaCapi.ts`) running **alongside** GTM's own pre-built, official Meta Pixel + Conversions API Gateway integration (which was already installed in the container and nobody had noticed). Result: 2–3 duplicate, non-deduplicated PageView/Purchase/InitiateCheckout signals reaching Meta simultaneously, and Meta's Events Manager reporting low match quality because the app's own `dataLayer.push()` calls used a flat, top-level shape that GTM's tags didn't read from (they expect a nested `eventModel.*` shape). **All of that direct code was deleted** (`MetaPixelHead.tsx`, `MetaPixel.tsx`, `src/lib/metaCapi.ts`, and every call site) in favor of feeding GTM's existing tags correctly.
+
+### How it works now
+- `src/components/GoogleTagManager.tsx` renders `GTMHeadScript`/`GTMBodyNoscript` directly in `layout.tsx` (not via `next/script` — see the `next/script` gotcha in Critical Notes). GTM's own container config owns firing Meta Pixel (PageView on `gtm.dom`), GA4, and the Roku pixel.
+- The app's only job is pushing correctly-shaped events to `window.dataLayer`:
+  - **`TicketCartModal.tsx`** pushes `{ event: "begin_checkout", eventModel: { currency, value, transaction_id, items: [...], user_data: { email_address, phone_number } } }` when checkout starts. GTM's `FBEventName` variable maps `begin_checkout` → Meta's `InitiateCheckout` automatically.
+  - **`PurchaseDataLayerPush.tsx`** (shared by ticket/brand/vendor confirmation pages) pushes `{ event: "purchase", eventModel: { transaction_id, value, currency, items: [...], user_data: {...} } }`.
+  - **The nested `eventModel` wrapper is required** — GTM's Data Layer Variables read `eventModel.value`, `eventModel.user_data`, etc. A flat top-level push (the old shape) produces `undefined` values in Meta's tags even though the event technically fires.
+- Advanced Matching (`user_data.email_address`/`phone_number`) is **plain-text**, not pre-hashed — GTM's own Meta Pixel template hashes it client-side via `fbq('init', pixelId, cidParams)`. Don't hash before pushing.
+- **`META_CAPI_ACCESS_TOKEN`** Vercel env var is now unused (the direct CAPI code that read it was deleted) — safe to remove, low priority.
+
+### If Google Ads/Meta conversions ever show zero or look wrong again
+1. Check the GTM container directly (export via tagmanager.google.com → Admin → Export Container, or use a properly-registered GTM MCP connector — see the Stape/GTM MCP note below) for what conversion/tracking tags actually exist and what triggers them. **Do not assume a tag exists just because a Google Ads/Meta campaign is "running"** — a campaign can run indefinitely with zero tracking installed.
+2. Check `window.dataLayer` shape in a live browser session against what the relevant GTM tag's variables expect — a silent shape mismatch (flat vs. nested, wrong key names) is the most common failure mode and won't throw any error anywhere.
+3. Meta's Events Manager → Test Events tab (with a `test_event_code`) gives real-time feedback per event including populated/missing parameters — much faster than waiting on the Overview tab's 24–48h rolling match-quality score.
+
+### GTM MCP / Stape connector — known gotcha
+A GTM MCP connector (`gtm-mcp.stape.ai`) was tried once for direct container inspection but never got fully registered as a proper Claude Code MCP server. A **standalone `npx -y mcp-remote https://gtm-mcp.stape.ai/mcp` process** was instead left running persistently in the background (spawned from the Claude desktop app, not this CLI), which kept retrying its Google OAuth login indefinitely and popping a new browser tab on every retry — for days, until noticed and killed (`ps aux | grep mcp-remote`, then `kill`). **If this recurs:** kill the stray process, and check the Claude desktop app's own Settings → Connectors for a lingering "gtm"/Stape entry that could relaunch it on app restart. The simpler, proven-working alternative for inspecting the GTM container is asking the human to export it as JSON from tagmanager.google.com → Admin → Export Container and pasting it directly — no MCP/OAuth needed.
 
 ---
 
@@ -261,39 +367,33 @@ With these, the widget renders, issues a dummy token, and enables the submit but
 URL: `/admin` (requires admin password — sent as `x-admin-token` header)
 
 ### Sections
-- **Orders** — all ticket purchases, Stripe receipt link, **Send icon resends ticket email**, refund button. Save now shows error alert if it fails.
-- **Events** — manage event listings and ticket types. Status options: `on_sale`, `coming_soon`, `sold_out`, `draft`, `cancelled`
-- **Users** — customer accounts
-- **Brands** — tequila brand contacts, invoicing, orders, and inbox (brands@mail.tequilafestusa.com). Sub-tabs: Contacts / Orders / Invoices / Inbox. Contacts stored in `brand_contacts`; each Contacts card shows that contact's linked `brand_package_orders` inline (order #, tier, cities, amount, status, "View in Stripe" link when a real `stripe_payment_intent_id` exists). Invoices in `brand_invoices` with auto-generated Stripe payment links emailed on creation.
+- **Overview** — revenue/tickets/orders stat cards + "Ticket Sales by City" (per-event capacity bars, from `stats.byEvent`, NOT `stats.byCity` — worth knowing since a "select this city vs. All Cities" discrepancy report traces back to whichever of these two breakdowns is actually being rendered). City/year filter dropdowns re-fetch `/api/admin/stats` with query params.
+- **Orders** — all ticket purchases, Stripe receipt link, Send icon resends ticket email, refund button.
+- **Events** — manage event listings and ticket types (`sold_count` per type, live-computed, comp-excluded — see Ticket Sold-Count Accuracy section).
+- **Users** — customer accounts.
+- **Brands** — tequila brand contacts, invoicing, orders, and inbox (brands@). Sub-tabs: Contacts / Orders / Invoices / Inbox.
+- **Vendors** — see Vendor Flow section above.
+- **Load In** — see Load In section above.
+- **Inbox** — Support/Vendors/Sponsors/Affiliates tabs + Knowledge Base toggle + the Abandoned Checkout Recovery panel (see above).
+- **Staff** — check-in staff management.
+- **Check-In** — live scan stats, staff roster.
+- **Tools** — misc one-off/utility actions (QR code generator, short links, etc.) — this is also where **temporary one-time-fix tools get added and then removed once run**; if you see a card here that looks like a one-off, check git history before assuming it's meant to stay.
 
-### Brand Package Purchase Flow (`/brand-packages`)
-Self-serve flow separate from ticket checkout — a brand pays $250/$300/$350 per city (Value/Standard/Premium tier) to be featured at an event.
-1. `BrandPackagesPage.tsx` collects brand name, contact info, tier, city selection → `POST /api/brand-checkout`
-2. That route creates a pending `brand_package_orders` row and a Stripe Checkout Session with `metadata.type = "brand_package"` (this is how the shared Stripe webhook tells brand orders apart from ticket orders)
-3. `src/app/api/webhooks/stripe/route.ts` → `handleBrandPackagePaid()` marks the order `status: "paid"`, and **auto-links or auto-creates** a `brand_contacts` row by matching `contact_email` (appends the brand name to that contact's `brands[]` if not already present) — this is the mechanism that makes a paid brand show up under admin → Brands → Contacts automatically, no manual entry needed
-4. Once paid for a given city, that brand name appears in the rolling tequila-brand scroller on that city's event page (and on the homepage scroller, unscoped by city) via `GET /api/brands` — see `src/lib/normalizeBrandName.ts` for the "Tequila" word-stripping normalization
-
-**Non-Stripe payments** (e.g. a brand pays via Zelle): insert directly into `brand_package_orders` with `status: 'paid'`, `stripe_session_id: null`, `stripe_payment_intent_id: null`, and manually create/update the matching `brand_contacts` row (or let it auto-create on the next real Stripe order from that email). The admin Contacts card only shows "View in Stripe" when a real payment intent ID is present.
-- **Inbox** — contact form submissions by type (Support / Sponsors / Affiliates / Brands). Reads from `contact_submissions` via `/api/admin/contact` GET. Supports AI-generated replies.
-- **Staff** — staff management
-- **Analytics** — site stats
-
-### Admin API Endpoints
+### Admin API Endpoints (non-exhaustive — see Key Files Reference for newer ones)
 | Endpoint | Method | Purpose |
 |---|---|---|
 | `/api/admin/resend-email` | POST | Resend ticket email. Body: `{ order_number }` |
-| `/api/admin/contact` | GET | Fetch all contact submissions |
-| `/api/admin/contact` | POST | Send reply to a submission |
-| `/api/admin/test-email` | POST | Test Resend directly. Body: `{ to }` |
+| `/api/admin/contact` | GET/POST | Fetch/reply to contact submissions |
 | `/api/admin/refund` | POST | Issue Stripe refund |
-| `/api/admin/events` | GET | List all events with ticket types + live sold counts |
-| `/api/admin/events/[id]` | PATCH | Update event fields including status |
-| `/api/admin/brands` | GET/POST/PATCH/DELETE | Brand contacts CRUD |
-| `/api/admin/brands/invoices` | GET/POST/PATCH | Brand invoices — POST creates invoice + Stripe payment link + emails brand contact |
+| `/api/admin/stats` | GET | Overview stats — `?city=`/`?year=` optional filters, always excludes comp tickets |
+| `/api/admin/events` | GET | List all events with ticket types + live sold counts, always excludes comp tickets |
+| `/api/admin/events/[id]` | PATCH | Update event fields including status, load_in_* fields |
 | `/api/admin/vendors/resend-payment-link` | POST | Resend a fresh Stripe payment link + approval email to one vendor. Body: `{ id }` |
-| `/api/admin/vendors/resend-all-unpaid` | POST | Bulk version — resends to every approved, unpaid vendor in one call |
-| `/api/admin/vendors/resend-confirmation` | POST | Resends the post-payment confirmation email (for vendors who paid but got the wrong pre-fix email). Body: `{ id }` |
-| `/api/admin/backfill-marketing-sync` | POST | One-time: pushes every historical paid ticket order into Brevo + TextMagic. Safe to re-run. `maxDuration = 300` |
+| `/api/admin/vendors/resend-all-unpaid` | POST | Bulk version — resends to every approved, unpaid vendor |
+| `/api/admin/vendors/resend-confirmation` | POST | Resends the post-payment confirmation email |
+| `/api/admin/vendors/email-city` | POST | Ad hoc email to all paid vendors in a city, with optional attachment |
+| `/api/admin/abandoned-checkouts` | GET | List abandoned-checkout groups by city |
+| `/api/admin/abandoned-checkouts/send` | POST | Manually trigger recovery email — `{ eventSlug? }` (omit for all cities) |
 
 All admin endpoints require `x-admin-token` header matching `ADMIN_PASSWORD` env var.
 
@@ -312,11 +412,13 @@ NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=...
 STRIPE_WEBHOOK_SECRET=...
 RESEND_API_KEY=...                      # must be current/active key from resend.com
 ADMIN_PASSWORD=...                      # used in x-admin-token header
+CRON_SECRET=...                         # Vercel Cron auth — sent as Authorization: Bearer $CRON_SECRET automatically
 NEXT_PUBLIC_TURNSTILE_SITE_KEY=...      # Cloudflare Turnstile site key
 TURNSTILE_SECRET_KEY=...                # Cloudflare Turnstile secret key
 OPENAI_API_KEY=...
-NEXT_PUBLIC_META_PIXEL_ID=1559821735737152
+NEXT_PUBLIC_META_PIXEL_ID=1559821735737152   # read by GTM's own Meta Pixel tag config, not by any app code directly
 NEXT_PUBLIC_GTM_ID=GTM-P3Q33V72
+META_CAPI_ACCESS_TOKEN=...              # UNUSED — leftover from the deleted direct-CAPI code, safe to remove (see Tracking section)
 BREVO_API_KEY=...
 BREVO_LIST_ID_CINCINNATI=...
 BREVO_LIST_ID_CLEVELAND=...
@@ -335,168 +437,82 @@ TEXTMAGIC_LIST_ID_PHOENIX=...
 ## What Has Been Built (Completed)
 
 ### Infrastructure
-- [x] Next.js 16 App Router project scaffolded
-- [x] Supabase project created and schema migrated
-- [x] GitHub repo `kingadam333/tequila-fest-usa` connected to Vercel (auto-deploy on push to `main`)
-- [x] Custom domain `www.tequilafestusa.com` live on Vercel via Cloudflare
-- [x] All Vercel env vars configured
-- [x] Cloudflare SSL Full (Strict), Bot Fight Mode off, Browser Integrity Check off
-- [x] Cloudflare Turnstile re-enabled and working on all 9 forms
+- [x] Next.js 16 App Router project on Vercel, auto-deploy on push to `main`
+- [x] Supabase project + schema, Cloudflare SSL Full (Strict), Turnstile on all forms
 
-### Pages Built
-- [x] Homepage — hero, event cards (city cards link to `#tickets`), highlights, sponsors
-- [x] `/events` — all events listing
-- [x] `/events/[slug]` — individual event pages with `#tickets` anchor
-- [x] `/login` — with `?email=` and `?redirect=` URL param support + Suspense wrapper
-- [x] `/signup`
-- [x] `/account` — order history, QR tickets
-- [x] `/ticket-confirmation` — post-Stripe success page, prefills login link with customer email
-- [x] `/contact` — contact form (saves to Supabase `contact_submissions`)
-- [x] `/affiliates`, `/vendors`, `/press`, `/sponsors`, `/forgot-password`
-- [x] `/admin` — full admin dashboard
-- [x] `/blog`
+### Core Pages
+- [x] Homepage, `/events`, `/events/[slug]`, `/login`, `/signup`, `/account`, `/ticket-confirmation`, `/contact`, `/affiliates`, `/vendors`, `/press`, `/sponsors`, `/forgot-password`, `/admin`, `/blog`, `/loadin` (public, this session)
 
 ### Ticket Purchase Flow
-- [x] `TicketCartModal.tsx` and `PreCheckoutModal.tsx` — Turnstile working
-- [x] Stripe Checkout Session creation via `/api/pre-checkout`
-- [x] Stripe webhook handler — order creation, QR ticket generation, auth account creation, one combined email
-- [x] Service fee shown as "Service Fee" only (no breakdown)
+- [x] `TicketCartModal.tsx` / `PreCheckoutModal.tsx`, Turnstile-protected
+- [x] Stripe Checkout via `/api/pre-checkout`, webhook creates order + QR tickets + real Auth login (see Login Creation section) + one combined email
+- [x] Mobile-usable quantity steppers (44px touch targets, this session — was 32px and unreliable to tap repeatedly)
 
 ### Email System
-- [x] Resend domain `mail.tequilafestusa.com` verified
-- [x] Active Resend API key configured
-- [x] ONE combined ticket email: QR codes + order summary + account credentials
-- [x] Account existence check uses `customer_accounts` table (not broken `listUsers()`)
-- [x] Admin "Resend Ticket Email" button (Send icon in Orders) fully wired up
-- [x] Admin inbox reads from Supabase via `/api/admin/contact` server-side route (not broken client-side `supabaseAdmin`)
-
-### Event Status
-- [x] Phoenix set to `coming_soon` in DB
-- [x] Homepage Phoenix card shows "🔔 COMING SOON" (non-clickable)
-- [x] DB check constraint updated to allow `coming_soon`
-- [x] Admin event save now shows error alert on failure
+- [x] Per-audience `FROM_*` senders wired correctly everywhere, including vendor emails (this session — several were wrongly sending from help@)
+- [x] Admin resend tools for tickets, vendor payment links, vendor confirmations
 
 ### Staff Check-In System (`/checkin`)
-- [x] `staff_members` table with bcrypt passwords + JWT auth (jose)
-- [x] `/api/staff/login` — staff-only login endpoint
-- [x] Main login (`/login`) detects staff emails → stores `Bearer <jwt>` in localStorage → redirects to `/checkin` (solves PWA no-URL-bar problem)
-- [x] Check-in portal auto-loads staff JWT from localStorage on mount
-- [x] **Fullscreen QR scanner overlay** — covers entire screen, gold viewfinder, flash on scan
-- [x] **Auto check-in on scan** — immediately calls confirm API, no extra tap
-- [x] **Order progress card** — shows all tickets in same order, ✓ checked / remaining
-- [x] Undo check-in button
-- [x] Live stats with per-type breakdown bars
-- [x] Admin can set/change staff passwords from admin dashboard
-- [x] Admin check-in section shows live DB stats + staff roster with online/active/pending/expired status badges
-- [x] "View Dashboard" button in Users section shows customer tickets + QR codes
-
-### Ticket Check-In Status
-- `ticket_instances.status` check constraint (`ticket_instances_status_check`) allows: `valid`, `used`, `cancelled`, `refunded`, `pending`, `transferred`
-- **Checked-in tickets are set to `status = 'used'`** (NOT "checked_in" — that violates the constraint)
-- `checked_in_at` column stores the timestamp
+- [x] JWT-based staff auth, fullscreen QR scanner, auto check-in, order progress, undo, live stats
 
 ### PWA
-- [x] `@ducanh2912/next-pwa` installed — service worker auto-generated
-- [x] `public/manifest.json` — name "Tequila Fest USA", theme #F5A623, shortcuts to /events and /account
-- [x] 11 icon sizes generated (72–512px) + 2 maskable — Python/Pillow, radial gradient + skull logo
-- [x] Install banner (`InstallBanner.tsx`) — Android native prompt, iOS 3-step instructions, shows immediately, dismisses 7 days
-- [x] `next.config.ts` — added `turbopack: {}` to silence webpack/Turbopack conflict from next-pwa
+- [x] Installable, manifest + icons + install banner
 
-### Meta Pixel, GTM, and Roku (this session)
-- [x] Meta Pixel ID replaced: `NEXT_PUBLIC_META_PIXEL_ID=1559821735737152` (old `1968617953699126` removed)
-- [x] Pixel base code + noscript fallback moved to `src/components/MetaPixelHead.tsx`, rendered directly in `layout.tsx`'s `<head>` JSX — **not** via `next/script`. Verified by inspecting the actual rendered HTML that `next/script` (even with `strategy="beforeInteractive"`) does NOT reliably land in the literal `<head>` tag in this Next.js version — it gets injected in `<body>` instead, which can make Meta's own install-checker report "not installed" even though it still fires. `MetaPixel.tsx` now only holds the client-side `PixelPageView` route-change tracker (rendered in `<body>`, doesn't need to be in head) and the exported `trackPixelEvent()` helper.
-- [x] Facebook domain verification meta tag added via `metadata.other` in `layout.tsx` (`facebook-domain-verification` content tag) — same reasoning, verified it renders in static server HTML.
-- [x] **Google Tag Manager** added: `NEXT_PUBLIC_GTM_ID=GTM-P3Q33V72`. Same pattern — `src/components/GoogleTagManager.tsx` exports `GTMHeadScript` (first element in `<head>`) and `GTMBodyNoscript` (first element in `<body>`), both raw HTML, not `next/script`.
-- [x] **Roku Ads pixel** wired through GTM (not a separate script) — GTM's "Roku Pixel" community template (Templates → Gallery), Event Type "Purchases", triggered on a custom `purchase` dataLayer event, with Event Metadata fields (`value`, `currency`, `transaction_id`, `quantity`, `item_name`, `item_city`) mapped to Data Layer Variables of the same names. Verified firing correctly via GTM Preview mode's Tags Fired panel.
-- [x] **`PurchaseDataLayerPush`** component (`src/components/PurchaseDataLayerPush.tsx`) — shared by all three post-payment confirmation pages (tickets, brand packages, vendor payments). Pushes `{ event: "purchase", transaction_id, value, currency, quantity, item_name, item_city }` to `window.dataLayer` AND fires the Meta Pixel `Purchase` event, so any current or future GTM tag (Roku, GA4, etc.) gets consistent real order data instead of each page reinventing this.
-- [x] A **Google Cloud server-side GTM tagging container** was auto-created by GTM's built-in AI assistant while setting up Roku (Cloud Run service, not something this codebase touches). Deliberately left running but unused/unconfigured — Roku's actual requirement is only the client-side web container. Server-side tagging is a bigger, separate architecture decision (ad-blocker resistance vs. added cost/complexity) not yet adopted. If picking this up later: point a subdomain at the Cloud Run URL via Cloudflare, then reconfigure the web container's transport URL.
-- [x] `trackPixelEvent()` helper exported for InitiateCheckout / Purchase events
+### Tracking — GTM as sole source of truth (rebuilt this session)
+- [x] Deleted the app's own direct Meta Pixel/CAPI code (`MetaPixelHead.tsx`, `MetaPixel.tsx`, `src/lib/metaCapi.ts`) in favor of GTM's pre-existing, official Meta Pixel + Conversions API Gateway integration
+- [x] Reshaped `dataLayer.push()` calls to the nested `eventModel.*` structure GTM's tags actually read (was flat/incomplete before, causing low Meta match-quality scores)
+- [x] See full "Tracking" section above for the complete architecture and a Google Ads zero-conversions troubleshooting checklist (open item — see Still Needs to Be Done)
 
-### Vendor Flow
-- [x] Vendor form: multi-select city checkboxes (Cincinnati / Cleveland / Columbus / Phoenix)
-- [x] Live total displayed under checkboxes
-- [x] Heading changed to "OUR UPCOMING EVENTS" (removed "2026")
-- [x] "$150 per city" fee banner above form
-- [x] Stripe checkout: one line item per city — "Vendor - Cincinnati", "Vendor - Cleveland", etc. at $150 each
-- [x] Vendor applications in `vendor_applications` DB table
+### Vendor Flow — Payment Pipeline Rebuilt + Admin Tooling
+- [x] Fixed the vendor payment pipeline being completely broken (wrong session type, missing metadata, missing success page, wrong email) — see git history for the original incident writeup if needed
+- [x] Switched to Stripe Payment Links (never expire) instead of Checkout Sessions (24h cap) for vendor payment collection
+- [x] PaymentIntent descriptions set at actual payment time (webhook), not link-creation time, so the Stripe dashboard always shows a readable label regardless of when the link was generated
+- [x] Admin Vendors: paginated paid-vendor city cards, "View in Stripe" links, PDF export (all cities / per city), "Email Paid Vendors by City" with attachment support (this session)
+- [x] Email tracking badges (Sent/Delivered/Opened/Clicked/Bounced) via Resend outbound webhook
 
-### Bug Fixes
-- [x] Cloudflare Turnstile spinning loop — fixed via refs in Turnstile.tsx
-- [x] Stripe webhook 308 redirect — webhook URL updated to www
-- [x] All site links updated from `tequila-fest-usa.vercel.app` → `www.tequilafestusa.com`
-- [x] `useSearchParams()` Suspense boundary on login page
-- [x] Admin inbox was empty — `supabaseAdmin` was used in client component (server-only key)
-- [x] Two back-to-back emails dropped by Resend — merged into one
-- [x] `listUsers()` pagination bug — replaced with direct DB lookup
-- [x] `tastecleveland.net` inbound emails leaking into this admin inbox — domain guard added to `email-inbound/route.ts`
-- [x] Stripe PaymentIntent showing raw `pi_...` ID instead of a description — `payment_intent_data.description` now set on brand-checkout
+### Load In (this session)
+- [x] Public `/loadin` page + admin Load In section — see full Load In section above
 
-### Dynamic Events / Year Rollover (this session)
-- [x] Homepage `EventCards.tsx` converted from hardcoded to dynamic (`/api/events`)
-- [x] City pages (`/events/[slug]`) now permanently keyed by city — always show current/next event for that city from DB, resolved via `cityKey()`
-- [x] `completed` event status added — blocks ticket purchases, used to archive a past year's event without deleting data
-- [x] Admin Events: "New Event" + "Copy" buttons, year grouping in the list, date picker calendar
-- [x] Front page only shows upcoming (non-completed, non-draft) events, sorted by date ascending
+### Abandoned Checkout Recovery (this session)
+- [x] Manual + automatic (Wednesday cron) recovery emails for incomplete ticket checkouts — see full section above
 
-### Vendor Payment Pipeline — Was Completely Broken (fixed this session)
-Vendors approved in admin → Vendors were never actually able to pay. Root causes, all fixed:
-1. **`expires_at` exceeded Stripe's cap** — the payment-link Stripe Checkout Session set a 7-day expiry, but Stripe only allows `payment`-mode sessions to expire within 24 hours. Every single `session.create()` call was silently throwing, caught by a try/catch that only logged to console — no payment link was ever created, no email ever sent, and the vendor's status still flipped to "approved" as if it worked. Fixed: capped at 23h in `sendVendorApprovalEmail()` (`src/app/api/admin/vendors/route.ts`).
-2. **No `metadata.type` on the vendor Stripe session** — meant a vendor's payment fell through to the generic ticket-purchase webhook handler (`handleCheckoutComplete`), creating a phantom `ticket_orders`/`ticket_instances` row (type "All Inclusive", wrong copy) instead of crediting their vendor application. Fixed: `metadata: { type: "vendor", ... }` added, and the webhook now branches on it to call `handleVendorPaid()` (`src/app/api/webhooks/stripe/route.ts`) before falling through to the ticket handler.
-3. **`/vendor-payment-success` page didn't exist** — the Stripe success_url has always pointed there; every paying vendor hit a 404 immediately after payment. Built `src/app/vendor-payment-success/page.tsx`, looks up the paid vendor via the Stripe session's `vendor_application_id` metadata (vendor_applications has no `stripe_session_id` column, only `stripe_payment_intent_id`).
-4. **Wrong post-payment email** — vendors were getting the ticket-purchase email ("1× All Inclusive", "Ticket #1 of 1"). New `vendorConfirmationHtml()` template in `src/lib/resend.ts` sends "1× Vendor Spot — {city}", a "VENDOR" badge, and vendor-specific reminders (load-in 12–2pm, no entry after 2pm, 10×10 space/tent/table/chairs are their responsibility).
-5. **Three vendors already fell into the phantom-ticket trap** before the fix shipped (Stonii gift shop, Rose/John, Scented Creations/Tina) — each had a stray `ticket_orders`/`ticket_instances` row deleted and their real Stripe payment intent moved onto their `vendor_applications` row manually. Since their approval links were sent in the same pre-fix batch, **any vendor who received a link from that original batch and hasn't paid yet still holds a broken link** — use the bulk "Resend Payment Link to All Unpaid" button (admin → Vendors) to reissue fresh links; safe to run repeatedly.
-- [x] Admin → Vendors: **email tracking badges** (Sent/Delivered/Opened/Clicked/Bounced) via a new Resend outbound webhook (`src/app/api/webhooks/resend-events/route.ts`, subscribed to `email.delivered/opened/clicked/bounced/complained`, matched back to `vendor_applications` by `approval_email_id`). Requires open/click tracking enabled on `mail.tequilafestusa.com` (Resend → Domains → Configuration → Enable tracking metrics — NOT a "Tracking" tab, that doesn't exist). **Important:** a webhook only receives events for emails sent *after* it was created — any email sent before the webhook existed will never show Delivered/Opened/Clicked even if the vendor definitely received it. `handleVendorPaid()` now auto-backfills those three badges using `paid_at` as a fallback timestamp whenever payment succeeds, since a completed payment is proof-positive the vendor got and clicked the email.
-- [x] **"Resend Payment Link"** button was previously dead — it called the same PATCH endpoint used for initial approval, which no-ops if the vendor is already `status: "approved"`. Fixed with a dedicated `POST /api/admin/vendors/resend-payment-link` endpoint, plus a bulk `POST /api/admin/vendors/resend-all-unpaid` and matching "Resend Payment Link to All Unpaid (N)" button.
-- [x] `POST /api/admin/vendors/resend-confirmation` — resends the *post-payment* confirmation email (for vendors who already paid but got the wrong pre-fix email).
-- [x] **Duplicate vendor applications** — `POST /api/vendor-apply` now checks for an existing non-rejected application by email before inserting; if found, returns 409 and the form shows a "DOUBLE APPLICATION" message instead of creating a second row. A rejected prior application doesn't block reapplying.
+### Admin Reporting Accuracy (this session — two real incidents, both fixed)
+- [x] Fixed Overview going completely blank (500 "Bad Request" on `/api/admin/stats`) — root cause was a giant client-built `order_id IN(...)` list combined with row-count pagination; rewritten to a server-side Postgres join
+- [x] Fixed Overview vs. Events tab disagreeing on sold counts — Events tab wasn't excluding comp/giveaway tickets, Overview was; both now use the identical paid-and-non-comp filter
+- [x] Underlying cause of the original undercounting (before either of the above): Supabase's default 1000-row query cap, silently truncating any unpaginated aggregate query once `ticket_instances` crossed ~1000 rows — see `src/lib/fetchAllRows.ts`
 
-### Marketing List Sync — Brevo + TextMagic (this session)
-Every **paid ticket purchase** (not brand packages or vendor payments, scoped intentionally) pushes the buyer into the correct per-city list on both platforms. Credentials/list IDs were already sitting in Vercel env vars (set up previously, never wired to code) — `BREVO_API_KEY`, `BREVO_LIST_ID_CINCINNATI/CLEVELAND/COLUMBUS/PHOENIX`, `TEXTMAGIC_API_KEY`, `TEXTMAGIC_USERNAME`, `TEXTMAGIC_LIST_ID_CINCINNATI/CLEVELAND/COLUMBUS/PHOENIX`.
-- **`src/lib/marketingSync.ts`** — `syncTicketBuyerToBrevo()`, `syncTicketBuyerToTextMagic()`, `syncTicketBuyerToMarketingLists()`. Best-effort: logs failures, never throws, never blocks order confirmation. Phone numbers normalized to E.164 (assumes US). Called from `handleCheckoutComplete` in the Stripe webhook, **awaited** (not fire-and-forget — Vercel can kill a serverless function before an un-awaited background request finishes once the handler returns).
-- **This sync did not exist before this session** — no historical ticket buyer (including all of Cincinnati's June 2026 event) was ever pushed to either platform before it was wired in. `POST /api/admin/backfill-marketing-sync` (button: admin → Orders → "Backfill Marketing Lists") does a one-time pass over every paid order, all-time, all cities, deduped by email+city, pulling phone from `customer_accounts` by email. Safe to run more than once (`updateEnabled: true` on Brevo; TextMagic just logs on duplicate phone). `maxDuration = 300` set on that route since ~190+ buyers × 2 sequential API calls can run past the default serverless timeout.
+### My Tickets Page Rebuilt (this session)
+- [x] Real scannable QR code (was a fake decorative pattern), working "Download PDF", removed a leftover dev-only fake-check-in button — see full section above
 
-### Image Performance (this session)
-- [x] `public/tequilafest_usa.png` was a 3.9MB, 4000×2660px print-resolution export used as the site logo everywhere — resized to 1200px wide via `sharp`, now 158KB, same visual quality at any size it's actually displayed (all usages already go through `next/image`, which handles responsive resizing).
-- [x] City page hero background (`EventPage.tsx`) was a raw `<img>` tag reading from Supabase Storage — switched to `next/image` with `fill`+`priority`, and Supabase's storage hostname added to `next.config.ts`'s `images.remotePatterns` (previously only `images.unsplash.com` was allowed, so `next/image` would have errored on the Supabase URL).
-- [x] `src/app/api/admin/events/upload-image/route.ts` claimed to store uploads as `.webp` but just renamed the raw bytes without any real compression — a full-res phone photo would upload untouched. Now actually resizes (max 1920px) and re-encodes via `sharp` at quality 80 before storing.
+### Marketing List Sync — Brevo + TextMagic
+- [x] Every paid ticket purchase (not brand packages or vendor payments) syncs to the correct per-city Brevo + TextMagic list (`src/lib/marketingSync.ts`)
 
-### Vendors Page SEO + OG Image (this session)
-- [x] `/vendors` restructured: `page.tsx` is now a server component wrapper (metadata export) around the client form, moved to `src/app/vendors/VendorsPage.tsx` (metadata exports require a server component; the form itself needs `"use client"` for state).
-- [x] `src/app/vendors/opengraph-image.tsx` — dynamic OG image via Next's `ImageResponse` (`next/og`, edge runtime). Mirrors the actual hero section: logo, "VENDOR" (red→orange→cream gradient) / "APPLICATION" (cyan→blue gradient) headline matching the exact `.text-shimmer`/`.text-shimmer-blue` CSS gradient stops from `globals.css`, subtext copy, and the three vendor-type cards. **Gotcha:** passing `fonts: []` to `ImageResponse`'s options throws "No fonts are loaded" and breaks the whole image — omit the `fonts` key entirely to use Satori's default.
-
-### Brand Package / Contacts Integration (this session)
-- [x] Admin → Brands → Contacts cards show each contact's linked `brand_package_orders` inline (order #, tier, cities, amount, status, Stripe link)
-- [x] Rolling tequila brand scroller (city pages + homepage) is dynamic — pulls brand names from **paid** `brand_package_orders`, city-scoped on event pages, unscoped on homepage
-- [x] "Add Your Tequila Brand" CTA button added to both city-page and homepage scroller sections, linking to `/brand-packages`
-- [x] `normalizeBrandName()` strips "Tequila" from brand names at checkout + display time to prevent duplicate scroller entries
-- [x] Stripe MCP connector set up for direct account access from Claude sessions (account: Tequila Fest, `acct_1P2FfCLyuw3Oooiq`)
+### Brand Package / Contacts Integration
+- [x] Admin Brands → Contacts shows linked orders inline; rolling brand scroller pulls from paid `brand_package_orders`
 
 ---
 
 ## What Still Needs to Be Done
 
 ### High Priority
+- [ ] **Google Ads showing zero conversions** — campaign is running, app has zero Google Ads code (confirmed via grep — any tracking here lives entirely in GTM, not the app), GTM MCP connector was flaky/never fully diagnosed this. Next step: export the GTM container JSON directly and check for an actual Google Ads Conversion Tracking tag + trigger; a running campaign with zero conversions almost always means either no conversion tag was ever installed, or a Google Ads "conversion action" exists in the Ads UI but was never linked to anything that fires it. See Tracking section's troubleshooting checklist.
 - [ ] **Coupon/promo codes** at checkout — `coupons` table exists in DB, UI and API not built
 - [ ] **Supabase RLS security audit** — Row Level Security policies need review on all tables
 
 ### Medium Priority
 - [ ] **Stripe receipt link** on account page — not currently shown
-- [ ] **Email blast to Cincinnati ticket holders** — event details / day-of info
 - [ ] **City-specific logos** on each event page — using generic logo currently
-- [x] ~~**Check-in / QR scanner page**~~ — **DONE** — `/checkin` is fully built and working
 - [ ] **Loyalty/points system** — DB table exists, no UI or award logic
-- [ ] **Vendor application admin workflow** — form submits but no review/approval in admin
 - [ ] **Blog CMS** — page scaffolded, needs admin editing and real content
 - [ ] **Push notifications** — VAPID keys in env, not wired up
+- [ ] **Remove unused `META_CAPI_ACCESS_TOKEN`** Vercel env var — low priority cleanup, see Tracking section
 
 ### Nice to Have
 - [ ] **AI auto-reply in inbox** — OpenAI key exists, partially wired
 - [ ] **Columbus event page** — city site not built at `/Users/adambossin/Sites/tequila-fest-columbus`
 - [ ] **Affiliate dashboard** — signup exists, no commission tracking UI for affiliates
-- [ ] **Sponsor portal** — not built
-- [ ] **Brand owner portal** — not built
-- [ ] **Admin analytics** — revenue by city, ticket type breakdown, etc.
-- [ ] **Embedded admin AI assistant** — chat box inside `/admin` calling Claude's API directly, with this site's own Stripe/Supabase/Resend keys wired as tools (not a shared personal Connector session) — solves the multi-account Stripe connector conflict between Adam's different projects. Under discussion, not yet scoped/built.
+- [ ] **Sponsor portal**, **Brand owner portal** — not built
+- [ ] **Admin analytics** — revenue by city, ticket type breakdown, etc. beyond what Overview already shows
 
 ---
 
@@ -530,14 +546,6 @@ Original Replit project archived at: `/Users/adambossin/Sites/tequila-fest-usa-o
 
 **DO NOT** copy anything referencing: `businesses`, `SedonaPassport`, `Lodging`, `Restaurants`, `ThingsToDo`, `BusinessDetail`, `BusinessMap`, `ClaimListing` — dead code from another project mixed in.
 
-| File | Purpose |
-|---|---|
-| `server/routes.ts` | All original API endpoints (~3000 lines) |
-| `server/affiliateRoutes.ts` | Affiliate program routes |
-| `shared/schema.ts` | Full original database schema (Drizzle) |
-| `server/lib/checkoutFollowupEmails.ts` | Post-purchase email flows |
-| `server/lib/affiliates.ts` | Affiliate tracking logic |
-
 ---
 
 ## AI Inbox (Support Tickets)
@@ -545,10 +553,10 @@ Original Replit project archived at: `/Users/adambossin/Sites/tequila-fest-usa-o
 ### How It Works
 - Contact form submissions → `contact_submissions` table → AI processes inline (awaited) in `/api/contact`
 - AI uses OpenAI `gpt-4o-mini` (NOT Anthropic/Claude) — key is `OPENAI_API_KEY` in Vercel
-- Knowledge base loaded from `knowledge_base` DB table (9 entries) at runtime
-- If AI confident → auto-replies to customer, sets status `auto-replied`
-- If AI not confident → escalates to `adam@tequilafestusa.com` with "Open Ticket in Tequila Fest Inbox" email, sets status `needs-review`
+- Knowledge base loaded from `knowledge_base` DB table at runtime
+- Default posture is **escalate, not auto-reply** — the prompt was deliberately tightened (temperature 0.2, expanded "always escalate" list covering profanity/ALL-CAPS/repeated punctuation/"that didn't work"/phone number requests) after early auto-replies were too eager. If AI is confident → auto-replies, status `auto-replied`. Otherwise → escalates to a human, status `needs-review`.
 - Manual trigger: admin can click "Auto-Handle with AI" button on any `new` or `needs-review` ticket
+- **Learns from admin replies**: when an admin manually replies to a ticket, `learnFromAdminReply()` (`/api/admin/contact`) uses the customer's *latest* inbound message (not the original stale submission text) to improve future auto-replies for similar messages
 
 ### DB Status Values
 `contact_submissions_status_check` constraint allows: `new`, `read`, `replied`, `closed`, `auto-replied`, `needs-review`
@@ -559,43 +567,6 @@ Original Replit project archived at: `/Users/adambossin/Sites/tequila-fest-usa-o
 - `src/app/api/ai-inbox/route.ts` — Manual trigger endpoint (POST with submissionId)
 - `src/app/api/contact/route.ts` — Contact form handler; AI runs INLINE (awaited) before response returns
 
-### Admin Inbox UI (`src/app/admin/AdminDashboard.tsx`)
-- Blue "✨ AI" chip = auto-replied
-- Orange border = needs-review
-- Trash icon = delete (calls DELETE `/api/admin/contact`)
-- "Auto-Handle with AI" button (🤖) = manual AI trigger
-
----
-
-## Inbound Email (Customer Replies) — INCOMPLETE / NEEDS FIX
-
-**Goal:** When a customer replies to their ticket confirmation email (sent to `help@mail.tequilafestusa.com`), that reply should appear in the admin inbox and be AI-handled.
-
-**Current Status:** Webhook fires correctly (200 OK in Resend), email appears in Resend "Receiving emails" — but body is never captured. Emails land in admin inbox with placeholder text only.
-
-**Root Cause:** Resend's inbound webhook payload for `mail.tequilafestusa.com` does NOT include `data.text` or `data.html`. The `GET /emails/{email_id}` API returns 404 for inbound email IDs (that endpoint is for sent emails only). Body is completely inaccessible through Resend's API for this domain configuration.
-
-**Working Reference:** `mail.tastecleveland.net` (sister project) has a working setup where the Resend webhook payload DOES include the body. The Taste Cleveland Supabase edge function (`process-inbound-email`) successfully reads the body. The exact configuration difference between the two domains was not identified in this session.
-
-**Root Cause (solved by Opus):** Resend's `email.received` webhook payload is metadata-only by design. Body must be fetched separately. Two different endpoints exist:
-- `GET /emails/{id}` — for **sent** emails only → always 404 for inbound
-- `GET /emails/receiving/{id}` — for **inbound** emails → returns `{ text, html, headers, attachments, raw }`
-
-Sonnet 4.6 kept retrying `/emails/{id}` with workarounds (delays, different ID formats) instead of checking the docs for the correct endpoint. Opus found it immediately.
-
-**Current behavior** (`src/app/api/webhooks/email-inbound/route.ts`):
-- Email arrives → saved to `contact_submissions` with subject as message placeholder
-- Escalated to `adam@tequilafestusa.com` with `needs-review` status
-- Customer does NOT receive auto-reply
-
-**Resend Webhook Config:**
-- URL: `https://www.tequilafestusa.com/api/webhooks/email-inbound`
-- Event: `email.received`
-- Status: Enabled
-
-### Fixed: Cross-Domain Leak (tastecleveland.net emails appearing in this admin inbox)
-Adam has a **separate, unrelated** sister project (`tastecleveland.net`, an old Lovable/Supabase SPA with its own inbound webhook pointed at a Supabase edge function). Emails to `help@mail.tastecleveland.net` were showing up in the Tequila Fest admin inbox. Root cause was never fully confirmed (both domains have separate, correctly-configured Resend webhooks — likely a shared-MX/inbound-domain-verification issue on Resend's side), but as a hard guardrail, `src/app/api/webhooks/email-inbound/route.ts` now rejects any inbound payload whose `to` address doesn't contain `tequilafestusa.com` before any DB write happens. If this recurs, check Resend Dashboard → Domains → tastecleveland.net → confirm inbound domain is fully verified (green check) and its webhook isn't erroring.
-
 ---
 
 ## Critical Notes for Next Session
@@ -604,34 +575,38 @@ Adam has a **separate, unrelated** sister project (`tastecleveland.net`, an old 
 
 2. **Only ONE Resend email per webhook execution** — do not add a second `resend.emails.send()` for the same recipient. Resend silently drops it.
 
-3. **`RESEND_API_KEY` must be active** — check resend.com/api-keys if emails stop. Previous key was silently revoked.
+3. **`RESEND_API_KEY` must be active** — check resend.com/api-keys if emails stop.
 
 4. **Never import `supabaseAdmin` in a client component** — `SUPABASE_SERVICE_ROLE_KEY` is server-only. Always fetch via an API route.
 
-5. **Turnstile is working** — the fix was stabilizing callbacks in refs inside `Turnstile.tsx`. Do not change the dependency array of the widget's `useEffect`. If Turnstile ever starts looping again, the cause is callbacks being recreated on every render.
+5. **Turnstile is working** — the fix was stabilizing callbacks in refs inside `Turnstile.tsx`. Do not change the dependency array of the widget's `useEffect`.
 
-6. **Local builds fail** with `supabaseUrl is required` — Vercel pulls empty strings for secrets locally. This is expected and harmless. Vercel production builds work fine.
+6. **Local builds/dev fail on anything DB-backed** — `.env.local` has blank placeholder values for all protected secrets (Stripe key, Supabase keys, admin password, etc.), by design. Verify DB-backed changes against the live production site, not local dev.
 
-7. **Homepage event cards are now dynamic** (`src/components/EventCards.tsx` fetches `/api/events`) — admin status/date changes on an event automatically reflect on the homepage. No code deploy needed. (This was previously hardcoded — fixed this session.)
+7. **Homepage event cards are dynamic** (`src/components/EventCards.tsx` fetches `/api/events`) — admin status/date changes automatically reflect. No deploy needed.
 
-8. **DB events status constraint** — allowed values: `draft`, `on_sale`, `sold_out`, `cancelled`, `coming_soon`, `completed`. Adding any new status requires an `ALTER TABLE` to update the check constraint first. `completed` blocks ticket purchases on that event's page — use it when a year's event has passed instead of deleting the row (keeps historical order data intact).
+8. **DB events status constraint** — allowed values: `draft`, `on_sale`, `sold_out`, `cancelled`, `coming_soon`, `completed`. New statuses require an `ALTER TABLE` on the check constraint first.
 
-13. **Old vs. new QR code format** — old Replit-generated tickets: `TKT-{6-char}-{3-char type abbrev}-{3-digit num}-{6-char}`. Current generator (`stripe/route.ts`, `handleCheckoutComplete`): `TKT-{8-char order id suffix}-{3-digit num}-{8-char random hex}`, no type abbreviation. Old-format QR codes emailed to customers don't match what's now in `ticket_instances.qr_code` after a past migration — use admin → Events → Cleveland → "Resend Old QR" button (`/api/admin/resend-old-qr`) to re-send corrected emails for a given event slug. There is no scan-time fuzzy fallback; check-in only matches exact `qr_code`, then falls back to name/email/order-number search.
+9. **`ticket_instances` status constraint** — allows: `valid`, `used`, `cancelled`, `refunded`, `pending`, `transferred`. Checked-in tickets must be `"used"` — `"checked_in"` is **NOT** allowed and will throw a constraint violation.
 
-14. **Stripe is connected via MCP connector** (account: `acct_1P2FfCLyuw3Oooiq`, display name "Tequila Fest") — gives live read/limited-write access (refunds, resource lookups) directly in a Claude session without needing the raw secret key. The connector's write scope does **not** currently support updating an existing PaymentIntent's `description` — that still requires the Stripe Dashboard UI. Since Adam manages multiple Stripe accounts across different projects, this connector has to be manually disconnected/reconnected per session when switching between them — the long-term fix under discussion is embedding a Claude-API-powered chat directly in `/admin` with Tequila Fest's Stripe key stored in *this app's* own env vars, so it's permanently scoped and never fights with other projects' connector sessions.
+10. **Staff JWT permissions** — `verifyCheckinAccess()` allows any valid staff JWT (no specific permission required). Empty `permissions: []` is fine.
 
-9. **`ticket_instances` status constraint** — `ticket_instances_status_check` allows: `valid`, `used`, `cancelled`, `refunded`, `pending`, `transferred`. Checked-in tickets must be set to `"used"` — `"checked_in"` is **NOT** an allowed value and will throw a constraint violation error.
+11. **Supabase project ID** — `igktkkjnyxeiflnvfzdw`. Always use this one.
 
-10. **Staff JWT permissions** — `verifyCheckinAccess()` allows any valid staff JWT (no specific permission required). Staff members may have empty `permissions: []` arrays in DB — this is fine, they can still access `/checkin`.
+12. **`.env.local` values are dotenvx-encrypted / blank via `vercel env pull`** — to read real values, query the live DB via the Supabase MCP with project ID `igktkkjnyxeiflnvfzdw`, or check Vercel's env var UI directly.
 
-11. **Supabase project ID** — `igktkkjnyxeiflnvfzdw` (confirmed via `list_projects` MCP). The old ID `ycyxswsubxigpkehuqcf` was wrong — always use `igktkkjnyxeiflnvfzdw`.
+13. **Old vs. new QR code format** — old Replit-generated tickets used a different format than the current generator; if a "my QR won't scan" report comes from someone with a very old ticket, check `admin → Events → [city] → "Resend Old QR"`. Check-in only matches exact `qr_code`, then falls back to name/email/order-number search — no fuzzy matching.
 
-12. **`.env.local` values are dotenvx-encrypted** — `cat .env.local` shows empty strings. The actual secrets are encrypted in the file. Vercel CLI `env pull` also shows empty strings. To read actual values, use `npx @dotenvx/dotenvx run -- node -e "..."` or query the live DB via the Supabase MCP with project ID `igktkkjnyxeiflnvfzdw`.
+14. **`next/script` does not reliably render inside the literal `<head>` tag** in this Next.js version, even with `strategy="beforeInteractive"`. For anything that must be literally in `<head>` (GTM's head script, domain-verification meta tags), render a plain `<script>`/`<meta>` element directly in `layout.tsx`'s `<head>` JSX instead (see `GoogleTagManager.tsx`'s `GTMHeadScript`).
 
-15. **`next/script` does not reliably render inside the literal `<head>` tag** in this Next.js version, even with `strategy="beforeInteractive"` — verified by curling the rendered HTML and checking tag position. For anything that must be literally inside `<head>` (tracking pixel base code, domain-verification meta tags), render a plain `<script>`/`<meta>` element directly in `layout.tsx`'s `<head>` JSX instead (see `MetaPixelHead.tsx`, `GoogleTagManager.tsx`'s `GTMHeadScript`).
+15. **Never count/join `ticket_instances` by `event_slug`** for anything spanning multiple years or admin reporting — use `event_id`. **Never count a "sold" ticket without excluding `ticket_orders.source = 'media_comp'`** except in check-in stats (comp holders still need door check-in). See the full "Ticket Sold-Count Accuracy" section near the top of this file.
 
-16. **Admin dashboard sidebar nav text is white**, not grey (`text-white` on `NAV_ITEMS` buttons in `AdminDashboard.tsx`) — was `text-white/40`, changed for readability. Active tab keeps its yellow highlight.
+16. **Supabase's default 1000-row query cap cannot be overridden by a client-side `.limit()`** — it's enforced server-side. Real pagination (`src/lib/fetchAllRows.ts`, looping `.range()`) is the only fix. Never build a giant `.in(hugeIdList)` client-side to join two tables — let Postgres do it server-side via embedded-resource joins (`table!inner(...)`) instead. Both of these caused real production outages this session (`ticket_instances` just crossed 1000 rows for the first time).
 
-17. **Never count/join `ticket_instances` by `event_slug` for anything spanning multiple years or admin reporting** — use `event_id`. See DB Schema section for the full year-rollover slug-reuse bug this caused.
+17. **Vendor payments and ticket payments share one Stripe webhook** (`src/app/api/webhooks/stripe/route.ts`) — routed by `session.metadata.type` (`"vendor"` → `handleVendorPaid`, `"brand_package"` → `handleBrandPackagePaid`, unset → `handleCheckoutComplete` for tickets). Any new payment type must set a distinct `metadata.type` or it will silently fall through to the ticket handler and create a phantom ticket order — this exact bug hit three real vendors historically.
 
-18. **Vendor payments and ticket payments share one Stripe webhook** (`src/app/api/webhooks/stripe/route.ts`) — routed by `session.metadata.type` (`"vendor"` → `handleVendorPaid`, `"brand_package"` → `handleBrandPackagePaid`, unset → `handleCheckoutComplete` for tickets). Any new payment type added to this site must set a distinct `metadata.type` or it will silently fall through to the ticket handler and create a phantom ticket order — this exact bug hit three real vendors before it was caught.
+18. **The app has zero direct Meta Pixel/CAPI or Google Ads code** — all conversion tracking (Meta, GA4, Roku, and any future Google Ads conversion tag) lives entirely inside Google Tag Manager (`GTM-P3Q33V72`). The app's only responsibility is pushing correctly-shaped events to `window.dataLayer` (see full Tracking section). Don't add a direct Pixel/gtag/CAPI integration without first checking whether GTM already handles it — that exact duplication caused a real incident this session (see Tracking section).
+
+19. **Any new admin aggregate/reporting query must**: (a) use `fetchAllRows()` if it could plausibly return >1000 rows, (b) join via Postgres embedded-resource syntax rather than building ID lists client-side, and (c) filter `ticket_orders.status = 'paid' AND source != 'media_comp'` unless there's a specific reason not to (check-in stats). Test any change to `/api/admin/stats` or `/api/admin/events` against both "All Cities" and a specific city filter — a past bug only manifested in one of the two paths.
+
+20. **When an "outdated demo/dev-only" comment exists in shipped code, don't trust that it's actually inert** — the My Tickets fake check-in button was commented `Dev/demo only — remove in prod` and still ran real (if client-side-only) logic that confused a paying customer. If you see this pattern elsewhere, verify what the code actually does before assuming the comment means it's harmless.
