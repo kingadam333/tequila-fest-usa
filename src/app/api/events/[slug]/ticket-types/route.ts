@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { normalizeTicketType } from "@/lib/normalizeTicketType";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -17,27 +18,25 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
 
   if (!ticketTypes?.length) return NextResponse.json({ ticketTypes: [] });
 
-  // Get paid order IDs for this event
-  const { data: paidOrders } = await db
-    .from("ticket_orders")
-    .select("id")
-    .eq("event_slug", slug)
-    .eq("status", "paid");
-
-  const orderIds = (paidOrders || []).map((o: any) => o.id);
-
-  // Count from ticket_instances (source of truth)
-  const realCounts = new Map<string, number>();
-  if (orderIds.length > 0) {
-    const { data: instances } = await db
+  // Count from ticket_instances (source of truth), joined server-side to
+  // ticket_orders instead of building a client-side order_id IN(...) list —
+  // that pattern silently broke once an event crossed a few hundred paid
+  // orders (the query either errored or the giant list got rejected, and
+  // with no error handling on the old query this route just returned 0
+  // sold_count for every ticket type instead of failing loudly).
+  const instances = await fetchAllRows<{ ticket_type: string }>((from, to) =>
+    db
       .from("ticket_instances")
-      .select("ticket_type")
-      .in("order_id", orderIds);
+      .select("ticket_type, ticket_orders!inner(status)")
+      .eq("event_id", event.id)
+      .eq("ticket_orders.status", "paid")
+      .range(from, to)
+  );
 
-    for (const ti of instances || []) {
-      const key = normalizeTicketType(ti.ticket_type);
-      realCounts.set(key, (realCounts.get(key) || 0) + 1);
-    }
+  const realCounts = new Map<string, number>();
+  for (const ti of instances) {
+    const key = normalizeTicketType(ti.ticket_type);
+    realCounts.set(key, (realCounts.get(key) || 0) + 1);
   }
 
   const enriched = ticketTypes.map((tt: any) => ({
