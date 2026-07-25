@@ -834,11 +834,17 @@ export default function AccountPage() {
             </div>
             <div className="flex items-center gap-2 sm:gap-4">
               {user.email?.toLowerCase() === "adam@tequilafestusa.com" && (
-                <Link href="/admin" title="Admin Dashboard"
-                  className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-black text-sm font-bold px-3 sm:px-4 py-2 rounded-full transition-colors duration-200">
-                  <LayoutDashboard size={15} />
-                  <span className="hidden sm:inline">Admin Dashboard</span>
-                </Link>
+                <>
+                  <Link href="/checkin" title="Check-In Scanner"
+                    className="flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white text-sm font-bold px-3 py-2 rounded-full transition-colors duration-200">
+                    <QrCode size={15} />
+                  </Link>
+                  <Link href="/admin" title="Admin Dashboard"
+                    className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-black text-sm font-bold px-3 sm:px-4 py-2 rounded-full transition-colors duration-200">
+                    <LayoutDashboard size={15} />
+                    <span className="hidden sm:inline">Admin Dashboard</span>
+                  </Link>
+                </>
               )}
               <button onClick={handleLogout} title="Log Out"
                 className="flex items-center gap-2 text-white/30 hover:text-white/60 text-sm transition-colors duration-200 cursor-pointer">
