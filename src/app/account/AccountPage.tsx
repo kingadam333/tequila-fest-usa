@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
-import { User, ShoppingBag, QrCode, LogOut, MapPin, Calendar, Phone, Mail, Edit2, Check, LayoutDashboard, Gift, Copy, Send, Trophy } from "lucide-react";
+import { User, ShoppingBag, QrCode, LogOut, MapPin, Calendar, Phone, Mail, Edit2, Check, LayoutDashboard, Gift, Copy, Send, Trophy, ChevronDown } from "lucide-react";
 import QRCode from "qrcode";
 import DashboardTab from "./DashboardTab";
 import { TICKET_LABELS } from "@/lib/ticket-config";
@@ -748,6 +748,7 @@ function RewardsTab({ loyaltyPoints, onPointsUpdate }: { loyaltyPoints: number; 
 
 export default function AccountPage() {
   const [tab, setTab] = useState<Tab>("dashboard");
+  const [tabMenuOpen, setTabMenuOpen] = useState(false);
   const [highlightOrder, setHighlightOrder] = useState<string | undefined>();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [orders, setOrders] = useState<RealOrder[]>([]);
@@ -831,27 +832,57 @@ export default function AccountPage() {
                 </h1>
               </div>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 sm:gap-4">
               {user.email?.toLowerCase() === "adam@tequilafestusa.com" && (
-                <Link href="/admin" className="hidden sm:flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-black text-sm font-bold px-4 py-2 rounded-full transition-colors duration-200">
+                <Link href="/admin" title="Admin Dashboard"
+                  className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-black text-sm font-bold px-3 sm:px-4 py-2 rounded-full transition-colors duration-200">
                   <LayoutDashboard size={15} />
-                  Admin Dashboard
+                  <span className="hidden sm:inline">Admin Dashboard</span>
                 </Link>
               )}
-              <button onClick={handleLogout} className="hidden sm:flex items-center gap-2 text-white/30 hover:text-white/60 text-sm transition-colors duration-200 cursor-pointer">
+              <button onClick={handleLogout} title="Log Out"
+                className="flex items-center gap-2 text-white/30 hover:text-white/60 text-sm transition-colors duration-200 cursor-pointer">
                 <LogOut size={15} />
-                Log Out
+                <span className="hidden sm:inline">Log Out</span>
               </button>
             </div>
           </div>
 
-          {/* Tab bar — horizontally scrollable so it doesn't get cut off on mobile with 6 tabs */}
-          <div className="flex gap-1 bg-white/[0.03] border border-white/10 rounded-2xl p-1 mb-8 overflow-x-auto max-w-full">
+          {/* Tab bar — Dashboard pinned + dropdown for the rest on mobile so
+              nothing gets cut off or requires a hidden horizontal scroll;
+              full row on sm+ where there's room. */}
+          <div className="sm:hidden flex gap-2 mb-8">
+            <button onClick={() => { setTab("dashboard"); setTabMenuOpen(false); }}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 cursor-pointer ${tab === "dashboard" ? "bg-yellow-500 text-black" : "bg-white/[0.03] border border-white/10 text-white/40"}`}>
+              <LayoutDashboard size={16} /> Dashboard
+            </button>
+            <div className="relative flex-1">
+              <button onClick={() => setTabMenuOpen(o => !o)}
+                className={`w-full flex items-center justify-between gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 cursor-pointer ${tab !== "dashboard" ? "bg-yellow-500 text-black" : "bg-white/[0.03] border border-white/10 text-white/40"}`}>
+                <span className="flex items-center gap-2">
+                  {tab !== "dashboard" ? tabs.find(t => t.id === tab)?.icon : null}
+                  {tab !== "dashboard" ? tabs.find(t => t.id === tab)?.label : "More"}
+                </span>
+                <ChevronDown size={14} className={`transition-transform ${tabMenuOpen ? "rotate-180" : ""}`} />
+              </button>
+              {tabMenuOpen && (
+                <div className="absolute right-0 top-full mt-1 w-full bg-[#1a0e00] border border-white/15 rounded-xl overflow-hidden z-20 shadow-xl">
+                  {tabs.filter(t => t.id !== "dashboard").map(t => (
+                    <button key={t.id} onClick={() => { setTab(t.id); setTabMenuOpen(false); }}
+                      className={`w-full flex items-center gap-2 px-4 py-3 text-sm font-semibold transition-colors cursor-pointer ${tab === t.id ? "text-yellow-400 bg-white/5" : "text-white/60 hover:bg-white/5"}`}>
+                      {t.icon} {t.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="hidden sm:flex gap-1 bg-white/[0.03] border border-white/10 rounded-2xl p-1 mb-8 overflow-x-auto max-w-full">
             {tabs.map(t => (
               <button
                 key={t.id}
                 onClick={() => setTab(t.id)}
-                className={`flex items-center gap-2 px-3.5 sm:px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 cursor-pointer flex-shrink-0 whitespace-nowrap ${tab === t.id ? "bg-yellow-500 text-black" : "text-white/40 hover:text-white/70"}`}
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 cursor-pointer flex-shrink-0 whitespace-nowrap ${tab === t.id ? "bg-yellow-500 text-black" : "text-white/40 hover:text-white/70"}`}
               >
                 {t.icon}
                 {t.label}
