@@ -60,6 +60,7 @@ export default async function Image() {
             letterSpacing: 1,
             textTransform: "uppercase",
             lineHeight: 1.05,
+            color: "#fff8f0",
           }}
         >
           You&apos;ll Be{" "}
