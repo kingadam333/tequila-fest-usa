@@ -148,6 +148,13 @@ export default function EventPage({ event, ogImage, dbStatus }: { event: EventDa
   const isComingSoon = dbStatus === "coming_soon";
   const isCompleted = dbStatus === "completed";
 
+  // "Late Registration" unlocks during the final week before the event
+  // (through the event date itself) — was previously hardcoded to always
+  // show the "Available Final Week" placeholder with no date check at all,
+  // so it never actually became purchasable even on the day of the event.
+  const daysUntilEvent = (new Date(event.dateISO).getTime() - Date.now()) / 86400000;
+  const isFinalWeek = daysUntilEvent <= 7;
+
   // GA availability now comes from the live DB ticket type, not a static
   // per-city flag — previously `gaTicket` was hardcoded to null for
   // every city on the DB-driven event page, silently hiding GA everywhere
@@ -365,7 +372,7 @@ export default function EventPage({ event, ogImage, dbStatus }: { event: EventDa
                         <div className="mt-auto block text-center text-yellow-400 font-bold text-base py-3 rounded-full border border-yellow-500/30 bg-yellow-500/10">COMING SOON</div>
                       ) : soldOut ? (
                         <div className="mt-auto block text-center text-red-400 font-bold text-base py-3 rounded-full border border-red-500/30 bg-red-500/10">SOLD OUT</div>
-                      ) : unavailableNote ? (
+                      ) : unavailableNote && !isFinalWeek ? (
                         <div className="mt-auto block text-center text-white/30 text-sm py-3 rounded-full border border-white/10">{unavailableNote}</div>
                       ) : (
                         <button onClick={() => openCart(key)}
