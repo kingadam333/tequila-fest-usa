@@ -831,19 +831,27 @@ export default function AccountPage() {
                 </h1>
               </div>
             </div>
-            <button onClick={handleLogout} className="hidden sm:flex items-center gap-2 text-white/30 hover:text-white/60 text-sm transition-colors duration-200 cursor-pointer">
-              <LogOut size={15} />
-              Log Out
-            </button>
+            <div className="flex items-center gap-4">
+              {user.email?.toLowerCase() === "adam@tequilafestusa.com" && (
+                <Link href="/admin" className="hidden sm:flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-black text-sm font-bold px-4 py-2 rounded-full transition-colors duration-200">
+                  <LayoutDashboard size={15} />
+                  Admin Dashboard
+                </Link>
+              )}
+              <button onClick={handleLogout} className="hidden sm:flex items-center gap-2 text-white/30 hover:text-white/60 text-sm transition-colors duration-200 cursor-pointer">
+                <LogOut size={15} />
+                Log Out
+              </button>
+            </div>
           </div>
 
-          {/* Tab bar */}
-          <div className="flex gap-1 bg-white/[0.03] border border-white/10 rounded-2xl p-1 mb-8 w-fit">
+          {/* Tab bar — horizontally scrollable so it doesn't get cut off on mobile with 6 tabs */}
+          <div className="flex gap-1 bg-white/[0.03] border border-white/10 rounded-2xl p-1 mb-8 overflow-x-auto max-w-full">
             {tabs.map(t => (
               <button
                 key={t.id}
                 onClick={() => setTab(t.id)}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 cursor-pointer ${tab === t.id ? "bg-yellow-500 text-black" : "text-white/40 hover:text-white/70"}`}
+                className={`flex items-center gap-2 px-3.5 sm:px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 cursor-pointer flex-shrink-0 whitespace-nowrap ${tab === t.id ? "bg-yellow-500 text-black" : "text-white/40 hover:text-white/70"}`}
               >
                 {t.icon}
                 {t.label}
