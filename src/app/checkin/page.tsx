@@ -3,6 +3,18 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, QrCode, CheckCircle, XCircle, AlertCircle, ChevronDown, RotateCcw, Users, LogOut, X, Zap, ShieldCheck } from "lucide-react";
+import { normalizeTicketType } from "@/lib/normalizeTicketType";
+
+// What door staff actually need to see at a glance: which of the 3 physical
+// categories this ticket is (sampling wristband vs. GA-only vs. VIP), not
+// the specific price tier. Early Bird / Regular Rate / Late Registration are
+// all the same "Sampling Ticket" on the ground.
+function ticketCategory(rawType: string): { label: string; color: string } {
+  const type = normalizeTicketType(rawType);
+  if (type === "GA") return { label: "GENERAL ADMISSION", color: "#60a5fa" };
+  if (type === "VIP Experience") return { label: "VIP", color: "#C0C0C0" };
+  return { label: "SAMPLING TICKET", color: "#F5A623" };
+}
 
 const EVENTS = [
   { slug: "cincinnati", label: "Cincinnati — Jun 13" },
@@ -545,6 +557,18 @@ export default function CheckinPortal() {
                   <X size={15} /> BACK
                 </button>
               </div>
+
+              {/* Big category badge — what door staff actually need to see at a glance */}
+              {(() => {
+                const cat = ticketCategory(activeTicket.ticket_type);
+                return (
+                  <div className="mx-5 mb-3 rounded-2xl py-4 text-center" style={{ background: `${cat.color}22`, border: `2px solid ${cat.color}` }}>
+                    <p className="font-display text-3xl sm:text-4xl tracking-wide" style={{ color: cat.color }}>
+                      {cat.label}
+                    </p>
+                  </div>
+                );
+              })()}
 
               {/* Ticket detail grid */}
               <div className="grid grid-cols-2 gap-2 px-5 pb-3">
