@@ -155,6 +155,22 @@ export default function EventPage({ event, ogImage, dbStatus }: { event: EventDa
   const daysUntilEvent = (new Date(event.dateISO).getTime() - Date.now()) / 86400000;
   const isFinalWeek = daysUntilEvent <= 7;
 
+  // Cleveland 2027 (July 24) lands on National Tequila Day itself — worth a
+  // special animated callout in the hero. Sparkle positions are generated
+  // client-side only (after mount) instead of at module/render scope, so
+  // server-rendered HTML never disagrees with the client and React doesn't
+  // throw a hydration mismatch over randomized values.
+  const isNationalTequilaDay = event.city === "Cleveland" && event.date.includes("2027");
+  const [tequilaDaySparkles, setTequilaDaySparkles] = useState<{ top: string; left: string; delay: number }[]>([]);
+  useEffect(() => {
+    if (!isNationalTequilaDay) return;
+    setTequilaDaySparkles(Array.from({ length: 14 }, () => ({
+      top: `${Math.random() * 100}%`,
+      left: `${Math.random() * 100}%`,
+      delay: Math.random() * 3,
+    })));
+  }, [isNationalTequilaDay]);
+
   // GA availability now comes from the live DB ticket type, not a static
   // per-city flag — previously `gaTicket` was hardcoded to null for
   // every city on the DB-driven event page, silently hiding GA everywhere
@@ -271,6 +287,58 @@ export default function EventPage({ event, ogImage, dbStatus }: { event: EventDa
                 <span>{event.emoji}</span>{event.tag}
               </span>
             </motion.div>
+
+            {/* National Tequila Day callout — Cleveland 2027 only, lands on 7/24 */}
+            {isNationalTequilaDay && (
+              <motion.div
+                initial={{ opacity: 0, y: -14, scale: 0.9 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ duration: 0.7, delay: 0.15, ease: "easeOut" }}
+                className="relative mb-5 inline-block"
+              >
+                {/* Floating sparkles behind the badge */}
+                {tequilaDaySparkles.map((s, i) => (
+                  <motion.div
+                    key={i}
+                    className="absolute w-1 h-1 rounded-full pointer-events-none"
+                    style={{ top: s.top, left: s.left, background: "#F5A623" }}
+                    animate={{ opacity: [0, 1, 0], scale: [0, 1.6, 0] }}
+                    transition={{ duration: 2.2, repeat: Infinity, delay: s.delay, ease: "easeInOut" }}
+                  />
+                ))}
+
+                <motion.div
+                  animate={{
+                    boxShadow: [
+                      "0 0 20px rgba(245,166,35,0.35), 0 0 0px rgba(200,16,46,0)",
+                      "0 0 40px rgba(245,166,35,0.6), 0 0 25px rgba(200,16,46,0.35)",
+                      "0 0 20px rgba(245,166,35,0.35), 0 0 0px rgba(200,16,46,0)",
+                    ],
+                  }}
+                  transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
+                  className="relative flex items-center gap-2.5 px-5 py-2.5 rounded-full border"
+                  style={{ borderColor: "rgba(245,166,35,0.5)", background: "linear-gradient(90deg, rgba(200,16,46,0.15), rgba(245,166,35,0.15))" }}
+                >
+                  <motion.span
+                    animate={{ rotate: [0, -12, 12, -8, 8, 0] }}
+                    transition={{ duration: 1.6, repeat: Infinity, repeatDelay: 1, ease: "easeInOut" }}
+                    className="text-lg"
+                  >
+                    🥃
+                  </motion.span>
+                  <span className="font-display tracking-[0.15em] text-shimmer" style={{ fontSize: "0.95rem" }}>
+                    IT&apos;S NATIONAL TEQUILA DAY — MONSTER PARTY
+                  </span>
+                  <motion.span
+                    animate={{ rotate: [0, 12, -12, 8, -8, 0] }}
+                    transition={{ duration: 1.6, repeat: Infinity, repeatDelay: 1, ease: "easeInOut" }}
+                    className="text-lg"
+                  >
+                    🍋
+                  </motion.span>
+                </motion.div>
+              </motion.div>
+            )}
 
             {/* Headline */}
             <motion.h1 initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.6, delay: 0.15 }}
