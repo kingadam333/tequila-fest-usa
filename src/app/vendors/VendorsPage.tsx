@@ -25,8 +25,8 @@ const WHAT_TO_EXPECT = [
 ];
 
 const CITIES = [
-  { city: "Cincinnati", date: "June 13, 2026", status: "Upcoming" },
-  { city: "Cleveland", date: "July 25, 2026", status: "Open" },
+  { city: "Cincinnati", date: "June 12, 2027", status: "Open" },
+  { city: "Cleveland", date: "July 24, 2027", status: "Open" },
   { city: "Columbus", date: "Aug 8, 2026", status: "Open" },
   { city: "Phoenix", date: "Nov 14, 2026", status: "Open" },
 ];

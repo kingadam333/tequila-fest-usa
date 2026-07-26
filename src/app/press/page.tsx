@@ -16,8 +16,8 @@ const MEDIA_TYPES = [
 ];
 
 const EVENTS = [
-  { city: "Cincinnati", date: "June 13, 2026", venue: "TBD" },
-  { city: "Cleveland", date: "July 25, 2026", venue: "TBD" },
+  { city: "Cincinnati", date: "June 12, 2027", venue: "TBD" },
+  { city: "Cleveland", date: "July 24, 2027", venue: "TBD" },
   { city: "Columbus", date: "Aug 8, 2026", venue: "TBD" },
   { city: "Phoenix", date: "Nov 14, 2026", venue: "TBD" },
 ];
@@ -239,8 +239,8 @@ export default function PressPage() {
                       <select value={form.city} onChange={set("city")} required
                         className="w-full appearance-none bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-3 text-white outline-none transition-colors text-sm cursor-pointer">
                         <option value="" className="bg-[#0d0500]">Select city</option>
-                        <option value="Cincinnati (Jun 13)" className="bg-[#0d0500]">Cincinnati — Jun 13</option>
-                        <option value="Cleveland (Jul 25)" className="bg-[#0d0500]">Cleveland — Jul 25</option>
+                        <option value="Cincinnati (Jun 12)" className="bg-[#0d0500]">Cincinnati — Jun 12</option>
+                        <option value="Cleveland (Jul 24)" className="bg-[#0d0500]">Cleveland — Jul 24</option>
                         <option value="Columbus (Aug 8)" className="bg-[#0d0500]">Columbus — Aug 8</option>
                         <option value="Phoenix (Nov 14)" className="bg-[#0d0500]">Phoenix — Nov 14</option>
                         <option value="Multiple events" className="bg-[#0d0500]">Multiple events</option>

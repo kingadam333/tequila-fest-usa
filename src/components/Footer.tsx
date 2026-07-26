@@ -26,8 +26,8 @@ export default function Footer() {
             <p className="text-white/20 text-xs font-bold tracking-[0.2em] uppercase mb-3">Tour</p>
             <ul className="space-y-1.5">
               {[
-                { city: "Cincinnati, OH", date: "Jun 13" },
-                { city: "Cleveland, OH", date: "Jul 25" },
+                { city: "Cincinnati, OH", date: "Jun 12" },
+                { city: "Cleveland, OH", date: "Jul 24" },
                 { city: "Columbus, OH", date: "Aug 8" },
                 { city: "Phoenix, AZ", date: "Nov 14" },
               ].map((s) => (

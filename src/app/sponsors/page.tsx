@@ -70,7 +70,7 @@ const STATS = [
   { value: "50+", label: "Tequila brands poured" },
 ];
 
-const CITIES = ["Cincinnati — June 13", "Cleveland — July 25", "Columbus — Aug 8", "Phoenix — Nov 14"];
+const CITIES = ["Cincinnati — June 12", "Cleveland — July 24", "Columbus — Aug 8", "Phoenix — Nov 14"];
 
 export default function SponsorsPage() {
   const [form, setForm] = useState({ name: "", company: "", email: "", phone: "", package: "", message: "" });

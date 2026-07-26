@@ -97,8 +97,8 @@ export default function Hero() {
           className="mt-8 flex flex-wrap justify-center gap-3"
         >
           {[
-            { city: "Cincinnati", date: "Jun 13", color: "#F5A623" },
-            { city: "Cleveland", date: "Jul 25", color: "#C8102E" },
+            { city: "Cincinnati", date: "Jun 12", color: "#F5A623" },
+            { city: "Cleveland", date: "Jul 24", color: "#C8102E" },
             { city: "Columbus", date: "Aug 8", color: "#00A878" },
             { city: "Phoenix", date: "Nov 14", color: "#7B2FBE" },
           ].map((stop) => (

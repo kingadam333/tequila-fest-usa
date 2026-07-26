@@ -17,8 +17,8 @@ function ticketCategory(rawType: string): { label: string; color: string } {
 }
 
 const EVENTS = [
-  { slug: "cincinnati", label: "Cincinnati — Jun 13" },
-  { slug: "cleveland",  label: "Cleveland — Jul 25" },
+  { slug: "cincinnati", label: "Cincinnati — Jun 12" },
+  { slug: "cleveland",  label: "Cleveland — Jul 24" },
   { slug: "columbus",   label: "Columbus — Aug 8" },
   { slug: "phoenix",    label: "Phoenix — Nov 14" },
 ];
