@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase";
+import { normalizeTicketType } from "@/lib/normalizeTicketType";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -143,4 +144,107 @@ export async function addTicketType(eventSlugOrId: string, fields: {
 
   if (error) return { success: false, reason: error.message };
   return { success: true, ticketType: data };
+}
+
+// Finds the upcoming (non-draft/cancelled/completed) event for a city —
+// same "permanent slug, current event by date" convention used by the
+// public event pages (see cityKey() in events/[slug]/page.tsx).
+async function findUpcomingEventByCity(city: string) {
+  const db = supabaseAdmin as any;
+  const today = new Date().toISOString();
+  const { data } = await db
+    .from("events")
+    .select("*, ticket_types(*)")
+    .ilike("city", `%${city}%`)
+    .gte("date_iso", today)
+    .not("status", "in", '("draft","cancelled","completed")')
+    .order("date_iso", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  return data;
+}
+
+// Live, comp-excluded sold count for one ticket type at one event — never
+// trust the stored ticket_types.sold_count column for a decision like this
+// (it can drift stale; see the Overview/Events undercounting incidents).
+async function countSoldForType(eventId: string, ticketTypeName: string) {
+  const db = supabaseAdmin as any;
+  const { data } = await db
+    .from("ticket_instances")
+    .select("ticket_type, ticket_orders!inner(status, source)")
+    .eq("event_id", eventId)
+    .eq("ticket_orders.status", "paid")
+    .neq("ticket_orders.source", "media_comp");
+  const target = normalizeTicketType(ticketTypeName);
+  return (data || []).filter((r: any) => normalizeTicketType(r.ticket_type) === target).length;
+}
+
+// Finds paid orders/tickets by order number, buyer name, or email — for the
+// admin AI to identify which order to transfer before calling transferOrderToCity.
+export async function findTicketOrders(query: string) {
+  const db = supabaseAdmin as any;
+  const fields = "id, order_number, customer_name, customer_email, event_slug, event_city, ticket_type, quantity, status, created_at";
+  const q = `%${query}%`;
+  const [{ data: byOrder }, { data: byName }, { data: byEmail }] = await Promise.all([
+    db.from("ticket_orders").select(fields).ilike("order_number", q).eq("status", "paid").limit(10),
+    db.from("ticket_orders").select(fields).ilike("customer_name", q).eq("status", "paid").limit(10),
+    db.from("ticket_orders").select(fields).ilike("customer_email", q).eq("status", "paid").limit(10),
+  ]);
+  const merged = new Map<string, any>();
+  for (const row of [...(byOrder || []), ...(byName || []), ...(byEmail || [])]) merged.set(row.id, row);
+  return { orders: Array.from(merged.values()) };
+}
+
+// Moves an entire paid order (and every ticket_instance in it) from its
+// current event to the upcoming event for a different city. Always call
+// findTicketOrders first to get the exact orderNumber — never guess it.
+export async function transferOrderToCity(orderNumber: string, destinationCity: string, allowOverCapacity = false) {
+  const db = supabaseAdmin as any;
+  const { data: order } = await db.from("ticket_orders").select("*").eq("order_number", orderNumber).maybeSingle();
+  if (!order) return { success: false, reason: `No order found with number "${orderNumber}".` };
+  if (order.status !== "paid") return { success: false, reason: `Order ${orderNumber} is not a paid order (status: ${order.status}) — can't transfer.` };
+
+  const destEvent = await findUpcomingEventByCity(destinationCity);
+  if (!destEvent) return { success: false, reason: `No upcoming event found for "${destinationCity}".` };
+  if (destEvent.slug === order.event_slug) {
+    return { success: false, reason: `Order ${orderNumber} is already assigned to ${destEvent.city} (${destEvent.slug}).` };
+  }
+
+  const destTicketType = (destEvent.ticket_types || []).find(
+    (tt: any) => normalizeTicketType(tt.name) === normalizeTicketType(order.ticket_type)
+  );
+  if (!destTicketType) {
+    const available = (destEvent.ticket_types || []).map((t: any) => t.name).join(", ") || "none";
+    return { success: false, reason: `${destEvent.city} doesn't offer a "${order.ticket_type}" ticket type. Available types there: ${available}.` };
+  }
+
+  if (!allowOverCapacity) {
+    const sold = await countSoldForType(destEvent.id, destTicketType.name);
+    const remaining = Math.max(destTicketType.capacity - sold, 0);
+    if (order.quantity > remaining) {
+      return {
+        success: false,
+        reason: `${destEvent.city}'s ${destTicketType.name} tier only has ${remaining} spot(s) left (${sold} of ${destTicketType.capacity} sold), but this order needs ${order.quantity}. Confirm with the admin whether to move it anyway, then call transfer_order_to_city again with allowOverCapacity: true.`,
+      };
+    }
+  }
+
+  const now = new Date().toISOString();
+  const { error: orderErr } = await db.from("ticket_orders")
+    .update({ event_slug: destEvent.slug, event_city: destEvent.city, updated_at: now })
+    .eq("id", order.id);
+  if (orderErr) return { success: false, reason: orderErr.message };
+
+  const { error: instErr } = await db.from("ticket_instances")
+    .update({ event_slug: destEvent.slug, event_city: destEvent.city, event_id: destEvent.id })
+    .eq("order_id", order.id);
+  if (instErr) return { success: false, reason: instErr.message };
+
+  return {
+    success: true,
+    message: `Moved order ${orderNumber} (${order.quantity} ticket${order.quantity === 1 ? "" : "s"}, ${order.customer_name}) from ${order.event_city} to ${destEvent.city} — ${destEvent.date}.`,
+    from: order.event_city,
+    to: destEvent.city,
+    orderNumber,
+  };
 }

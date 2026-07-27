@@ -8,6 +8,7 @@ import {
 import {
   listEvents, getEventDetails, createEvent, updateEvent,
   adjustTicketCapacity, addTicketType,
+  findTicketOrders, transferOrderToCity,
 } from "@/lib/eventActions";
 import OpenAI from "openai";
 
@@ -188,6 +189,34 @@ const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "find_ticket_orders",
+      description: "Search paid orders/tickets by order number, buyer name, or email — use this first to find the exact order number before transferring a ticket to a different city.",
+      parameters: {
+        type: "object",
+        properties: { query: { type: "string", description: "Order number, buyer name, or email (or a fragment of one)" } },
+        required: ["query"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "transfer_order_to_city",
+      description: "Move an entire paid order (and all its tickets) from its current event to the upcoming event in a different city — e.g. switching a customer's Cleveland order to Columbus. Always confirm the exact order number with find_ticket_orders first. Fails if the destination doesn't have matching capacity unless allowOverCapacity is set — if it fails for that reason, ask the admin to confirm before retrying with allowOverCapacity: true.",
+      parameters: {
+        type: "object",
+        properties: {
+          orderNumber: { type: "string" },
+          destinationCity: { type: "string", description: "e.g. 'Columbus', 'Phoenix'" },
+          allowOverCapacity: { type: "boolean", description: "Only set true after the admin explicitly confirms moving past a full ticket tier" },
+        },
+        required: ["orderNumber", "destinationCity"],
+      },
+    },
+  },
 ];
 
 async function runTool(name: string, args: any) {
@@ -204,6 +233,8 @@ async function runTool(name: string, args: any) {
     case "update_event": return await updateEvent(args.slug, args.updates || {});
     case "adjust_ticket_capacity": return await adjustTicketCapacity(args.slug, args.ticketTypeName, args.newCapacity);
     case "add_ticket_type": return await addTicketType(args.slug, args);
+    case "find_ticket_orders": return await findTicketOrders(args.query);
+    case "transfer_order_to_city": return await transferOrderToCity(args.orderNumber, args.destinationCity, args.allowOverCapacity ?? false);
     default: return { error: "Unknown tool" };
   }
 }
@@ -213,10 +244,12 @@ const SYSTEM_PROMPT = `You are the internal AI assistant for Tequila Fest USA ad
 You have tools to:
 - Search customers/orders, look up full order details, reassign an order to the correct email (when a customer mistyped it at checkout), resend ticket emails, send password resets, and repair broken logins.
 - Manage events: list events, get an event's full details + ticket types, create a new event, update an event's fields (date, venue, status, etc.), adjust a ticket type's capacity, and add a new ticket type/tier.
+- Transfer a customer's entire order (and every ticket in it) from one city's event to another's, e.g. "move John's order to Columbus" — find_ticket_orders then transfer_order_to_city.
 
 Rules:
 - Always use search_customers/get_order (for people) or list_events/get_event (for events) to find real data before acting — never guess an order number, email, event slug, or ticket type name.
-- Before a destructive/changing action (reassign_ticket_email, repair_login, update_event, adjust_ticket_capacity), make sure you have the right record confirmed — if the admin's request is ambiguous (e.g. multiple matches), ask which one before acting.
+- Before a destructive/changing action (reassign_ticket_email, repair_login, update_event, adjust_ticket_capacity, transfer_order_to_city), make sure you have the right record confirmed — if the admin's request is ambiguous (e.g. multiple matches), ask which one before acting.
+- transfer_order_to_city moves the WHOLE order (every ticket in it) to a different city's event — it will refuse if the destination ticket tier doesn't have room. If it fails for a capacity reason, tell the admin the shortfall and ask them to explicitly confirm overriding capacity before you retry with allowOverCapacity: true — never set that flag without an explicit confirmation.
 - IMPORTANT event caveat: creating or editing an event here only writes to the database that powers the admin dashboard. The public checkout/pricing flow currently reads event data from a separate hardcoded file in the codebase, so a brand-new event is NOT automatically purchasable by customers — that still needs a code change and deploy. Always mention this after create_event so the admin doesn't assume it's live for sale.
 - After taking an action, clearly state what you did and the result.
 - Keep responses concise and scannable — use short paragraphs or bullet points for multiple results.
