@@ -161,14 +161,30 @@ export default function EventPage({ event, ogImage, dbStatus }: { event: EventDa
   // server-rendered HTML never disagrees with the client and React doesn't
   // throw a hydration mismatch over randomized values.
   const isNationalTequilaDay = event.city === "Cleveland" && event.date.includes("2027");
-  const [tequilaDaySparkles, setTequilaDaySparkles] = useState<{ top: string; left: string; delay: number }[]>([]);
+  const TEQUILA_DAY_COLORS = ["#F5A623", "#C8102E", "#06b6d4", "#fff8f0", "#7B2FBE"];
+  const [tequilaDaySparkles, setTequilaDaySparkles] = useState<{ top: string; left: string; delay: number; color: string }[]>([]);
+  const [tequilaDayBursts, setTequilaDayBursts] = useState<{ x: number; y: number; angle: number; distance: number; delay: number; color: string }[]>([]);
   useEffect(() => {
     if (!isNationalTequilaDay) return;
-    setTequilaDaySparkles(Array.from({ length: 14 }, () => ({
+    setTequilaDaySparkles(Array.from({ length: 24 }, () => ({
       top: `${Math.random() * 100}%`,
       left: `${Math.random() * 100}%`,
       delay: Math.random() * 3,
+      color: TEQUILA_DAY_COLORS[Math.floor(Math.random() * TEQUILA_DAY_COLORS.length)],
     })));
+    // Firework bursts: each is a cluster of particles shooting outward from
+    // a random point around the badge, like real fireworks exploding.
+    setTequilaDayBursts(Array.from({ length: 40 }, (_, i) => {
+      const clusterAngle = (i % 8) * (Math.PI * 2 / 8) + Math.random() * 0.4;
+      return {
+        x: 20 + Math.random() * 60,
+        y: 20 + Math.random() * 60,
+        angle: clusterAngle,
+        distance: 40 + Math.random() * 50,
+        delay: Math.floor(i / 8) * 1.1 + Math.random() * 0.3,
+        color: TEQUILA_DAY_COLORS[Math.floor(Math.random() * TEQUILA_DAY_COLORS.length)],
+      };
+    }));
   }, [isNationalTequilaDay]);
 
   // GA availability now comes from the live DB ticket type, not a static
@@ -291,50 +307,69 @@ export default function EventPage({ event, ogImage, dbStatus }: { event: EventDa
             {/* National Tequila Day callout — Cleveland 2027 only, lands on 7/24 */}
             {isNationalTequilaDay && (
               <motion.div
-                initial={{ opacity: 0, y: -14, scale: 0.9 }}
+                initial={{ opacity: 0, y: -20, scale: 0.85 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 transition={{ duration: 0.7, delay: 0.15, ease: "easeOut" }}
-                className="relative mb-5 inline-block"
+                className="relative mb-7 inline-block"
+                style={{ padding: "60px 40px" }}
               >
-                {/* Floating sparkles behind the badge */}
+                {/* Firework bursts — particles shooting outward from random points around the badge */}
+                {tequilaDayBursts.map((b, i) => (
+                  <motion.div
+                    key={i}
+                    className="absolute w-1.5 h-1.5 rounded-full pointer-events-none"
+                    style={{ top: `${b.y}%`, left: `${b.x}%`, background: b.color, boxShadow: `0 0 6px ${b.color}` }}
+                    animate={{
+                      x: [0, Math.cos(b.angle) * b.distance],
+                      y: [0, Math.sin(b.angle) * b.distance],
+                      opacity: [0, 1, 1, 0],
+                      scale: [0, 1.4, 1, 0],
+                    }}
+                    transition={{ duration: 1.3, repeat: Infinity, repeatDelay: 3.5, delay: b.delay, ease: "easeOut" }}
+                  />
+                ))}
+
+                {/* Floating ambient sparkles */}
                 {tequilaDaySparkles.map((s, i) => (
                   <motion.div
                     key={i}
-                    className="absolute w-1 h-1 rounded-full pointer-events-none"
-                    style={{ top: s.top, left: s.left, background: "#F5A623" }}
-                    animate={{ opacity: [0, 1, 0], scale: [0, 1.6, 0] }}
+                    className="absolute w-1.5 h-1.5 rounded-full pointer-events-none"
+                    style={{ top: s.top, left: s.left, background: s.color, boxShadow: `0 0 8px ${s.color}` }}
+                    animate={{ opacity: [0, 1, 0], scale: [0, 1.8, 0] }}
                     transition={{ duration: 2.2, repeat: Infinity, delay: s.delay, ease: "easeInOut" }}
                   />
                 ))}
 
                 <motion.div
                   animate={{
+                    scale: [1, 1.035, 1],
                     boxShadow: [
-                      "0 0 20px rgba(245,166,35,0.35), 0 0 0px rgba(200,16,46,0)",
-                      "0 0 40px rgba(245,166,35,0.6), 0 0 25px rgba(200,16,46,0.35)",
-                      "0 0 20px rgba(245,166,35,0.35), 0 0 0px rgba(200,16,46,0)",
+                      "0 0 25px rgba(245,166,35,0.4), 0 0 10px rgba(200,16,46,0.2)",
+                      "0 0 55px rgba(245,166,35,0.75), 0 0 35px rgba(200,16,46,0.5), 0 0 20px rgba(6,182,212,0.3)",
+                      "0 0 25px rgba(245,166,35,0.4), 0 0 10px rgba(200,16,46,0.2)",
                     ],
                   }}
-                  transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
-                  className="relative flex items-center gap-2.5 px-5 py-2.5 rounded-full border"
-                  style={{ borderColor: "rgba(245,166,35,0.5)", background: "linear-gradient(90deg, rgba(200,16,46,0.15), rgba(245,166,35,0.15))" }}
+                  transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
+                  className="relative flex items-center gap-3 sm:gap-4 px-6 sm:px-9 py-3.5 sm:py-5 rounded-full border-2"
+                  style={{ borderColor: "rgba(245,166,35,0.6)", background: "linear-gradient(90deg, rgba(200,16,46,0.22), rgba(245,166,35,0.22), rgba(6,182,212,0.15))" }}
                 >
                   <motion.span
-                    animate={{ rotate: [0, -12, 12, -8, 8, 0] }}
-                    transition={{ duration: 1.6, repeat: Infinity, repeatDelay: 1, ease: "easeInOut" }}
-                    className="text-lg"
+                    animate={{ rotate: [0, -16, 16, -10, 10, 0] }}
+                    transition={{ duration: 1.6, repeat: Infinity, repeatDelay: 0.8, ease: "easeInOut" }}
+                    style={{ fontSize: "clamp(1.5rem, 4vw, 2.25rem)" }}
                   >
                     🥃
                   </motion.span>
-                  <span className="font-display tracking-[0.15em] text-shimmer" style={{ fontSize: "0.95rem" }}>
-                    IT&apos;S NATIONAL TEQUILA DAY — MONSTER PARTY
+                  <span className="font-display tracking-[0.1em] text-shimmer text-center leading-tight"
+                    style={{ fontSize: "clamp(1.1rem, 3.4vw, 2rem)" }}>
+                    IT&apos;S NATIONAL TEQUILA DAY<br className="sm:hidden" /> — MONSTER PARTY
                   </span>
                   <motion.span
-                    animate={{ rotate: [0, 12, -12, 8, -8, 0] }}
-                    transition={{ duration: 1.6, repeat: Infinity, repeatDelay: 1, ease: "easeInOut" }}
-                    className="text-lg"
+                    animate={{ rotate: [0, 16, -16, 10, -10, 0] }}
+                    transition={{ duration: 1.6, repeat: Infinity, repeatDelay: 0.8, ease: "easeInOut" }}
+                    style={{ fontSize: "clamp(1.5rem, 4vw, 2.25rem)" }}
                   >
-                    🍋
+                    🎆
                   </motion.span>
                 </motion.div>
               </motion.div>
