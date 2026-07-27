@@ -92,6 +92,7 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
     tag: style.tag || ev.tag || "",
     emoji: style.emoji || ev.emoji || "🥃",
     foodVendor: style.foodVendor,
+    samplingHours: "4:00pm – 8:00pm",
   };
 
   return (
