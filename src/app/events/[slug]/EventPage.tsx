@@ -311,7 +311,7 @@ export default function EventPage({ event, ogImage, dbStatus }: { event: EventDa
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 transition={{ duration: 0.7, delay: 0.15, ease: "easeOut" }}
                 className="relative mb-7 inline-block"
-                style={{ padding: "60px 40px" }}
+                style={{ padding: "28px 12px" }}
               >
                 {/* Firework bursts — particles shooting outward from random points around the badge */}
                 {tequilaDayBursts.map((b, i) => (
@@ -353,6 +353,24 @@ export default function EventPage({ event, ogImage, dbStatus }: { event: EventDa
                   className="relative flex items-center gap-3 sm:gap-4 px-6 sm:px-9 py-3.5 sm:py-5 rounded-full border-2"
                   style={{ borderColor: "rgba(245,166,35,0.6)", background: "linear-gradient(90deg, rgba(200,16,46,0.22), rgba(245,166,35,0.22), rgba(6,182,212,0.15))" }}
                 >
+                  {/* Sparkles pulsing in sync with the glow, right on the pill's edge */}
+                  <motion.span
+                    className="absolute -top-3 -left-2 pointer-events-none select-none"
+                    animate={{ opacity: [0.3, 1, 0.3], scale: [0.7, 1.15, 0.7], rotate: [0, 20, 0] }}
+                    transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
+                    style={{ fontSize: "1.1rem" }}
+                  >
+                    ✨
+                  </motion.span>
+                  <motion.span
+                    className="absolute -bottom-3 -right-2 pointer-events-none select-none"
+                    animate={{ opacity: [0.3, 1, 0.3], scale: [0.7, 1.15, 0.7], rotate: [0, -20, 0] }}
+                    transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut", delay: 0.6 }}
+                    style={{ fontSize: "1.1rem" }}
+                  >
+                    ✨
+                  </motion.span>
+
                   <motion.span
                     animate={{ rotate: [0, -16, 16, -10, 10, 0] }}
                     transition={{ duration: 1.6, repeat: Infinity, repeatDelay: 0.8, ease: "easeInOut" }}
@@ -369,7 +387,7 @@ export default function EventPage({ event, ogImage, dbStatus }: { event: EventDa
                     transition={{ duration: 1.6, repeat: Infinity, repeatDelay: 0.8, ease: "easeInOut" }}
                     style={{ fontSize: "clamp(1.5rem, 4vw, 2.25rem)" }}
                   >
-                    🎆
+                    🍾
                   </motion.span>
                 </motion.div>
               </motion.div>
