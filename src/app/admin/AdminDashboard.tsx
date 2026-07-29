@@ -4811,6 +4811,12 @@ function VendorsSection({ adminToken }: { adminToken: string }) {
 
   const unpaidApprovedCount = apps.filter(a => a.status === "approved" && !a.paid).length;
 
+  // Distinct cities across unpaid approved vendors, for the resend-all city filter
+  const unpaidCitiesSorted = Array.from(
+    new Set(apps.filter(a => a.status === "approved" && !a.paid).flatMap(a => a.cities || []))
+  ).sort();
+  const [resendCity, setResendCity] = useState<string>("");
+
   // Paid vendors grouped by city — a vendor can register for multiple
   // cities (apps.cities is an array), so they're counted once per city.
   const paidByCity = apps
@@ -4859,13 +4865,15 @@ function VendorsSection({ adminToken }: { adminToken: string }) {
   };
 
   const resendAllUnpaid = async () => {
-    if (!confirm(`Resend the payment link email to all ${unpaidApprovedCount} approved, unpaid vendors?`)) return;
+    const label = resendCity ? `all approved, unpaid ${resendCity} vendors` : "all approved, unpaid vendors for upcoming events";
+    if (!confirm(`Resend the payment link email to ${label}?`)) return;
     setResendingAll(true);
     setResendAllStatus("");
     try {
       const res = await fetch("/api/admin/vendors/resend-all-unpaid", {
         method: "POST",
-        headers: { "x-admin-token": adminToken },
+        headers: { "Content-Type": "application/json", "x-admin-token": adminToken },
+        body: JSON.stringify(resendCity ? { city: resendCity } : {}),
       });
       const data = await res.json();
       if (res.ok) {
@@ -4895,10 +4903,20 @@ function VendorsSection({ adminToken }: { adminToken: string }) {
         )}
         {unpaidApprovedCount > 0 && (
           <div className="text-right">
-            <button onClick={resendAllUnpaid} disabled={resendingAll}
-              className="bg-white/5 hover:bg-white/10 border border-white/15 disabled:opacity-60 text-white/70 font-semibold px-4 py-2 rounded-xl text-sm transition-all cursor-pointer">
-              {resendingAll ? "Sending…" : `Resend Payment Link to All Unpaid (${unpaidApprovedCount})`}
-            </button>
+            <div className="flex items-center gap-2 justify-end">
+              {unpaidCitiesSorted.length > 1 && (
+                <select value={resendCity} onChange={e => setResendCity(e.target.value)}
+                  className="bg-black/40 border border-white/15 text-white/70 text-sm rounded-xl px-2 py-2 cursor-pointer">
+                  <option value="">All upcoming cities</option>
+                  {unpaidCitiesSorted.map(c => <option key={c} value={c}>{c} only</option>)}
+                </select>
+              )}
+              <button onClick={resendAllUnpaid} disabled={resendingAll}
+                className="bg-white/5 hover:bg-white/10 border border-white/15 disabled:opacity-60 text-white/70 font-semibold px-4 py-2 rounded-xl text-sm transition-all cursor-pointer">
+                {resendingAll ? "Sending…" : `Resend Payment Link to Unpaid (${unpaidApprovedCount})`}
+              </button>
+            </div>
+            <p className="text-white/25 text-xs mt-1.5">Past events (e.g. completed cities) are always skipped automatically.</p>
             {resendAllStatus && (
               <p className={`text-xs mt-1.5 ${resendAllStatus.startsWith("Error") ? "text-red-400" : "text-green-400"}`}>{resendAllStatus}</p>
             )}
