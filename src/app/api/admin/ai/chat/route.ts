@@ -141,7 +141,7 @@ const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
     type: "function",
     function: {
       name: "update_event",
-      description: "Update an existing event's fields (date, venue, status, description, capacity, etc.) by slug. Only pass the fields being changed.",
+      description: "Update an existing event's fields (date, venue, status, description, capacity, etc.) by slug. Only pass the fields being changed. WARNING: this changes the event for EVERY customer/order tied to it — never use this to move a single customer's order to a different city (that changes the city for the whole event, not just their order). For moving one customer, use find_ticket_orders + transfer_order_to_city instead.",
       parameters: {
         type: "object",
         properties: {
