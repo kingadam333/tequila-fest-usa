@@ -4657,8 +4657,11 @@ const VENDOR_STATUS_STYLES: Record<string, string> = {
   paid:     "bg-blue-500/10 text-blue-400 border-blue-500/30",
 };
 
+const KNOWN_VENDOR_CITIES = ["Cincinnati", "Cleveland", "Columbus", "Phoenix"];
+
 function VendorsSection({ adminToken }: { adminToken: string }) {
   const [apps, setApps] = useState<any[]>([]);
+  const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<any | null>(null);
   const [notes, setNotes] = useState("");
@@ -4716,6 +4719,42 @@ function VendorsSection({ adminToken }: { adminToken: string }) {
   };
 
   useEffect(() => { fetchApps(); }, [adminToken]);
+
+  useEffect(() => {
+    fetch("/api/admin/events", { headers: { "x-admin-token": adminToken } })
+      .then(r => r.json())
+      .then(d => setEvents(d.events || []))
+      .catch(() => {});
+  }, [adminToken]);
+
+  // City -> sorted list of {year, status, dateIso} across all events for that city
+  const cityYears = KNOWN_VENDOR_CITIES.reduce((acc: Record<string, { year: number; status: string; dateIso: string }[]>, city) => {
+    const rows = events
+      .filter(e => e.city === city && e.date_iso)
+      .map(e => ({ year: new Date(e.date_iso).getFullYear(), status: e.status, dateIso: e.date_iso }))
+      .sort((a, b) => b.year - a.year);
+    acc[city] = rows;
+    return acc;
+  }, {});
+
+  const defaultYearForCity = (city: string): number => {
+    const rows = cityYears[city] || [];
+    const upcoming = rows.find(r => r.status !== "completed");
+    return (upcoming || rows[0])?.year ?? new Date().getFullYear();
+  };
+
+  const [cardYear, setCardYear] = useState<Record<string, number>>({});
+  useEffect(() => {
+    if (!events.length) return;
+    setCardYear(prev => {
+      const next = { ...prev };
+      for (const city of KNOWN_VENDOR_CITIES) {
+        if (next[city] == null) next[city] = defaultYearForCity(city);
+      }
+      return next;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [events]);
 
   const counts = {
     all:      apps.length,
@@ -4811,23 +4850,30 @@ function VendorsSection({ adminToken }: { adminToken: string }) {
 
   const unpaidApprovedCount = apps.filter(a => a.status === "approved" && !a.paid).length;
 
-  // Distinct cities across unpaid approved vendors, for the resend-all city filter
-  const unpaidCitiesSorted = Array.from(
-    new Set(apps.filter(a => a.status === "approved" && !a.paid).flatMap(a => a.cities || []))
-  ).sort();
+  // Upcoming (non-completed) city+year options, for the resend-all city filter —
+  // sourced from real events, not from whichever vendors happen to be unpaid
+  // right now, so a city with zero current unpaid vendors still shows up.
+  const upcomingCityOptions = KNOWN_VENDOR_CITIES
+    .map(city => {
+      const upcoming = (cityYears[city] || []).find(r => r.status !== "completed");
+      return upcoming ? { city, year: upcoming.year } : null;
+    })
+    .filter((x): x is { city: string; year: number } => x !== null);
   const [resendCity, setResendCity] = useState<string>("");
 
-  // Paid vendors grouped by city — a vendor can register for multiple
-  // cities (apps.cities is an array), so they're counted once per city.
-  const paidByCity = apps
-    .filter(a => a.paid)
-    .reduce((acc: Record<string, { business_name: string; name: string; phone?: string; stripe_payment_intent_id?: string }[]>, a) => {
-      for (const city of a.cities || []) {
-        (acc[city] ||= []).push({ business_name: a.business_name, name: a.name, phone: a.phone, stripe_payment_intent_id: a.stripe_payment_intent_id });
-      }
-      return acc;
-    }, {});
-  const citiesSorted = Object.keys(paidByCity).sort((a, b) => paidByCity[b].length - paidByCity[a].length);
+  // Vendors paid for a given city+year — a vendor can register for multiple
+  // cities (apps.cities is an array). vendor_applications has no event/year
+  // column, so the year is inferred from when they actually paid (falls back
+  // to when they applied, for the rare paid-with-no-paid_at row).
+  const getPaidRows = (city: string, year: number) =>
+    apps
+      .filter(a => a.paid && (a.cities || []).includes(city) && new Date(a.paid_at || a.created_at).getFullYear() === year)
+      .map(a => ({ business_name: a.business_name, name: a.name, phone: a.phone, stripe_payment_intent_id: a.stripe_payment_intent_id }));
+
+  // Email Paid Vendors sends to every paid vendor for the city across ALL
+  // years (matches /api/admin/vendors/email-city, which has no year filter).
+  const allPaidCountForCity = (city: string) => apps.filter(a => a.paid && (a.cities || []).includes(city)).length;
+
   const PAID_PAGE_SIZE = 4;
   const [cityPage, setCityPage] = useState<Record<string, number>>({});
 
@@ -4835,17 +4881,18 @@ function VendorsSection({ adminToken }: { adminToken: string }) {
     const { jsPDF } = await import("jspdf");
     const autoTable = (await import("jspdf-autotable")).default;
     const doc = new jsPDF();
-    const cities = onlyCity ? [onlyCity] : citiesSorted;
+    const cities = onlyCity ? [onlyCity] : KNOWN_VENDOR_CITIES;
     let first = true;
 
     for (const city of cities) {
-      const rows = paidByCity[city] || [];
+      const year = cardYear[city] ?? defaultYearForCity(city);
+      const rows = getPaidRows(city, year);
       if (rows.length === 0) continue;
       if (!first) doc.addPage();
       first = false;
 
       doc.setFontSize(16);
-      doc.text(`Tequila Fest ${city} — Vendor List`, 14, 18);
+      doc.text(`Tequila Fest ${city} ${year} — Vendor List`, 14, 18);
       doc.setFontSize(10);
       doc.setTextColor(120);
       doc.text(`${rows.length} paid vendor${rows.length === 1 ? "" : "s"} · Generated ${new Date().toLocaleDateString()}`, 14, 25);
@@ -4865,7 +4912,8 @@ function VendorsSection({ adminToken }: { adminToken: string }) {
   };
 
   const resendAllUnpaid = async () => {
-    const label = resendCity ? `all approved, unpaid ${resendCity} vendors` : "all approved, unpaid vendors for upcoming events";
+    const matched = upcomingCityOptions.find(o => o.city === resendCity);
+    const label = matched ? `all approved, unpaid ${matched.city} ${matched.year} vendors` : "all approved, unpaid vendors for upcoming events";
     if (!confirm(`Resend the payment link email to ${label}?`)) return;
     setResendingAll(true);
     setResendAllStatus("");
@@ -4895,20 +4943,18 @@ function VendorsSection({ adminToken }: { adminToken: string }) {
           <h2 className="font-display text-white text-3xl mb-1">VENDORS</h2>
           <p className="text-white/30 text-sm">{apps.length} application{apps.length !== 1 ? "s" : ""}</p>
         </div>
-        {citiesSorted.length > 0 && (
-          <button onClick={() => exportVendorPdf()}
-            className="bg-white/5 hover:bg-white/10 border border-white/15 text-white/70 font-semibold px-4 py-2 rounded-xl text-sm transition-all cursor-pointer">
-            📄 Export PDF (All Cities)
-          </button>
-        )}
+        <button onClick={() => exportVendorPdf()}
+          className="bg-white/5 hover:bg-white/10 border border-white/15 text-white/70 font-semibold px-4 py-2 rounded-xl text-sm transition-all cursor-pointer">
+          📄 Export PDF (All Cities)
+        </button>
         {unpaidApprovedCount > 0 && (
           <div className="text-right">
             <div className="flex items-center gap-2 justify-end">
-              {unpaidCitiesSorted.length > 1 && (
+              {upcomingCityOptions.length > 1 && (
                 <select value={resendCity} onChange={e => setResendCity(e.target.value)}
                   className="bg-black/40 border border-white/15 text-white/70 text-sm rounded-xl px-2 py-2 cursor-pointer">
                   <option value="">All upcoming cities</option>
-                  {unpaidCitiesSorted.map(c => <option key={c} value={c}>{c} only</option>)}
+                  {upcomingCityOptions.map(o => <option key={o.city} value={o.city}>{o.city} {o.year} only</option>)}
                 </select>
               )}
               <button onClick={resendAllUnpaid} disabled={resendingAll}
@@ -4916,7 +4962,7 @@ function VendorsSection({ adminToken }: { adminToken: string }) {
                 {resendingAll ? "Sending…" : `Resend Payment Link to Unpaid (${unpaidApprovedCount})`}
               </button>
             </div>
-            <p className="text-white/25 text-xs mt-1.5">Past events (e.g. completed cities) are always skipped automatically.</p>
+            <p className="text-white text-xs mt-1.5">Past events (e.g. completed cities) are always skipped automatically.</p>
             {resendAllStatus && (
               <p className={`text-xs mt-1.5 ${resendAllStatus.startsWith("Error") ? "text-red-400" : "text-green-400"}`}>{resendAllStatus}</p>
             )}
@@ -4924,45 +4970,63 @@ function VendorsSection({ adminToken }: { adminToken: string }) {
         )}
       </div>
 
-      {/* Paid vendors by city */}
-      {!loading && citiesSorted.length > 0 && (
+      {/* Paid vendors by city — one card per known city, always shown, with a
+          year selector since vendor_applications has no direct event/year
+          link (inferred from paid_at) and cities can host multiple years. */}
+      {!loading && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {citiesSorted.map(city => {
+          {KNOWN_VENDOR_CITIES.map(city => {
+            const years = cityYears[city] || [];
+            const year = cardYear[city] ?? defaultYearForCity(city);
+            const rows = getPaidRows(city, year);
             const page = cityPage[city] || 0;
-            const totalPages = Math.ceil(paidByCity[city].length / PAID_PAGE_SIZE);
-            const visible = paidByCity[city].slice(page * PAID_PAGE_SIZE, (page + 1) * PAID_PAGE_SIZE);
+            const totalPages = Math.max(1, Math.ceil(rows.length / PAID_PAGE_SIZE));
+            const visible = rows.slice(page * PAID_PAGE_SIZE, (page + 1) * PAID_PAGE_SIZE);
             return (
               <div key={city} className="bg-white/[0.03] border border-white/10 rounded-2xl p-5">
                 <div className="flex items-center justify-between mb-3 gap-2">
                   <h3 className="text-white font-bold text-sm uppercase tracking-wider truncate">{city}</h3>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <span className="text-xs font-bold px-2.5 py-0.5 rounded-full border bg-green-500/15 text-green-400 border-green-500/30">
-                      {paidByCity[city].length} Paid
-                    </span>
-                    <button onClick={() => exportVendorPdf(city)}
-                      className="text-xs font-semibold px-2.5 py-0.5 rounded-full border bg-white/5 text-white/60 border-white/15 hover:bg-white/10 transition-all cursor-pointer">
-                      📄 PDF
-                    </button>
-                    <button onClick={() => openEmailModal(city)}
-                      className="text-xs font-semibold px-2.5 py-0.5 rounded-full border bg-yellow-500/10 text-yellow-400 border-yellow-500/25 hover:bg-yellow-500/20 transition-all cursor-pointer">
-                      ✉ Email
-                    </button>
-                  </div>
+                  {years.length > 1 ? (
+                    <select value={year}
+                      onChange={e => { setCardYear(p => ({ ...p, [city]: Number(e.target.value) })); setCityPage(p => ({ ...p, [city]: 0 })); }}
+                      className="bg-black/40 border border-white/15 text-white/70 text-xs rounded-lg px-1.5 py-1 cursor-pointer flex-shrink-0">
+                      {years.map(y => <option key={y.year} value={y.year}>{y.year}{y.status === "completed" ? " (past)" : ""}</option>)}
+                    </select>
+                  ) : (
+                    <span className="text-white/30 text-xs flex-shrink-0">{year}</span>
+                  )}
                 </div>
-                <div className="space-y-2">
-                  {visible.map((v, i) => (
-                    <div key={i} className="border-b border-white/5 pb-1.5 last:border-0 last:pb-0 flex items-center justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="text-white/80 text-sm font-medium truncate">{v.business_name}</p>
-                        <p className="text-white/35 text-xs truncate">{v.name}</p>
+                <div className="flex items-center gap-2 mb-3 flex-wrap">
+                  <span className="text-xs font-bold px-2.5 py-0.5 rounded-full border bg-green-500/15 text-green-400 border-green-500/30">
+                    {rows.length} Paid
+                  </span>
+                  <button onClick={() => exportVendorPdf(city)}
+                    className="text-xs font-semibold px-2.5 py-0.5 rounded-full border bg-white/5 text-white/60 border-white/15 hover:bg-white/10 transition-all cursor-pointer">
+                    📄 PDF
+                  </button>
+                  <button onClick={() => openEmailModal(city)}
+                    className="text-xs font-semibold px-2.5 py-0.5 rounded-full border bg-yellow-500/10 text-yellow-400 border-yellow-500/25 hover:bg-yellow-500/20 transition-all cursor-pointer">
+                    ✉ Email
+                  </button>
+                </div>
+                {rows.length === 0 ? (
+                  <p className="text-white/25 text-xs py-2">No paid vendors yet for {year}.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {visible.map((v, i) => (
+                      <div key={i} className="border-b border-white/5 pb-1.5 last:border-0 last:pb-0 flex items-center justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="text-white/80 text-sm font-medium truncate">{v.business_name}</p>
+                          <p className="text-white/35 text-xs truncate">{v.name}</p>
+                        </div>
+                        {v.stripe_payment_intent_id && (
+                          <a href={`https://dashboard.stripe.com/payments/${v.stripe_payment_intent_id}`} target="_blank" rel="noopener noreferrer"
+                            className="text-[11px] text-yellow-500/70 hover:text-yellow-400 underline underline-offset-2 flex-shrink-0">Stripe</a>
+                        )}
                       </div>
-                      {v.stripe_payment_intent_id && (
-                        <a href={`https://dashboard.stripe.com/payments/${v.stripe_payment_intent_id}`} target="_blank" rel="noopener noreferrer"
-                          className="text-[11px] text-yellow-500/70 hover:text-yellow-400 underline underline-offset-2 flex-shrink-0">Stripe</a>
-                      )}
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
                 {totalPages > 1 && (
                   <div className="flex items-center justify-between mt-3 pt-2 border-t border-white/5">
                     <button onClick={() => setCityPage(p => ({ ...p, [city]: Math.max(0, page - 1) }))}
@@ -4997,7 +5061,7 @@ function VendorsSection({ adminToken }: { adminToken: string }) {
                 <button onClick={() => setEmailModalCity(null)} className="text-white/40 hover:text-white cursor-pointer"><X size={18} /></button>
               </div>
               <p className="text-white/40 text-xs mb-5">
-                Sends to all {paidByCity[emailModalCity]?.length || 0} paid vendor{(paidByCity[emailModalCity]?.length || 0) === 1 ? "" : "s"} in {emailModalCity}, from vendors@mail.tequilafestusa.com. Replies land in the Vendors inbox.
+                Sends to all {emailModalCity ? allPaidCountForCity(emailModalCity) : 0} paid vendor{(emailModalCity ? allPaidCountForCity(emailModalCity) : 0) === 1 ? "" : "s"} in {emailModalCity} (all years), from vendors@mail.tequilafestusa.com. Replies land in the Vendors inbox.
               </p>
               <div className="space-y-4">
                 <div>
@@ -5025,7 +5089,7 @@ function VendorsSection({ adminToken }: { adminToken: string }) {
                   <button onClick={() => setEmailModalCity(null)} className="flex-1 py-2.5 border border-white/10 text-white/50 rounded-xl text-sm hover:text-white transition-all cursor-pointer">Cancel</button>
                   <button onClick={sendCityEmail} disabled={sendingCityEmail || !emailSubject.trim() || !emailBody.trim()}
                     className="flex-1 py-2.5 bg-yellow-500 hover:bg-yellow-400 text-black font-semibold rounded-xl text-sm transition-all cursor-pointer disabled:opacity-40">
-                    {sendingCityEmail ? "Sending…" : `Send to ${paidByCity[emailModalCity]?.length || 0} Vendor${(paidByCity[emailModalCity]?.length || 0) === 1 ? "" : "s"}`}
+                    {sendingCityEmail ? "Sending…" : `Send to ${emailModalCity ? allPaidCountForCity(emailModalCity) : 0} Vendor${(emailModalCity ? allPaidCountForCity(emailModalCity) : 0) === 1 ? "" : "s"}`}
                   </button>
                 </div>
               </div>
