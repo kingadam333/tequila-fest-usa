@@ -51,6 +51,12 @@ export async function syncTicketBuyerToBrevo({ city, email, firstName, lastName,
   const listId = listIdRaw ? parseInt(listIdRaw, 10) : NaN;
   if (!listId) return;
 
+  // Brevo's SMS attribute requires E.164 — an unnormalized number (e.g. a
+  // raw "6142969373") makes Brevo reject the ENTIRE contact create, not just
+  // the phone field, silently dropping the buyer's email/name too. Normalize
+  // the same way the TextMagic path already does.
+  const e164Phone = phone ? toE164(phone) : null;
+
   try {
     const res = await fetch("https://api.brevo.com/v3/contacts", {
       method: "POST",
@@ -60,7 +66,7 @@ export async function syncTicketBuyerToBrevo({ city, email, firstName, lastName,
         attributes: {
           FIRSTNAME: firstName || "",
           ...(lastName ? { LASTNAME: lastName } : {}),
-          ...(phone ? { SMS: phone } : {}),
+          ...(e164Phone ? { SMS: e164Phone } : {}),
         },
         listIds: [listId],
         updateEnabled: true, // merge into existing contact if already present
