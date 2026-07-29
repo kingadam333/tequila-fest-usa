@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ShieldCheck, ShieldAlert, RefreshCw, Mail, AlertCircle, CheckCircle, ExternalLink } from "lucide-react";
+import { ShieldCheck, ShieldAlert, RefreshCw, Mail, AlertCircle, CheckCircle, ExternalLink, ListChecks } from "lucide-react";
 
 interface Lint {
   name: string;
@@ -216,6 +216,85 @@ export default function SecuritySection({ adminToken }: { adminToken: string }) 
                 )}
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      <MarketingEnvCheck adminToken={adminToken} />
+    </div>
+  );
+}
+
+const CITY_LABELS: Record<string, string> = {
+  CINCINNATI: "Cincinnati", CLEVELAND: "Cleveland", COLUMBUS: "Columbus", PHOENIX: "Phoenix",
+};
+
+function MarketingEnvCheck({ adminToken }: { adminToken: string }) {
+  const [data, setData] = useState<Record<string, boolean> | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState("");
+
+  async function check() {
+    setLoading(true);
+    setErr("");
+    try {
+      const res = await fetch("/api/admin/diagnostics/marketing-env", { headers: { "x-admin-token": adminToken } });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "Check failed");
+      setData(json);
+    } catch (e: any) {
+      setErr(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const sharedKeys = ["BREVO_API_KEY", "TEXTMAGIC_USERNAME", "TEXTMAGIC_API_KEY"];
+
+  return (
+    <div className="rounded-2xl border border-white/10 p-5">
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div>
+          <h3 className="text-white font-bold text-sm flex items-center gap-2">
+            <ListChecks size={16} className="text-yellow-400" />
+            Marketing Sync Config (Brevo / TextMagic)
+          </h3>
+          <p className="text-white/40 text-xs mt-1">Confirms all 4 cities have their list-ID env vars set in Vercel. Booleans only — no secret values are ever shown.</p>
+        </div>
+        <button
+          onClick={check}
+          disabled={loading}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-white/70 hover:text-white hover:bg-white/10 text-sm font-medium transition-all disabled:opacity-40 cursor-pointer"
+        >
+          <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+          {loading ? "Checking…" : "Check"}
+        </button>
+      </div>
+
+      {err && <p className="text-red-400 text-xs mt-3">{err}</p>}
+
+      {data && (
+        <div className="mt-4 space-y-3">
+          <div className="flex flex-wrap gap-2">
+            {sharedKeys.map((k) => (
+              <span key={k} className={`text-xs font-mono px-2 py-1 rounded-lg border ${data[k] ? "bg-green-500/10 border-green-500/20 text-green-400" : "bg-red-500/10 border-red-500/20 text-red-400"}`}>
+                {data[k] ? "✓" : "✗"} {k}
+              </span>
+            ))}
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {Object.entries(CITY_LABELS).map(([suffix, city]) => {
+              const brevo = data[`BREVO_LIST_ID_${suffix}`];
+              const tm = data[`TEXTMAGIC_LIST_ID_${suffix}`];
+              const ok = brevo && tm;
+              return (
+                <div key={suffix} className={`rounded-xl border p-3 ${ok ? "bg-green-500/5 border-green-500/15" : "bg-red-500/5 border-red-500/15"}`}>
+                  <p className="text-white text-sm font-semibold">{city}</p>
+                  <p className={`text-xs mt-1 ${brevo ? "text-green-400" : "text-red-400"}`}>{brevo ? "✓" : "✗"} Brevo list</p>
+                  <p className={`text-xs mt-0.5 ${tm ? "text-green-400" : "text-red-400"}`}>{tm ? "✓" : "✗"} TextMagic list</p>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
