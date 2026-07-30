@@ -13,6 +13,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ slug
   if (!data) return NextResponse.redirect(new URL("/", req.url));
 
   db.from("short_links").update({ clicks: (data.clicks || 0) + 1 }).eq("id", data.id).then(() => {});
+  db.from("short_link_clicks").insert({ short_link_id: data.id }).then(() => {});
 
   return NextResponse.redirect(data.destination_url);
 }

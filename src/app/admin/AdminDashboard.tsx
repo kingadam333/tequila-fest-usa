@@ -5789,6 +5789,19 @@ function ToolsSection({ adminToken }: { adminToken: string }) {
   const qrUrl = (slug: string, size = 300) =>
     `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&margin=10&data=${encodeURIComponent(`${SITE_URL}/go/${slug}`)}`;
 
+  const [statsLink, setStatsLink] = useState<ShortLink | null>(null);
+  const [statsDays, setStatsDays] = useState<{ date: string; count: number }[] | null>(null);
+  const [statsLoading, setStatsLoading] = useState(false);
+
+  const openLinkStats = async (link: ShortLink) => {
+    setStatsLink(link);
+    setStatsDays(null);
+    setStatsLoading(true);
+    const res = await fetch(`/api/admin/short-links/${link.id}/clicks`, { headers: { "x-admin-token": adminToken } });
+    if (res.ok) { const data = await res.json(); setStatsDays(data.days || []); }
+    setStatsLoading(false);
+  };
+
   const [repairQueue, setRepairQueue] = useState<{ pending: number; repaired: number; failed: number } | null>(null);
   const [runningBatch, setRunningBatch] = useState(false);
   const [batchResult, setBatchResult] = useState("");
@@ -5937,7 +5950,10 @@ function ToolsSection({ adminToken }: { adminToken: string }) {
                   {link.label && <p className="text-white font-semibold text-sm truncate">{link.label}</p>}
                   <p className="text-yellow-400 text-xs font-mono mt-0.5">{SITE_URL.replace(/^https?:\/\//, "")}/go/{link.slug}</p>
                   <p className="text-white/30 text-xs mt-0.5 truncate">→ {link.destination_url}</p>
-                  <p className="text-white/20 text-[11px] mt-1">{link.clicks} click{link.clicks !== 1 ? "s" : ""} · {new Date(link.created_at).toLocaleDateString()}</p>
+                  <button onClick={() => openLinkStats(link)}
+                    className="text-white text-[11px] mt-1 underline decoration-white/30 hover:decoration-white underline-offset-2 cursor-pointer">
+                    {link.clicks} click{link.clicks !== 1 ? "s" : ""} · {new Date(link.created_at).toLocaleDateString()}
+                  </button>
                 </div>
                 <div className="flex flex-col gap-1.5 flex-shrink-0">
                   <button onClick={() => copyLink(link.slug)}
@@ -6049,6 +6065,45 @@ function ToolsSection({ adminToken }: { adminToken: string }) {
           </div>
         )}
       </div>
+
+      {/* ── QR LINK DETAILED CLICK STATS MODAL ── */}
+      <AnimatePresence>
+        {statsLink && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+            onClick={e => { if (e.target === e.currentTarget) setStatsLink(null); }}>
+            <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }}
+              className="bg-[#0d0500] border border-white/10 rounded-2xl p-6 w-full max-w-md max-h-[80vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-1">
+                <h3 className="text-lg font-semibold text-white truncate">
+                  {statsLink.label || statsLink.slug} — Click Stats
+                </h3>
+                <button onClick={() => setStatsLink(null)} className="text-white/40 hover:text-white cursor-pointer flex-shrink-0"><X size={18} /></button>
+              </div>
+              <p className="text-white/40 text-xs mb-5">/go/{statsLink.slug} · {statsLink.clicks} total click{statsLink.clicks !== 1 ? "s" : ""}</p>
+
+              {statsLoading ? (
+                <p className="text-white/30 text-sm py-6 text-center">Loading…</p>
+              ) : !statsDays || statsDays.length === 0 ? (
+                <p className="text-white/25 text-sm py-6 text-center border border-dashed border-white/10 rounded-xl">
+                  No day-by-day data yet — daily tracking started after this feature was added, so older clicks are only reflected in the total above.
+                </p>
+              ) : (
+                <div className="space-y-1.5">
+                  {statsDays.map(d => (
+                    <div key={d.date} className="flex items-center justify-between bg-white/[0.03] border border-white/10 rounded-lg px-3 py-2">
+                      <span className="text-white/70 text-sm">
+                        {new Date(d.date + "T00:00:00").toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
+                      </span>
+                      <span className="text-yellow-400 font-bold text-sm">{d.count} click{d.count !== 1 ? "s" : ""}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
