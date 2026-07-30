@@ -5754,6 +5754,7 @@ function ToolsSection({ adminToken }: { adminToken: string }) {
   const createLink = async () => {
     setCreateError("");
     if (!destUrl.trim()) { setCreateError("Enter a destination URL"); return; }
+    if (!linkLabel.trim()) { setCreateError("Enter a name so you can tell this QR code apart from others"); return; }
     setCreating(true);
     try {
       const res = await fetch("/api/admin/short-links", {
@@ -5919,13 +5920,13 @@ function ToolsSection({ adminToken }: { adminToken: string }) {
               className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-2.5 text-white placeholder-white/25 outline-none text-sm" />
           </div>
           <div>
-            <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Custom slug (optional)</label>
-            <input value={customSlug} onChange={e => setCustomSlug(e.target.value)} placeholder="cincinnati-flyer"
+            <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Name</label>
+            <input value={linkLabel} onChange={e => setLinkLabel(e.target.value)} placeholder="Cincinnati vendor booth flyer"
               className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-2.5 text-white placeholder-white/25 outline-none text-sm" />
           </div>
           <div>
-            <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Label (optional)</label>
-            <input value={linkLabel} onChange={e => setLinkLabel(e.target.value)} placeholder="Cincinnati vendor booth flyer"
+            <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Custom slug (optional)</label>
+            <input value={customSlug} onChange={e => setCustomSlug(e.target.value)} placeholder="cincinnati-flyer"
               className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-2.5 text-white placeholder-white/25 outline-none text-sm" />
           </div>
         </div>
