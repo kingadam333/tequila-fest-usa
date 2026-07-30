@@ -5803,6 +5803,46 @@ function ToolsSection({ adminToken }: { adminToken: string }) {
     setStatsLoading(false);
   };
 
+  const [editLink, setEditLink] = useState<ShortLink | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editSlug, setEditSlug] = useState("");
+  const [editDest, setEditDest] = useState("");
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState("");
+
+  const openEditLink = (link: ShortLink) => {
+    setEditLink(link);
+    setEditName(link.label || "");
+    setEditSlug(link.slug);
+    setEditDest(link.destination_url);
+    setEditError("");
+  };
+
+  const saveEditLink = async () => {
+    if (!editLink) return;
+    setEditError("");
+    if (!editName.trim()) { setEditError("Enter a name so you can tell this QR code apart from others"); return; }
+    if (!editDest.trim()) { setEditError("Enter a destination URL"); return; }
+    setEditSaving(true);
+    try {
+      const res = await fetch(`/api/admin/short-links/${editLink.id}`, {
+        method: "PATCH",
+        headers: { "x-admin-token": adminToken, "Content-Type": "application/json" },
+        body: JSON.stringify({ destinationUrl: editDest, slug: editSlug, label: editName }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setLinks(prev => prev.map(l => l.id === data.link.id ? data.link : l));
+        setEditLink(null);
+      } else {
+        setEditError(data.error || "Failed to save changes");
+      }
+    } catch {
+      setEditError("Network error — try again");
+    }
+    setEditSaving(false);
+  };
+
   const [repairQueue, setRepairQueue] = useState<{ pending: number; repaired: number; failed: number } | null>(null);
   const [runningBatch, setRunningBatch] = useState(false);
   const [batchResult, setBatchResult] = useState("");
@@ -5957,6 +5997,10 @@ function ToolsSection({ adminToken }: { adminToken: string }) {
                   </button>
                 </div>
                 <div className="flex flex-col gap-1.5 flex-shrink-0">
+                  <button onClick={() => openEditLink(link)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white/60 hover:text-white text-xs font-semibold rounded-lg transition-all cursor-pointer">
+                    <Edit2 size={11} /> Edit
+                  </button>
                   <button onClick={() => copyLink(link.slug)}
                     className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white/60 hover:text-white text-xs font-semibold rounded-lg transition-all cursor-pointer">
                     <Copy size={11} /> {copiedSlug === link.slug ? "Copied!" : "Copy Link"}
@@ -6066,6 +6110,46 @@ function ToolsSection({ adminToken }: { adminToken: string }) {
           </div>
         )}
       </div>
+
+      {/* ── EDIT QR LINK MODAL ── */}
+      <AnimatePresence>
+        {editLink && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+            onClick={e => { if (e.target === e.currentTarget) setEditLink(null); }}>
+            <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }}
+              className="bg-[#0d0500] border border-white/10 rounded-2xl p-6 w-full max-w-md">
+              <div className="flex items-center justify-between mb-5">
+                <h3 className="text-lg font-semibold text-white">Edit QR Code</h3>
+                <button onClick={() => setEditLink(null)} className="text-white/40 hover:text-white cursor-pointer"><X size={18} /></button>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Name</label>
+                  <input value={editName} onChange={e => setEditName(e.target.value)} placeholder="Cincinnati vendor booth flyer"
+                    className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-2.5 text-white placeholder-white/25 outline-none text-sm" />
+                </div>
+                <div>
+                  <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Slug</label>
+                  <input value={editSlug} onChange={e => setEditSlug(e.target.value)} placeholder="cincinnati-flyer"
+                    className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-2.5 text-white placeholder-white/25 outline-none text-sm" />
+                  <p className="text-white/25 text-[11px] mt-1">Changing this changes the QR code image — any already-printed copies will point to the old page.</p>
+                </div>
+                <div>
+                  <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Destination URL</label>
+                  <input value={editDest} onChange={e => setEditDest(e.target.value)} placeholder="https://tequilafestusa.com/events/cincinnati"
+                    className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-2.5 text-white placeholder-white/25 outline-none text-sm" />
+                </div>
+              </div>
+              {editError && <p className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-2.5 mt-4">{editError}</p>}
+              <button onClick={saveEditLink} disabled={editSaving}
+                className="w-full flex items-center justify-center gap-2 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-60 text-black font-bold px-5 py-2.5 rounded-xl text-sm transition-all cursor-pointer mt-5">
+                {editSaving ? "Saving..." : "Save Changes"}
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── QR LINK DETAILED CLICK STATS MODAL ── */}
       <AnimatePresence>
