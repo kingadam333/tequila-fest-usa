@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import SupportChat from "@/components/SupportChat";
 import { GTMHeadScript, GTMBodyNoscript } from "@/components/GoogleTagManager";
+import { GoogleAdsGtagSrc, GoogleAdsTagScript } from "@/components/GoogleAdsTag";
 import InstallBanner from "@/components/InstallBanner";
 
 export const viewport: Viewport = {
@@ -51,6 +52,8 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full">
       <head>
+        <GoogleAdsGtagSrc />
+        <GoogleAdsTagScript />
         <GTMHeadScript />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="application-name" content="Tequila Fest" />
