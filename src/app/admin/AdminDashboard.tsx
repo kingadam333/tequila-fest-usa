@@ -6408,6 +6408,34 @@ function AffiliatesSection({ adminToken }: { adminToken: string }) {
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState("");
 
+  const [pickMode, setPickMode] = useState<"new" | "existing">("new");
+  const [existingUsers, setExistingUsers] = useState<{ email: string; first_name: string; last_name: string; phone: string | null; name: string }[]>([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [selectedUserEmail, setSelectedUserEmail] = useState("");
+
+  const loadExistingUsers = async () => {
+    if (existingUsers.length || usersLoading) return;
+    setUsersLoading(true);
+    const res = await fetch("/api/admin/users", { headers });
+    if (res.ok) {
+      const data = await res.json();
+      setExistingUsers((data.users || []).map((u: any) => ({ email: u.email, first_name: u.first_name || "", last_name: u.last_name || "", phone: u.phone, name: u.name || u.email })));
+    }
+    setUsersLoading(false);
+  };
+
+  const pickExistingUser = (email: string) => {
+    setSelectedUserEmail(email);
+    const u = existingUsers.find(x => x.email === email);
+    if (u) setForm(f => ({ ...f, firstName: u.first_name, lastName: u.last_name, email: u.email, phone: u.phone || "" }));
+  };
+
+  const fillMyself = () => {
+    setPickMode("existing");
+    setSelectedUserEmail("adam@tequilafestusa.com");
+    setForm(f => ({ ...f, firstName: "Adam", lastName: "Bossin", email: "adam@tequilafestusa.com", phone: f.phone }));
+  };
+
   const [payoutAmount, setPayoutAmount] = useState("");
   const [payoutNote, setPayoutNote] = useState("");
   const [payoutSaving, setPayoutSaving] = useState(false);
@@ -6440,6 +6468,8 @@ function AffiliatesSection({ adminToken }: { adminToken: string }) {
       if (res.ok) {
         setStatus("Affiliate created — login + QR code sent via email");
         setForm({ firstName: "", lastName: "", email: "", phone: "", commissionRate: "10" });
+        setPickMode("new");
+        setSelectedUserEmail("");
         setShowAdd(false);
         fetchAffiliates();
       } else {
@@ -6665,6 +6695,36 @@ function AffiliatesSection({ adminToken }: { adminToken: string }) {
                 <h3 className="text-lg font-semibold text-white">Add Affiliate</h3>
                 <button onClick={() => setShowAdd(false)} className="text-white/40 hover:text-white cursor-pointer"><X size={18} /></button>
               </div>
+
+              <div className="flex items-center gap-2 mb-4">
+                <button type="button" onClick={() => setPickMode("new")}
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all cursor-pointer ${pickMode === "new" ? "bg-yellow-500 text-black border-yellow-500" : "bg-white/5 text-white/60 border-white/15 hover:bg-white/10"}`}>
+                  New Person
+                </button>
+                <button type="button" onClick={() => { setPickMode("existing"); loadExistingUsers(); }}
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all cursor-pointer ${pickMode === "existing" ? "bg-yellow-500 text-black border-yellow-500" : "bg-white/5 text-white/60 border-white/15 hover:bg-white/10"}`}>
+                  Existing User
+                </button>
+                <button type="button" onClick={fillMyself}
+                  className="ml-auto px-3 py-1.5 rounded-full text-xs font-semibold border bg-white/5 text-yellow-400 border-yellow-500/25 hover:bg-yellow-500/10 transition-all cursor-pointer">
+                  + Add Myself (Admin)
+                </button>
+              </div>
+
+              {pickMode === "existing" && (
+                <div className="mb-4">
+                  <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Pick a User</label>
+                  <select value={selectedUserEmail} onChange={e => pickExistingUser(e.target.value)}
+                    className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-2.5 text-white outline-none text-sm">
+                    <option value="">{usersLoading ? "Loading users…" : "Select a user…"}</option>
+                    {existingUsers.map(u => (
+                      <option key={u.email} value={u.email}>{u.name} — {u.email}</option>
+                    ))}
+                  </select>
+                  <p className="text-white/25 text-xs mt-1.5">Fills the fields below — this still creates a separate affiliate account/login for them.</p>
+                </div>
+              )}
+
               <form onSubmit={handleCreate} className="space-y-4">
                 <div className="grid grid-cols-2 gap-3">
                   <div>

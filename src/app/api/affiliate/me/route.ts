@@ -15,6 +15,8 @@ export async function GET(req: NextRequest) {
     .eq("id", affiliateId)
     .maybeSingle();
   if (!affiliate) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  // Stored as a fraction (numeric(4,3)) — see the note in /api/admin/affiliates.
+  affiliate.commission_rate = Number(affiliate.commission_rate) * 100;
 
   const { data: link } = await db.from("short_links").select("slug, clicks").eq("affiliate_id", affiliateId).maybeSingle();
 

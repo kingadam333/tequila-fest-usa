@@ -62,6 +62,10 @@ export async function GET(req: NextRequest) {
 
     return {
       ...a,
+      // Stored in the DB as a fraction (numeric(4,3) — e.g. 0.100 for 10%,
+      // max ~9.999 which is why a whole percent like "10" overflows it)
+      // but the API's public contract is a whole percent, matching the UI.
+      commission_rate: Number(a.commission_rate) * 100,
       slug: link?.slug || null,
       clicks: link?.clicks || 0,
       orders: convs.length,
@@ -108,7 +112,8 @@ export async function POST(req: NextRequest) {
       last_name: lastName?.trim() || null,
       phone: phone?.trim() || null,
       referral_code: referralCode,
-      commission_rate: commissionRate ?? 10,
+      // Stored as a fraction — see the numeric(4,3) note in GET above.
+      commission_rate: (commissionRate ?? 10) / 100,
       status: "active",
     })
     .select()
@@ -174,7 +179,8 @@ export async function PATCH(req: NextRequest) {
 
   const updates: Record<string, unknown> = {};
   if (status !== undefined) updates.status = status;
-  if (commissionRate !== undefined) updates.commission_rate = commissionRate;
+  // Stored as a fraction — see the numeric(4,3) note in GET above.
+  if (commissionRate !== undefined) updates.commission_rate = commissionRate / 100;
   if (!Object.keys(updates).length) return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
 
   const db = supabaseAdmin as any;

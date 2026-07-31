@@ -301,7 +301,10 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
 
             if (affiliate && affiliate.status === "active") {
               const saleAmount = parseFloat(session.metadata?.ticketSubtotal || "0") || amountTotal;
-              const commissionAmount = saleAmount * (Number(affiliate.commission_rate) || 0) / 100;
+              // commission_rate is stored as a fraction (e.g. 0.10 for 10%,
+              // not a whole percent — see the numeric(4,3) note in
+              // /api/admin/affiliates), so no /100 here.
+              const commissionAmount = saleAmount * (Number(affiliate.commission_rate) || 0);
 
               await db.from("affiliate_conversions").upsert({
                 affiliate_id: affiliate.id,
