@@ -11,6 +11,11 @@ interface CartItem { ticketType: TicketType; quantity: number; price: number; pl
 export async function POST(req: NextRequest) {
   const { firstName, lastName, email, phone, eventSlug, items, ticketType, quantity, captchaToken, refCode } = await req.json();
 
+  // Affiliate attribution — set as a cookie by /go/[slug] when the buyer
+  // arrived through an affiliate's link/QR code, not a query param, since
+  // they may land on any page and browse elsewhere before checking out.
+  const affiliateCode = req.cookies.get("tf_aff")?.value || "";
+
   if (!firstName || !email || !eventSlug) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
@@ -106,6 +111,7 @@ export async function POST(req: NextRequest) {
       platformFee: fees.platformFee.toFixed(2),
       ticketSubtotal: totalAmount.toFixed(2),
       refCode: refCode || "",
+      affiliateCode,
     },
     payment_intent_data: {
       description: `Tequila Fest ${event.city} 2026 — ${ticketSummary}`,

@@ -9,11 +9,27 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ slug
   const { slug } = await params;
   const db = supabaseAdmin as any;
 
-  const { data } = await db.from("short_links").select("id, destination_url, clicks").eq("slug", slug).maybeSingle();
+  const { data } = await db.from("short_links").select("id, destination_url, clicks, affiliate_id").eq("slug", slug).maybeSingle();
   if (!data) return NextResponse.redirect(new URL("/", req.url));
 
   db.from("short_links").update({ clicks: (data.clicks || 0) + 1 }).eq("id", data.id).then(() => {});
   db.from("short_link_clicks").insert({ short_link_id: data.id }).then(() => {});
 
-  return NextResponse.redirect(data.destination_url);
+  const res = NextResponse.redirect(data.destination_url);
+
+  // Affiliate links carry attribution via a long-lived cookie rather than a
+  // query param, since the destination can be any page and the buyer might
+  // browse elsewhere (e.g. a different city) before actually checking out.
+  if (data.affiliate_id) {
+    const { data: affiliate } = await db.from("affiliates").select("referral_code").eq("id", data.affiliate_id).maybeSingle();
+    if (affiliate?.referral_code) {
+      res.cookies.set("tf_aff", affiliate.referral_code, {
+        maxAge: 60 * 60 * 24 * 90,
+        path: "/",
+        sameSite: "lax",
+      });
+    }
+  }
+
+  return res;
 }

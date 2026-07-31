@@ -6375,6 +6375,340 @@ function ToolsSection({ adminToken }: { adminToken: string }) {
   );
 }
 
+// ─── Affiliates Section ─────────────────────────────────────────────────────
+interface AffiliateRow {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string | null;
+  phone: string | null;
+  referral_code: string;
+  commission_rate: number;
+  status: string;
+  created_at: string;
+  slug: string | null;
+  clicks: number;
+  orders: number;
+  tickets: number;
+  totalSales: number;
+  totalCommission: number;
+  totalPaid: number;
+  balanceOwed: number;
+  byCity: Record<string, { orders: number; tickets: number; sales: number; commission: number }>;
+}
+
+function AffiliatesSection({ adminToken }: { adminToken: string }) {
+  const headers = { "x-admin-token": adminToken };
+  const SITE_URL = "https://www.tequilafestusa.com";
+  const [affiliates, setAffiliates] = useState<AffiliateRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selected, setSelected] = useState<AffiliateRow | null>(null);
+  const [showAdd, setShowAdd] = useState(false);
+  const [form, setForm] = useState({ firstName: "", lastName: "", email: "", phone: "", commissionRate: "10" });
+  const [saving, setSaving] = useState(false);
+  const [status, setStatus] = useState("");
+
+  const [payoutAmount, setPayoutAmount] = useState("");
+  const [payoutNote, setPayoutNote] = useState("");
+  const [payoutSaving, setPayoutSaving] = useState(false);
+
+  const fetchAffiliates = useCallback(async () => {
+    setLoading(true);
+    const res = await fetch("/api/admin/affiliates", { headers });
+    if (res.ok) {
+      const data = await res.json();
+      setAffiliates(data.affiliates || []);
+      setSelected(prev => prev ? (data.affiliates || []).find((a: AffiliateRow) => a.id === prev.id) || null : null);
+    }
+    setLoading(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adminToken]);
+
+  useEffect(() => { fetchAffiliates(); }, [fetchAffiliates]);
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setStatus("");
+    try {
+      const res = await fetch("/api/admin/affiliates", {
+        method: "POST",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify({ ...form, commissionRate: parseFloat(form.commissionRate) || 10 }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setStatus("Affiliate created — login + QR code sent via email");
+        setForm({ firstName: "", lastName: "", email: "", phone: "", commissionRate: "10" });
+        setShowAdd(false);
+        fetchAffiliates();
+      } else {
+        setStatus(`Error: ${data.error || "failed to create"}`);
+      }
+    } catch (e: any) {
+      setStatus(`Error: ${e?.message || "failed to create"}`);
+    }
+    setSaving(false);
+  };
+
+  const toggleStatus = async (a: AffiliateRow) => {
+    const newStatus = a.status === "active" ? "revoked" : "active";
+    if (newStatus === "revoked" && !confirm(`Revoke ${a.first_name}'s affiliate access? Their link stays live but their account can't log in.`)) return;
+    await fetch("/api/admin/affiliates", {
+      method: "PATCH",
+      headers: { ...headers, "Content-Type": "application/json" },
+      body: JSON.stringify({ id: a.id, status: newStatus }),
+    });
+    fetchAffiliates();
+  };
+
+  const updateCommission = async (a: AffiliateRow, rate: string) => {
+    const parsed = parseFloat(rate);
+    if (isNaN(parsed) || parsed < 0) return;
+    await fetch("/api/admin/affiliates", {
+      method: "PATCH",
+      headers: { ...headers, "Content-Type": "application/json" },
+      body: JSON.stringify({ id: a.id, commissionRate: parsed }),
+    });
+    fetchAffiliates();
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Delete this affiliate? Their link, QR code, and history will be removed.")) return;
+    await fetch("/api/admin/affiliates", {
+      method: "DELETE",
+      headers: { ...headers, "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+    setSelected(null);
+    fetchAffiliates();
+  };
+
+  const recordPayout = async () => {
+    if (!selected || !payoutAmount) return;
+    setPayoutSaving(true);
+    try {
+      const res = await fetch(`/api/admin/affiliates/${selected.id}/payout`, {
+        method: "POST",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: parseFloat(payoutAmount), note: payoutNote }),
+      });
+      if (res.ok) {
+        setPayoutAmount("");
+        setPayoutNote("");
+        fetchAffiliates();
+      } else {
+        const data = await res.json();
+        alert(`Error: ${data.error || "failed to record payout"}`);
+      }
+    } catch (e: any) {
+      alert(`Error: ${e?.message || "failed to record payout"}`);
+    }
+    setPayoutSaving(false);
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="font-display text-white text-3xl mb-1">AFFILIATES</h2>
+          <p className="text-white/30 text-sm">Custom QR codes/links per affiliate — clicks + sales tracked automatically, broken down by city</p>
+        </div>
+        <button onClick={() => setShowAdd(true)} className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-black text-sm font-semibold px-4 py-2 rounded-xl transition-all cursor-pointer">
+          <Plus size={15} /> Add Affiliate
+        </button>
+      </div>
+
+      {status && <p className={`text-sm ${status.startsWith("Error") ? "text-red-400" : "text-green-400"}`}>{status}</p>}
+
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+        <div className="lg:col-span-2 space-y-2">
+          {loading ? (
+            <div className="text-white/30 text-sm py-8 text-center">Loading...</div>
+          ) : affiliates.length === 0 ? (
+            <div className="text-white/25 text-sm py-8 text-center border border-dashed border-white/10 rounded-xl">No affiliates yet — click Add Affiliate.</div>
+          ) : (
+            affiliates.map(a => (
+              <button key={a.id} onClick={() => setSelected(a)}
+                className={`w-full text-left rounded-xl px-4 py-3 border transition-all cursor-pointer ${selected?.id === a.id ? "border-yellow-500/50 bg-yellow-500/10" : "border-white/10 bg-white/[0.02] hover:border-white/20"}`}>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-white font-semibold text-sm truncate">{a.first_name} {a.last_name || ""}</p>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${a.status === "active" ? "bg-green-500/15 text-green-400" : "bg-red-500/15 text-red-400"}`}>
+                    {a.status}
+                  </span>
+                </div>
+                <p className="text-white/30 text-xs truncate">{a.email}</p>
+                <div className="flex items-center gap-3 mt-1.5 text-[11px] text-white/40">
+                  <span>{a.clicks} clicks</span>
+                  <span>{a.orders} sales</span>
+                  <span className="text-green-400 font-semibold">${a.totalCommission.toFixed(2)}</span>
+                </div>
+              </button>
+            ))
+          )}
+        </div>
+
+        <div className="lg:col-span-3 bg-white/[0.03] border border-white/10 rounded-2xl p-5">
+          {!selected ? (
+            <p className="text-white/25 text-sm text-center py-12">Select an affiliate to view stats and manage payouts.</p>
+          ) : (
+            <div className="space-y-5">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <h3 className="text-white font-bold text-lg">{selected.first_name} {selected.last_name || ""}</h3>
+                  <p className="text-white/40 text-sm">{selected.email}{selected.phone ? ` · ${selected.phone}` : ""}</p>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button onClick={() => toggleStatus(selected)}
+                    className="text-xs font-semibold px-3 py-1.5 rounded-full border bg-white/5 text-white/60 border-white/15 hover:bg-white/10 transition-all cursor-pointer">
+                    {selected.status === "active" ? "Revoke" : "Reactivate"}
+                  </button>
+                  <button onClick={() => handleDelete(selected.id)}
+                    className="text-xs font-semibold px-3 py-1.5 rounded-full border bg-red-500/10 text-red-400 border-red-500/25 hover:bg-red-500/20 transition-all cursor-pointer">
+                    Delete
+                  </button>
+                </div>
+              </div>
+
+              {selected.slug && (
+                <div className="flex items-center gap-4 bg-white/[0.02] border border-white/10 rounded-xl p-4">
+                  <img src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&margin=10&data=${encodeURIComponent(`${SITE_URL}/go/${selected.slug}`)}`}
+                    alt="QR code" width={72} height={72} className="rounded-lg border-2 border-white flex-shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-yellow-400 text-sm font-mono truncate">{SITE_URL.replace(/^https?:\/\//, "")}/go/{selected.slug}</p>
+                    <button onClick={() => navigator.clipboard.writeText(`${SITE_URL}/go/${selected.slug}`)}
+                      className="text-white/40 hover:text-white text-xs mt-1 cursor-pointer">Copy Link</button>
+                  </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {[
+                  { label: "Clicks", value: selected.clicks },
+                  { label: "Orders", value: selected.orders },
+                  { label: "Tickets", value: selected.tickets },
+                  { label: "Sales", value: `$${selected.totalSales.toFixed(2)}` },
+                ].map(s => (
+                  <div key={s.label} className="bg-white/[0.02] border border-white/5 rounded-lg p-3 text-center">
+                    <p className="text-white font-bold">{s.value}</p>
+                    <p className="text-white/30 text-[11px]">{s.label}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex items-center gap-3">
+                <label className="text-white/30 text-xs uppercase tracking-wider">Commission Rate</label>
+                <div className="flex items-center gap-1">
+                  <input type="number" defaultValue={selected.commission_rate} step="0.5" min="0"
+                    onBlur={e => updateCommission(selected, e.target.value)}
+                    className="w-20 bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-lg px-2 py-1 text-white text-sm outline-none" />
+                  <span className="text-white/40 text-sm">%</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2">
+                <div className="bg-green-500/10 border border-green-500/25 rounded-xl p-3 text-center">
+                  <p className="text-green-400 font-bold">${selected.totalCommission.toFixed(2)}</p>
+                  <p className="text-white/30 text-[11px]">Earned</p>
+                </div>
+                <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 text-center">
+                  <p className="text-white font-bold">${selected.totalPaid.toFixed(2)}</p>
+                  <p className="text-white/30 text-[11px]">Paid Out</p>
+                </div>
+                <div className="bg-yellow-500/10 border border-yellow-500/25 rounded-xl p-3 text-center">
+                  <p className="text-yellow-400 font-bold">${selected.balanceOwed.toFixed(2)}</p>
+                  <p className="text-white/30 text-[11px]">Owed</p>
+                </div>
+              </div>
+
+              <div className="bg-white/[0.02] border border-white/10 rounded-xl p-3 space-y-2">
+                <p className="text-white/40 text-xs uppercase tracking-wider">Record a Payout</p>
+                <div className="flex items-center gap-2">
+                  <input value={payoutAmount} onChange={e => setPayoutAmount(e.target.value)} type="number" step="0.01" placeholder="Amount"
+                    className="w-28 bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-sm text-white placeholder-white/30 outline-none" />
+                  <input value={payoutNote} onChange={e => setPayoutNote(e.target.value)} placeholder="Note (optional)"
+                    className="flex-1 bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-sm text-white placeholder-white/30 outline-none" />
+                  <button onClick={recordPayout} disabled={payoutSaving || !payoutAmount}
+                    className="px-3 py-1.5 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-40 text-black text-xs font-semibold rounded-lg cursor-pointer">
+                    {payoutSaving ? "Saving…" : "Log Payout"}
+                  </button>
+                </div>
+              </div>
+
+              {Object.keys(selected.byCity).length > 0 && (
+                <div>
+                  <p className="text-white/40 text-xs uppercase tracking-wider mb-2">Sales by City</p>
+                  <div className="space-y-1.5">
+                    {Object.entries(selected.byCity).sort((a, b) => b[1].commission - a[1].commission).map(([city, s]) => (
+                      <div key={city} className="flex items-center justify-between bg-white/[0.02] border border-white/5 rounded-lg px-3 py-2">
+                        <span className="text-white text-sm">{city}</span>
+                        <span className="text-white/50 text-xs">{s.orders} orders · {s.tickets} tickets · ${s.sales.toFixed(2)} · <span className="text-green-400">${s.commission.toFixed(2)}</span></span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Add Affiliate modal */}
+      <AnimatePresence>
+        {showAdd && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+            onClick={e => { if (e.target === e.currentTarget) setShowAdd(false); }}>
+            <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }}
+              className="bg-[#0d0500] border border-white/10 rounded-2xl p-6 w-full max-w-md">
+              <div className="flex items-center justify-between mb-5">
+                <h3 className="text-lg font-semibold text-white">Add Affiliate</h3>
+                <button onClick={() => setShowAdd(false)} className="text-white/40 hover:text-white cursor-pointer"><X size={18} /></button>
+              </div>
+              <form onSubmit={handleCreate} className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">First Name</label>
+                    <input required value={form.firstName} onChange={e => setForm(f => ({ ...f, firstName: e.target.value }))}
+                      className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-2.5 text-white outline-none text-sm" />
+                  </div>
+                  <div>
+                    <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Last Name</label>
+                    <input value={form.lastName} onChange={e => setForm(f => ({ ...f, lastName: e.target.value }))}
+                      className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-2.5 text-white outline-none text-sm" />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Email</label>
+                  <input required type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+                    className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-2.5 text-white outline-none text-sm" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Phone</label>
+                    <input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
+                      className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-2.5 text-white outline-none text-sm" />
+                  </div>
+                  <div>
+                    <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Commission %</label>
+                    <input type="number" step="0.5" min="0" value={form.commissionRate} onChange={e => setForm(f => ({ ...f, commissionRate: e.target.value }))}
+                      className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-2.5 text-white outline-none text-sm" />
+                  </div>
+                </div>
+                <p className="text-white/25 text-xs">A login + QR code/link will be emailed automatically.</p>
+                <button type="submit" disabled={saving}
+                  className="w-full bg-yellow-500 hover:bg-yellow-400 disabled:opacity-60 text-black font-bold px-5 py-2.5 rounded-xl text-sm transition-all cursor-pointer">
+                  {saving ? "Creating..." : "Create Affiliate"}
+                </button>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 // ─── Nav config ───────────────────────────────────────────────────────────────
 const NAV_ITEMS = [
   { id: "overview",   label: "Overview",    icon: <LayoutDashboard size={17} /> },
@@ -6392,6 +6726,7 @@ const NAV_ITEMS = [
   { id: "vendors",    label: "Vendors",     icon: <Utensils size={17} /> },
   { id: "loadin",     label: "Load In",     icon: <MapPin size={17} /> },
   { id: "media",      label: "Media Partners", icon: <Gift size={17} /> },
+  { id: "affiliates", label: "Affiliates",  icon: <Link2 size={17} /> },
   { id: "newsletter", label: "Newsletter",  icon: <Mail size={17} /> },
   { id: "tools",      label: "Tools",       icon: <RefreshCw size={17} /> },
   { id: "blog",       label: "Blog",        icon: <FileText size={17} /> },
@@ -6502,6 +6837,7 @@ export default function AdminDashboard() {
     vendors:    <VendorsSection adminToken={adminToken} />,
     loadin:     <LoadInSection adminToken={adminToken} />,
     media:      <MediaPartnersSection adminToken={adminToken} events={events} />,
+    affiliates: <AffiliatesSection adminToken={adminToken} />,
     newsletter: <NewsletterSection adminToken={adminToken} />,
     tools:     <ToolsSection adminToken={adminToken} />,
     blog:      <BlogAdminSection />,

@@ -284,6 +284,43 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
           }
         }
 
+        // ── Award affiliate commission ──────────────────────────────
+        // Commission is based on ticket revenue only (ticketSubtotal),
+        // never the service fee — that's platform revenue, not sales the
+        // affiliate actually drove. Distinct from the customer refer-a-
+        // friend program above (referral_codes/referrals, points-based) —
+        // this is the paid affiliate program (affiliates/affiliate_conversions).
+        const affiliateCode = session.metadata?.affiliateCode;
+        if (affiliateCode) {
+          try {
+            const { data: affiliate } = await db
+              .from("affiliates")
+              .select("id, commission_rate, status")
+              .eq("referral_code", affiliateCode)
+              .maybeSingle();
+
+            if (affiliate && affiliate.status === "active") {
+              const saleAmount = parseFloat(session.metadata?.ticketSubtotal || "0") || amountTotal;
+              const commissionAmount = saleAmount * (Number(affiliate.commission_rate) || 0) / 100;
+
+              await db.from("affiliate_conversions").upsert({
+                affiliate_id: affiliate.id,
+                order_id: order.id,
+                event_city: eventCity || event?.city || "",
+                event_slug: eventSlug || "",
+                ticket_type: ticketType || "",
+                quantity: qty,
+                sale_amount: saleAmount,
+                commission_amount: commissionAmount,
+              }, { onConflict: "order_id" });
+
+              console.log(`💰 Affiliate commission: $${commissionAmount.toFixed(2)} to ${affiliateCode} for order ${orderNumber}`);
+            }
+          } catch (affErr) {
+            console.error("Affiliate commission error:", affErr);
+          }
+        }
+
         console.log(`📋 Order ${orderNumber} saved to Supabase with ${qty} ticket(s)`);
       }
     } catch (dbErr) {
