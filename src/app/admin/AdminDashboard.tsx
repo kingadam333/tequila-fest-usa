@@ -6537,6 +6537,40 @@ function AffiliatesSection({ adminToken }: { adminToken: string }) {
     setPayoutSaving(false);
   };
 
+  const [leaderboardSort, setLeaderboardSort] = useState<"commission" | "sales" | "clicks" | "orders">("commission");
+
+  // Everything below is derived client-side from the same per-affiliate
+  // payload the list already has — no extra endpoint needed.
+  const totals = affiliates.reduce((acc, a) => {
+    acc.clicks += a.clicks;
+    acc.orders += a.orders;
+    acc.tickets += a.tickets;
+    acc.sales += a.totalSales;
+    acc.commission += a.totalCommission;
+    acc.paid += a.totalPaid;
+    return acc;
+  }, { clicks: 0, orders: 0, tickets: 0, sales: 0, commission: 0, paid: 0 });
+  const activeCount = affiliates.filter(a => a.status === "active").length;
+  const conversionRate = totals.clicks > 0 ? (totals.orders / totals.clicks) * 100 : 0;
+
+  const leaderboard = [...affiliates].sort((a, b) => {
+    if (leaderboardSort === "commission") return b.totalCommission - a.totalCommission;
+    if (leaderboardSort === "sales") return b.totalSales - a.totalSales;
+    if (leaderboardSort === "clicks") return b.clicks - a.clicks;
+    return b.orders - a.orders;
+  });
+
+  const combinedByCity: Record<string, { clicks: number; orders: number; tickets: number; sales: number; commission: number }> = {};
+  for (const a of affiliates) {
+    for (const [city, s] of Object.entries(a.byCity)) {
+      const bucket = (combinedByCity[city] ||= { clicks: 0, orders: 0, tickets: 0, sales: 0, commission: 0 });
+      bucket.orders += s.orders;
+      bucket.tickets += s.tickets;
+      bucket.sales += s.sales;
+      bucket.commission += s.commission;
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -6550,6 +6584,101 @@ function AffiliatesSection({ adminToken }: { adminToken: string }) {
       </div>
 
       {status && <p className={`text-sm ${status.startsWith("Error") ? "text-red-400" : "text-green-400"}`}>{status}</p>}
+
+      {!loading && affiliates.length > 0 && (
+        <>
+          {/* Program-wide totals */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+            {[
+              { label: "Affiliates", value: `${activeCount}/${affiliates.length}` },
+              { label: "Clicks", value: totals.clicks },
+              { label: "Orders", value: totals.orders },
+              { label: "Tickets", value: totals.tickets },
+              { label: "Sales", value: `$${totals.sales.toFixed(2)}` },
+              { label: "Commission", value: `$${totals.commission.toFixed(2)}`, color: "text-green-400" },
+              { label: "Owed", value: `$${(totals.commission - totals.paid).toFixed(2)}`, color: "text-yellow-400" },
+            ].map(s => (
+              <div key={s.label} className="bg-white/[0.03] border border-white/10 rounded-2xl p-4 text-center">
+                <p className={`font-bold text-lg ${s.color || "text-white"}`}>{s.value}</p>
+                <p className="text-white/30 text-[11px] mt-1">{s.label}</p>
+              </div>
+            ))}
+          </div>
+          <p className="text-white/25 text-xs -mt-3">{conversionRate.toFixed(1)}% click-to-order conversion rate across all affiliates</p>
+
+          {/* Top affiliates leaderboard */}
+          <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-5">
+            <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+              <h3 className="text-white font-bold text-sm">Top Affiliates</h3>
+              <div className="flex items-center gap-1.5">
+                {([
+                  { id: "commission", label: "Commission" },
+                  { id: "sales", label: "Sales" },
+                  { id: "clicks", label: "Clicks" },
+                  { id: "orders", label: "Orders" },
+                ] as const).map(opt => (
+                  <button key={opt.id} onClick={() => setLeaderboardSort(opt.id)}
+                    className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-all cursor-pointer ${leaderboardSort === opt.id ? "bg-yellow-500 text-black border-yellow-500" : "bg-white/5 text-white/50 border-white/15 hover:bg-white/10"}`}>
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-white/30 text-[11px] uppercase tracking-wider text-left">
+                    <th className="pb-2 pr-3">#</th>
+                    <th className="pb-2 pr-3">Affiliate</th>
+                    <th className="pb-2 pr-3 text-right">Clicks</th>
+                    <th className="pb-2 pr-3 text-right">Orders</th>
+                    <th className="pb-2 pr-3 text-right">Rate</th>
+                    <th className="pb-2 pr-3 text-right">Sales</th>
+                    <th className="pb-2 text-right">Commission</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {leaderboard.slice(0, 10).map((a, i) => {
+                    const rate = a.clicks > 0 ? (a.orders / a.clicks) * 100 : 0;
+                    return (
+                      <tr key={a.id} onClick={() => setSelected(a)}
+                        className="border-t border-white/5 hover:bg-white/[0.03] cursor-pointer transition-colors">
+                        <td className="py-2 pr-3 text-white/30">{i + 1}</td>
+                        <td className="py-2 pr-3">
+                          <span className="text-white font-medium">{a.first_name} {a.last_name || ""}</span>
+                          {a.status !== "active" && <span className="ml-2 text-[10px] text-red-400">revoked</span>}
+                        </td>
+                        <td className="py-2 pr-3 text-right text-white/70">{a.clicks}</td>
+                        <td className="py-2 pr-3 text-right text-white/70">{a.orders}</td>
+                        <td className="py-2 pr-3 text-right text-white/40">{rate.toFixed(1)}%</td>
+                        <td className="py-2 pr-3 text-right text-white/70">${a.totalSales.toFixed(2)}</td>
+                        <td className="py-2 text-right text-green-400 font-semibold">${a.totalCommission.toFixed(2)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Combined sales by city, across every affiliate */}
+          {Object.keys(combinedByCity).length > 0 && (
+            <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-5">
+              <h3 className="text-white font-bold text-sm mb-3">Affiliate-Driven Sales by City</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                {Object.entries(combinedByCity).sort((a, b) => b[1].commission - a[1].commission).map(([city, s]) => (
+                  <div key={city} className="bg-white/[0.02] border border-white/5 rounded-xl p-3">
+                    <p className="text-white font-semibold text-sm">{city}</p>
+                    <p className="text-white/40 text-xs mt-0.5">{s.orders} orders · {s.tickets} tickets</p>
+                    <p className="text-white/70 text-xs mt-1">${s.sales.toFixed(2)} sales</p>
+                    <p className="text-green-400 text-xs font-semibold">${s.commission.toFixed(2)} commission</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
         <div className="lg:col-span-2 space-y-2">
