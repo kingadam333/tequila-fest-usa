@@ -4,10 +4,13 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 
+const SITE_URL = "https://www.tequilafestusa.com";
+
 interface CityBreakdown { orders: number; tickets: number; sales: number; commission: number }
 interface MeData {
   affiliate: { first_name: string; last_name: string | null; email: string; referral_code: string; commission_rate: number };
   refLink: string | null;
+  destinationUrl: string | null;
   clicks: number;
   orders: number;
   tickets: number;
@@ -26,6 +29,42 @@ export default function AffiliateDashboardPage() {
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
 
+  const [cityOptions, setCityOptions] = useState<{ label: string; url: string }[]>([]);
+  const [destDraft, setDestDraft] = useState("");
+  const [destSaving, setDestSaving] = useState(false);
+  const [destStatus, setDestStatus] = useState("");
+
+  useEffect(() => {
+    fetch("/api/events").then(r => r.json()).then(d => {
+      setCityOptions((d.events || []).map((e: any) => ({ label: `Tequila Fest ${e.city}`, url: `${SITE_URL}/events/${e.slug}` })));
+    }).catch(() => {});
+  }, []);
+
+  const saveDestination = async () => {
+    const token = localStorage.getItem("affiliate_token");
+    if (!token || !destDraft) return;
+    setDestSaving(true);
+    setDestStatus("");
+    try {
+      const res = await fetch("/api/affiliate/link", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", "x-affiliate-token": token },
+        body: JSON.stringify({ destinationUrl: destDraft }),
+      });
+      if (res.ok) {
+        setDestStatus("Updated!");
+        load();
+        setTimeout(() => setDestStatus(""), 1500);
+      } else {
+        const d = await res.json();
+        setDestStatus(`Error: ${d.error || "failed"}`);
+      }
+    } catch {
+      setDestStatus("Network error");
+    }
+    setDestSaving(false);
+  };
+
   const load = useCallback(async () => {
     const token = localStorage.getItem("affiliate_token");
     if (!token) { router.push("/affiliate/login"); return; }
@@ -43,6 +82,10 @@ export default function AffiliateDashboardPage() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    if (data?.destinationUrl && !destDraft) setDestDraft(data.destinationUrl);
+  }, [data, destDraft]);
 
   const logout = () => {
     localStorage.removeItem("affiliate_token");
@@ -97,6 +140,23 @@ export default function AffiliateDashboardPage() {
               {copied ? "Copied!" : "Copy Link"}
             </button>
             <p className="text-white/25 text-xs mt-3">Share this link or your QR code anywhere — every ticket sale through it is tracked automatically, broken down by city below.</p>
+
+            <div className="mt-4 pt-4 border-t border-white/10">
+              <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Send People To</label>
+              <div className="flex items-center gap-2">
+                <select value={destDraft} onChange={e => setDestDraft(e.target.value)}
+                  className="flex-1 bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-3 py-2 text-white outline-none text-sm">
+                  <option value={SITE_URL}>Homepage</option>
+                  {cityOptions.map(c => <option key={c.url} value={c.url}>{c.label}</option>)}
+                </select>
+                <button onClick={saveDestination} disabled={destSaving}
+                  className="bg-yellow-500 hover:bg-yellow-400 disabled:opacity-40 text-black font-bold px-4 py-2 rounded-xl text-sm transition-all cursor-pointer">
+                  {destSaving ? "Saving…" : "Save"}
+                </button>
+              </div>
+              {destStatus && <p className={`text-xs mt-1.5 ${destStatus.startsWith("Error") ? "text-red-400" : "text-green-400"}`}>{destStatus}</p>}
+              <p className="text-white/25 text-xs mt-1.5">Your link/QR code stays the same — this only changes where it sends people.</p>
+            </div>
           </div>
         </div>
 

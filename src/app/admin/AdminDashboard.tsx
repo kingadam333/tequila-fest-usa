@@ -6387,6 +6387,8 @@ interface AffiliateRow {
   status: string;
   created_at: string;
   slug: string | null;
+  linkId: string | null;
+  destinationUrl: string | null;
   clicks: number;
   orders: number;
   tickets: number;
@@ -6404,9 +6406,46 @@ function AffiliatesSection({ adminToken }: { adminToken: string }) {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<AffiliateRow | null>(null);
   const [showAdd, setShowAdd] = useState(false);
-  const [form, setForm] = useState({ firstName: "", lastName: "", email: "", phone: "", commissionRate: "10" });
+  const [form, setForm] = useState({ firstName: "", lastName: "", email: "", phone: "", commissionRate: "10", destinationUrl: SITE_URL });
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState("");
+
+  // City destination options — homepage + every upcoming event's page, so
+  // an affiliate's link can be pushed straight to one city instead of
+  // always landing on the homepage.
+  const [cityOptions, setCityOptions] = useState<{ label: string; url: string }[]>([]);
+  useEffect(() => {
+    fetch("/api/events").then(r => r.json()).then(d => {
+      setCityOptions((d.events || []).map((e: any) => ({ label: `Tequila Fest ${e.city}`, url: `${SITE_URL}/events/${e.slug}` })));
+    }).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const [editingDestination, setEditingDestination] = useState(false);
+  const [destinationDraft, setDestinationDraft] = useState("");
+  const [destinationSaving, setDestinationSaving] = useState(false);
+
+  const saveDestination = async (a: AffiliateRow) => {
+    if (!a.linkId || !destinationDraft) return;
+    setDestinationSaving(true);
+    try {
+      const res = await fetch(`/api/admin/short-links/${a.linkId}`, {
+        method: "PATCH",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify({ destinationUrl: destinationDraft }),
+      });
+      if (res.ok) {
+        setEditingDestination(false);
+        fetchAffiliates();
+      } else {
+        const data = await res.json();
+        alert(`Error: ${data.error || "failed to update destination"}`);
+      }
+    } catch (e: any) {
+      alert(`Error: ${e?.message || "failed to update destination"}`);
+    }
+    setDestinationSaving(false);
+  };
 
   const [pickMode, setPickMode] = useState<"new" | "existing">("new");
   const [existingUsers, setExistingUsers] = useState<{ email: string; first_name: string; last_name: string; phone: string | null; name: string }[]>([]);
@@ -6485,7 +6524,7 @@ function AffiliatesSection({ adminToken }: { adminToken: string }) {
       const data = await res.json();
       if (res.ok) {
         setStatus("Affiliate created — login + QR code sent via email");
-        setForm({ firstName: "", lastName: "", email: "", phone: "", commissionRate: "10" });
+        setForm({ firstName: "", lastName: "", email: "", phone: "", commissionRate: "10", destinationUrl: SITE_URL });
         setPickMode("new");
         setSelectedUserEmail("");
         setShowAdd(false);
@@ -6765,6 +6804,34 @@ function AffiliatesSection({ adminToken }: { adminToken: string }) {
                 </div>
               )}
 
+              {selected.linkId && (
+                <div>
+                  <p className="text-white/30 text-xs uppercase tracking-wider mb-1.5">Their Link Sends People To</p>
+                  {!editingDestination ? (
+                    <div className="flex items-center justify-between gap-2 bg-white/[0.02] border border-white/10 rounded-xl px-4 py-2.5">
+                      <span className="text-white/70 text-sm truncate">
+                        {cityOptions.find(c => c.url === selected.destinationUrl)?.label || selected.destinationUrl || "Homepage"}
+                      </span>
+                      <button onClick={() => { setEditingDestination(true); setDestinationDraft(selected.destinationUrl || SITE_URL); }}
+                        className="text-yellow-400 hover:text-yellow-300 text-xs font-semibold cursor-pointer flex-shrink-0">Change</button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <select value={destinationDraft} onChange={e => setDestinationDraft(e.target.value)}
+                        className="flex-1 bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-3 py-2 text-white outline-none text-sm">
+                        <option value={SITE_URL}>Homepage</option>
+                        {cityOptions.map(c => <option key={c.url} value={c.url}>{c.label}</option>)}
+                      </select>
+                      <button onClick={() => saveDestination(selected)} disabled={destinationSaving}
+                        className="px-3 py-2 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-40 text-black text-xs font-semibold rounded-lg cursor-pointer">
+                        {destinationSaving ? "Saving…" : "Save"}
+                      </button>
+                      <button onClick={() => setEditingDestination(false)} className="text-white/40 hover:text-white text-xs cursor-pointer">Cancel</button>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {[
                   { label: "Clicks", value: selected.clicks },
@@ -6907,6 +6974,15 @@ function AffiliatesSection({ adminToken }: { adminToken: string }) {
                     <input type="number" step="0.5" min="0" value={form.commissionRate} onChange={e => setForm(f => ({ ...f, commissionRate: e.target.value }))}
                       className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-2.5 text-white outline-none text-sm" />
                   </div>
+                </div>
+                <div>
+                  <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Their Link Sends People To</label>
+                  <select value={form.destinationUrl} onChange={e => setForm(f => ({ ...f, destinationUrl: e.target.value }))}
+                    className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-2.5 text-white outline-none text-sm">
+                    <option value={SITE_URL}>Homepage</option>
+                    {cityOptions.map(c => <option key={c.url} value={c.url}>{c.label}</option>)}
+                  </select>
+                  <p className="text-white/25 text-xs mt-1">They can change this themselves later from their own dashboard.</p>
                 </div>
                 <p className="text-white/25 text-xs">A login + QR code/link will be emailed automatically.</p>
                 <button type="submit" disabled={saving}

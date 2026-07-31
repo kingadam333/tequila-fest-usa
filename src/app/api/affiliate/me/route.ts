@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
   // Stored as a fraction (numeric(4,3)) — see the note in /api/admin/affiliates.
   affiliate.commission_rate = Number(affiliate.commission_rate) * 100;
 
-  const { data: link } = await db.from("short_links").select("slug, clicks").eq("affiliate_id", affiliateId).maybeSingle();
+  const { data: link } = await db.from("short_links").select("slug, clicks, destination_url").eq("affiliate_id", affiliateId).maybeSingle();
 
   const { data: conversions } = await db
     .from("affiliate_conversions")
@@ -48,6 +48,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     affiliate,
     refLink,
+    destinationUrl: link?.destination_url || null,
     clicks: link?.clicks || 0,
     orders: (conversions || []).length,
     tickets: totalTickets,

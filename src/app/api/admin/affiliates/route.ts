@@ -22,8 +22,8 @@ export async function GET(req: NextRequest) {
 
   const ids = affiliates.map((a: any) => a.id);
 
-  const { data: links } = await db.from("short_links").select("id, slug, affiliate_id, clicks").in("affiliate_id", ids);
-  const linkByAffiliate = new Map<string, { id: string; slug: string; affiliate_id: string; clicks: number }>(
+  const { data: links } = await db.from("short_links").select("id, slug, destination_url, affiliate_id, clicks").in("affiliate_id", ids);
+  const linkByAffiliate = new Map<string, { id: string; slug: string; destination_url: string; affiliate_id: string; clicks: number }>(
     (links || []).map((l: any) => [l.affiliate_id, l])
   );
 
@@ -58,6 +58,8 @@ export async function GET(req: NextRequest) {
       // but the API's public contract is a whole percent, matching the UI.
       commission_rate: Number(a.commission_rate) * 100,
       slug: link?.slug || null,
+      linkId: link?.id || null,
+      destinationUrl: link?.destination_url || null,
       clicks: link?.clicks || 0,
       orders: convs.length,
       tickets: totalTickets,
@@ -74,7 +76,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   if (!verifyAdminToken(req)) return unauthorizedResponse();
-  const { firstName, lastName, email, phone, commissionRate } = await req.json();
+  const { firstName, lastName, email, phone, commissionRate, destinationUrl } = await req.json();
 
   if (!firstName?.trim() || !email?.trim()) {
     return NextResponse.json({ error: "firstName and email are required" }, { status: 400 });
@@ -128,7 +130,7 @@ export async function POST(req: NextRequest) {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.tequilafestusa.com";
   const { error: linkError } = await db.from("short_links").insert({
     slug,
-    destination_url: siteUrl,
+    destination_url: destinationUrl?.trim() || siteUrl,
     label: `${firstName.trim()}${lastName ? ` ${lastName.trim()}` : ""} — Affiliate`,
     affiliate_id: affiliate.id,
   });
