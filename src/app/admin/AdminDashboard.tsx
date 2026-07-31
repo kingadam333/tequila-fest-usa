@@ -2295,6 +2295,34 @@ function ContactSection({ adminToken }: { adminToken: string }) {
   const [sent, setSent] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [saveVendorOpen, setSaveVendorOpen] = useState(false);
+  const [saveVendorCity, setSaveVendorCity] = useState("");
+  const [saveVendorSaving, setSaveVendorSaving] = useState(false);
+  const [saveVendorStatus, setSaveVendorStatus] = useState("");
+
+  const handleSaveVendorContact = async () => {
+    if (!selected || !saveVendorCity) return;
+    setSaveVendorSaving(true);
+    setSaveVendorStatus("");
+    try {
+      const res = await fetch("/api/admin/vendors/contacts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-token": adminToken },
+        body: JSON.stringify({ email: selected.email, name: selected.name, city: saveVendorCity }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setSaveVendorStatus(`Saved as a ${saveVendorCity} vendor contact`);
+        setTimeout(() => { setSaveVendorOpen(false); setSaveVendorStatus(""); setSaveVendorCity(""); }, 1200);
+      } else {
+        setSaveVendorStatus(`Error: ${data.error || "failed"}`);
+      }
+    } catch (e: any) {
+      setSaveVendorStatus(`Error: ${e?.message || "failed"}`);
+    }
+    setSaveVendorSaving(false);
+  };
+
   const [forwardOpen, setForwardOpen] = useState(false);
   const [forwardTo, setForwardTo] = useState("");
   const [forwardCc, setForwardCc] = useState("");
@@ -2307,6 +2335,67 @@ function ContactSection({ adminToken }: { adminToken: string }) {
   const [backfillBody, setBackfillBody] = useState("");
   const [backfillSaving, setBackfillSaving] = useState(false);
   const [backfillStatus, setBackfillStatus] = useState("");
+
+  const [campaignOpen, setCampaignOpen] = useState(false);
+  const [campaignAudience, setCampaignAudience] = useState<"vendors" | "tickets">("vendors");
+  const [campaignCities, setCampaignCities] = useState<string[]>([]);
+  const [campaignSubject, setCampaignSubject] = useState("");
+  const [campaignBody, setCampaignBody] = useState("");
+  const [campaignCount, setCampaignCount] = useState<number | null>(null);
+  const [campaignCounting, setCampaignCounting] = useState(false);
+  const [campaignSending, setCampaignSending] = useState(false);
+  const [campaignResult, setCampaignResult] = useState("");
+
+  const toggleCampaignCity = (city: string) => {
+    setCampaignCount(null);
+    setCampaignCities(prev => prev.includes(city) ? prev.filter(c => c !== city) : [...prev, city]);
+  };
+
+  const previewCampaignAudience = async () => {
+    if (!campaignCities.length) return;
+    setCampaignCounting(true);
+    setCampaignResult("");
+    try {
+      const res = await fetch("/api/admin/campaigns/recipients", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-token": adminToken },
+        body: JSON.stringify({ audience: campaignAudience, cities: campaignCities }),
+      });
+      const data = await res.json();
+      if (res.ok) setCampaignCount(data.count);
+      else setCampaignResult(`Error: ${data.error || "failed"}`);
+    } catch (e: any) {
+      setCampaignResult(`Error: ${e?.message || "failed"}`);
+    }
+    setCampaignCounting(false);
+  };
+
+  const sendCampaign = async () => {
+    if (!campaignCities.length || !campaignSubject.trim() || !campaignBody.trim()) return;
+    const audienceLabel = campaignAudience === "vendors" ? "vendors" : "ticket holders";
+    if (!confirm(`Send this email to all ${audienceLabel} for ${campaignCities.join(", ")}${campaignCount != null ? ` (${campaignCount} people)` : ""}?`)) return;
+    setCampaignSending(true);
+    setCampaignResult("");
+    try {
+      const res = await fetch("/api/admin/campaigns/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-token": adminToken },
+        body: JSON.stringify({ audience: campaignAudience, cities: campaignCities, subject: campaignSubject, body: campaignBody }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setCampaignResult(`Sent ${data.sent} of ${data.total} email${data.total === 1 ? "" : "s"}${data.failed?.length ? ` — ${data.failed.length} failed` : ""}.`);
+        setCampaignSubject("");
+        setCampaignBody("");
+        setCampaignCount(null);
+      } else {
+        setCampaignResult(`Error: ${data.error || "failed"}`);
+      }
+    } catch (e: any) {
+      setCampaignResult(`Error: ${e?.message || "failed"}`);
+    }
+    setCampaignSending(false);
+  };
 
   const [abandonedOpen, setAbandonedOpen] = useState(false);
   const [abandonedGroups, setAbandonedGroups] = useState<{ eventSlug: string; city: string; count: number }[]>([]);
@@ -2603,6 +2692,71 @@ function ContactSection({ adminToken }: { adminToken: string }) {
         )}
       </div>
 
+      {/* Compose Campaign — email vendors or ticket holders by city */}
+      <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-5 mb-6">
+        <button onClick={() => setCampaignOpen(o => !o)} className="w-full flex items-center justify-between cursor-pointer">
+          <div className="text-left">
+            <h3 className="text-white font-bold text-sm flex items-center gap-2">✉️ New Email — Vendors / Ticket Holders by City</h3>
+            <p className="text-white/40 text-xs mt-0.5">e.g. tell past vendors applications are open for next year&apos;s event.</p>
+          </div>
+          <span className="text-white/40 text-lg flex-shrink-0">{campaignOpen ? "−" : "+"}</span>
+        </button>
+        {campaignOpen && (
+          <div className="mt-4 pt-4 border-t border-white/5 space-y-4">
+            <div className="flex gap-2">
+              {(["vendors", "tickets"] as const).map(a => (
+                <button key={a} onClick={() => { setCampaignAudience(a); setCampaignCount(null); }}
+                  className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-all cursor-pointer ${campaignAudience === a ? "bg-yellow-500 text-black border-yellow-500" : "bg-white/5 text-white/60 border-white/15 hover:bg-white/10"}`}>
+                  {a === "vendors" ? "Vendors" : "Ticket Holders"}
+                </button>
+              ))}
+            </div>
+
+            <div>
+              <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Cities</label>
+              <div className="flex flex-wrap gap-2">
+                {KNOWN_VENDOR_CITIES.map(city => (
+                  <button key={city} onClick={() => toggleCampaignCity(city)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all cursor-pointer ${campaignCities.includes(city) ? "bg-yellow-500/15 text-yellow-400 border-yellow-500/40" : "bg-white/5 text-white/50 border-white/15 hover:bg-white/10"}`}>
+                    {city}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Subject</label>
+              <input value={campaignSubject} onChange={e => setCampaignSubject(e.target.value)}
+                placeholder={campaignAudience === "vendors" ? "Vendor applications are open!" : "Tickets are on sale!"}
+                className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-2.5 text-white placeholder-white/25 outline-none text-sm" />
+            </div>
+            <div>
+              <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Message</label>
+              <textarea value={campaignBody} onChange={e => setCampaignBody(e.target.value)} rows={6}
+                placeholder="Write your message…"
+                className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-2.5 text-white placeholder-white/25 outline-none text-sm resize-none" />
+            </div>
+
+            <div className="flex items-center gap-3 flex-wrap">
+              <button onClick={previewCampaignAudience} disabled={!campaignCities.length || campaignCounting}
+                className="bg-white/5 hover:bg-white/10 border border-white/15 disabled:opacity-50 text-white/70 font-semibold px-4 py-2 rounded-xl text-sm transition-all cursor-pointer">
+                {campaignCounting ? "Counting…" : "Preview Recipient Count"}
+              </button>
+              {campaignCount !== null && (
+                <span className="text-white text-sm">{campaignCount} recipient{campaignCount !== 1 ? "s" : ""}</span>
+              )}
+              <button onClick={sendCampaign} disabled={!campaignCities.length || !campaignSubject.trim() || !campaignBody.trim() || campaignSending}
+                className="ml-auto bg-yellow-500 hover:bg-yellow-400 disabled:opacity-50 text-black font-bold px-5 py-2.5 rounded-xl text-sm transition-all cursor-pointer">
+                {campaignSending ? "Sending…" : "Send Email"}
+              </button>
+            </div>
+            {campaignResult && (
+              <p className={`text-xs ${campaignResult.startsWith("Error") ? "text-red-400" : "text-green-400"}`}>{campaignResult}</p>
+            )}
+          </div>
+        )}
+      </div>
+
       {/* Inbox tabs */}
       <div className="grid grid-cols-4 gap-2 mb-6">
         {INBOXES.map(ib => {
@@ -2675,6 +2829,12 @@ function ContactSection({ adminToken }: { adminToken: string }) {
                 <div className="flex items-start justify-between">
                   <p className="text-white font-bold">{selected.name}</p>
                   <div className="flex items-center gap-3">
+                    {activeInbox === "Vendors" && (
+                      <button onClick={() => { setSaveVendorOpen(o => !o); setSaveVendorStatus(""); }}
+                        className="flex items-center gap-1 text-xs text-white/50 hover:text-yellow-400 transition-all cursor-pointer">
+                        <Star size={12} /> Save as Vendor
+                      </button>
+                    )}
                     <button onClick={() => { setForwardOpen(o => !o); setForwardStatus(""); }}
                       className="flex items-center gap-1 text-xs text-white/50 hover:text-yellow-400 transition-all cursor-pointer">
                       <Send size={12} /> Forward
@@ -2689,6 +2849,28 @@ function ContactSection({ adminToken }: { adminToken: string }) {
                     </button>
                   </div>
                 </div>
+                {saveVendorOpen && (
+                  <div className="mt-3 p-3 bg-white/[0.03] border border-white/10 rounded-xl space-y-2">
+                    <p className="text-white/40 text-xs">Which city was this about? Adds {selected.email} to that city&apos;s vendor list for future campaigns.</p>
+                    <div className="flex flex-wrap gap-2">
+                      {KNOWN_VENDOR_CITIES.map(city => (
+                        <button key={city} onClick={() => setSaveVendorCity(city)}
+                          className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all cursor-pointer ${saveVendorCity === city ? "bg-yellow-500/15 text-yellow-400 border-yellow-500/40" : "bg-white/5 text-white/50 border-white/15 hover:bg-white/10"}`}>
+                          {city}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button onClick={handleSaveVendorContact} disabled={saveVendorSaving || !saveVendorCity}
+                        className="px-3 py-1.5 bg-yellow-500 hover:bg-yellow-400 text-black text-xs font-semibold rounded-lg cursor-pointer disabled:opacity-40">
+                        {saveVendorSaving ? "Saving…" : "Save"}
+                      </button>
+                      <button onClick={() => { setSaveVendorOpen(false); setSaveVendorCity(""); }}
+                        className="text-xs text-white/40 hover:text-white cursor-pointer">Cancel</button>
+                      {saveVendorStatus && <span className={`text-xs ml-auto ${saveVendorStatus.startsWith("Error") ? "text-red-400" : "text-green-400"}`}>{saveVendorStatus}</span>}
+                    </div>
+                  </div>
+                )}
                 {forwardOpen && (
                   <div className="mt-3 p-3 bg-white/[0.03] border border-white/10 rounded-xl space-y-2">
                     <input value={forwardTo} onChange={e => setForwardTo(e.target.value)} placeholder="forward to (email, comma-separated)"
