@@ -6440,6 +6440,24 @@ function AffiliatesSection({ adminToken }: { adminToken: string }) {
   const [payoutNote, setPayoutNote] = useState("");
   const [payoutSaving, setPayoutSaving] = useState(false);
 
+  const [regenerating, setRegenerating] = useState(false);
+  const regenerateCode = async (a: AffiliateRow) => {
+    if (!confirm(`Generate a new link/QR code for ${a.first_name}? Their current link (${SITE_URL.replace(/^https?:\/\//, "")}/go/${a.slug}) will stop working immediately.`)) return;
+    setRegenerating(true);
+    try {
+      const res = await fetch(`/api/admin/affiliates/${a.id}/regenerate-code`, { method: "POST", headers });
+      if (res.ok) {
+        fetchAffiliates();
+      } else {
+        const data = await res.json();
+        alert(`Error: ${data.error || "failed to regenerate"}`);
+      }
+    } catch (e: any) {
+      alert(`Error: ${e?.message || "failed to regenerate"}`);
+    }
+    setRegenerating(false);
+  };
+
   const fetchAffiliates = useCallback(async () => {
     setLoading(true);
     const res = await fetch("/api/admin/affiliates", { headers });
@@ -6735,8 +6753,14 @@ function AffiliatesSection({ adminToken }: { adminToken: string }) {
                     alt="QR code" width={72} height={72} className="rounded-lg border-2 border-white flex-shrink-0" />
                   <div className="min-w-0">
                     <p className="text-yellow-400 text-sm font-mono truncate">{SITE_URL.replace(/^https?:\/\//, "")}/go/{selected.slug}</p>
-                    <button onClick={() => navigator.clipboard.writeText(`${SITE_URL}/go/${selected.slug}`)}
-                      className="text-white/40 hover:text-white text-xs mt-1 cursor-pointer">Copy Link</button>
+                    <div className="flex items-center gap-3 mt-1">
+                      <button onClick={() => navigator.clipboard.writeText(`${SITE_URL}/go/${selected.slug}`)}
+                        className="text-white/40 hover:text-white text-xs cursor-pointer">Copy Link</button>
+                      <button onClick={() => regenerateCode(selected)} disabled={regenerating}
+                        className="text-white/40 hover:text-yellow-400 text-xs cursor-pointer disabled:opacity-40">
+                        {regenerating ? "Generating…" : "Regenerate Link"}
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}

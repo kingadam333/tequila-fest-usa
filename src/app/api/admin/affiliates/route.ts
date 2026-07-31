@@ -2,17 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyAdminToken, unauthorizedResponse } from "@/lib/adminAuth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { resend, FROM_EMAIL, generatePassword } from "@/lib/resend";
+import { generateShortCode } from "@/lib/shortCode";
 import bcrypt from "bcryptjs";
-import crypto from "crypto";
-
-function slugify(input: string) {
-  return input
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 40);
-}
 
 // Every affiliate + their live-computed performance, never trusting the
 // affiliates.total_clicks/total_referrals/total_earnings columns (same
@@ -98,10 +89,18 @@ export async function POST(req: NextRequest) {
   const password = generatePassword();
   const password_hash = await bcrypt.hash(password, 10);
 
-  const baseSlug = slugify(`${firstName}-${lastName || ""}`) || "affiliate";
-  let referralCode = baseSlug;
-  const { data: codeTaken } = await db.from("affiliates").select("id").eq("referral_code", referralCode).maybeSingle();
-  if (codeTaken) referralCode = `${baseSlug}-${crypto.randomBytes(2).toString("hex")}`;
+  // Random, not name-derived — the code ends up in a public URL/QR code, so
+  // it can't reveal who the affiliate is. Checked against both affiliates
+  // (the code itself) and short_links (the /go/<slug> it doubles as).
+  let referralCode = generateShortCode();
+  for (let i = 0; i < 5; i++) {
+    const [{ data: codeTaken }, { data: slugTaken }] = await Promise.all([
+      db.from("affiliates").select("id").eq("referral_code", referralCode).maybeSingle(),
+      db.from("short_links").select("id").eq("slug", referralCode).maybeSingle(),
+    ]);
+    if (!codeTaken && !slugTaken) break;
+    referralCode = generateShortCode();
+  }
 
   const { data: affiliate, error } = await db
     .from("affiliates")
@@ -124,9 +123,7 @@ export async function POST(req: NextRequest) {
   // infrastructure (click logging, QR image) rather than building a second
   // system. /go/[slug] recognizes affiliate_id and sets the attribution
   // cookie before redirecting.
-  let slug = referralCode;
-  const { data: slugTaken } = await db.from("short_links").select("id").eq("slug", slug).maybeSingle();
-  if (slugTaken) slug = `${referralCode}-${crypto.randomBytes(2).toString("hex")}`;
+  const slug = referralCode;
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.tequilafestusa.com";
   const { error: linkError } = await db.from("short_links").insert({
