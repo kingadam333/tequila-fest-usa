@@ -12,6 +12,7 @@ interface MeData {
   refLink: string | null;
   destinationUrl: string | null;
   clicks: number;
+  uniqueClicks: number;
   orders: number;
   tickets: number;
   totalSales: number;
@@ -161,9 +162,10 @@ export default function AffiliateDashboardPage() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
           {[
             { label: "Clicks", value: data.clicks },
+            { label: "Unique Clicks", value: data.uniqueClicks },
             { label: "Orders", value: data.orders },
             { label: "Tickets Sold", value: data.tickets },
             { label: "Total Sales", value: `$${data.totalSales.toFixed(2)}` },

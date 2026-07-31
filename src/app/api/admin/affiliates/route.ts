@@ -3,6 +3,7 @@ import { verifyAdminToken, unauthorizedResponse } from "@/lib/adminAuth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { resend, FROM_EMAIL, generatePassword } from "@/lib/resend";
 import { generateShortCode } from "@/lib/shortCode";
+import { getUniqueClickCounts } from "@/lib/uniqueClicks";
 import bcrypt from "bcryptjs";
 
 // Every affiliate + their live-computed performance, never trusting the
@@ -34,6 +35,9 @@ export async function GET(req: NextRequest) {
 
   const { data: payouts } = await db.from("affiliate_payouts").select("affiliate_id, amount").in("affiliate_id", ids);
 
+  const linkIds = (links || []).map((l: any) => l.id);
+  const uniqueByLink = await getUniqueClickCounts(linkIds);
+
   const result = affiliates.map((a: any) => {
     const link = linkByAffiliate.get(a.id) || null;
     const convs = (conversions || []).filter((c: any) => c.affiliate_id === a.id);
@@ -61,6 +65,7 @@ export async function GET(req: NextRequest) {
       linkId: link?.id || null,
       destinationUrl: link?.destination_url || null,
       clicks: link?.clicks || 0,
+      uniqueClicks: link ? (uniqueByLink.get(link.id) || 0) : 0,
       orders: convs.length,
       tickets: totalTickets,
       totalSales,

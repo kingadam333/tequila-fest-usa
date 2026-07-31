@@ -12,21 +12,25 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const { data, error } = await db
     .from("short_link_clicks")
-    .select("clicked_at")
+    .select("clicked_at, visitor_id")
     .eq("short_link_id", id)
     .order("clicked_at", { ascending: false });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  const byDay = new Map<string, number>();
+  const byDay = new Map<string, { count: number; visitors: Set<string> }>();
+  const allVisitors = new Set<string>();
   for (const row of data || []) {
     const day = new Date(row.clicked_at).toISOString().slice(0, 10);
-    byDay.set(day, (byDay.get(day) || 0) + 1);
+    const bucket = byDay.get(day) || { count: 0, visitors: new Set<string>() };
+    bucket.count += 1;
+    if (row.visitor_id) { bucket.visitors.add(row.visitor_id); allVisitors.add(row.visitor_id); }
+    byDay.set(day, bucket);
   }
 
   const days = Array.from(byDay.entries())
-    .map(([date, count]) => ({ date, count }))
+    .map(([date, b]) => ({ date, count: b.count, uniqueCount: b.visitors.size }))
     .sort((a, b) => (a.date < b.date ? 1 : -1));
 
-  return NextResponse.json({ days, loggedTotal: data?.length || 0 });
+  return NextResponse.json({ days, loggedTotal: data?.length || 0, uniqueTotal: allVisitors.size });
 }

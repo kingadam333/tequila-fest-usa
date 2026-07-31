@@ -5907,7 +5907,7 @@ function SocialClaimsSection({ adminToken }: { adminToken: string }) {
   );
 }
 
-interface ShortLink { id: string; slug: string; destination_url: string; label: string | null; clicks: number; created_at: string; }
+interface ShortLink { id: string; slug: string; destination_url: string; label: string | null; clicks: number; uniqueClicks: number; created_at: string; }
 
 function ToolsSection({ adminToken }: { adminToken: string }) {
   const [syncLog, setSyncLog] = useState<string[]>([]);
@@ -5973,15 +5973,17 @@ function ToolsSection({ adminToken }: { adminToken: string }) {
     `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&margin=10&data=${encodeURIComponent(`${SITE_URL}/go/${slug}`)}`;
 
   const [statsLink, setStatsLink] = useState<ShortLink | null>(null);
-  const [statsDays, setStatsDays] = useState<{ date: string; count: number }[] | null>(null);
+  const [statsDays, setStatsDays] = useState<{ date: string; count: number; uniqueCount: number }[] | null>(null);
+  const [statsUniqueTotal, setStatsUniqueTotal] = useState(0);
   const [statsLoading, setStatsLoading] = useState(false);
 
   const openLinkStats = async (link: ShortLink) => {
     setStatsLink(link);
     setStatsDays(null);
+    setStatsUniqueTotal(0);
     setStatsLoading(true);
     const res = await fetch(`/api/admin/short-links/${link.id}/clicks`, { headers: { "x-admin-token": adminToken } });
-    if (res.ok) { const data = await res.json(); setStatsDays(data.days || []); }
+    if (res.ok) { const data = await res.json(); setStatsDays(data.days || []); setStatsUniqueTotal(data.uniqueTotal || 0); }
     setStatsLoading(false);
   };
 
@@ -6175,7 +6177,7 @@ function ToolsSection({ adminToken }: { adminToken: string }) {
                   <p className="text-white/30 text-xs mt-0.5 truncate">→ {link.destination_url}</p>
                   <button onClick={() => openLinkStats(link)}
                     className="text-white text-[11px] mt-1 underline decoration-white/30 hover:decoration-white underline-offset-2 cursor-pointer">
-                    {link.clicks} click{link.clicks !== 1 ? "s" : ""} · {new Date(link.created_at).toLocaleDateString()}
+                    {link.clicks} click{link.clicks !== 1 ? "s" : ""} ({link.uniqueClicks} unique) · {new Date(link.created_at).toLocaleDateString()}
                   </button>
                 </div>
                 <div className="flex flex-col gap-1.5 flex-shrink-0">
@@ -6347,7 +6349,7 @@ function ToolsSection({ adminToken }: { adminToken: string }) {
                 </h3>
                 <button onClick={() => setStatsLink(null)} className="text-white/40 hover:text-white cursor-pointer flex-shrink-0"><X size={18} /></button>
               </div>
-              <p className="text-white/40 text-xs mb-5">/go/{statsLink.slug} · {statsLink.clicks} total click{statsLink.clicks !== 1 ? "s" : ""}</p>
+              <p className="text-white/40 text-xs mb-5">/go/{statsLink.slug} · {statsLink.clicks} total click{statsLink.clicks !== 1 ? "s" : ""} · {statsUniqueTotal} unique</p>
 
               {statsLoading ? (
                 <p className="text-white/30 text-sm py-6 text-center">Loading…</p>
@@ -6362,7 +6364,7 @@ function ToolsSection({ adminToken }: { adminToken: string }) {
                       <span className="text-white/70 text-sm">
                         {new Date(d.date + "T00:00:00").toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
                       </span>
-                      <span className="text-yellow-400 font-bold text-sm">{d.count} click{d.count !== 1 ? "s" : ""}</span>
+                      <span className="text-yellow-400 font-bold text-sm">{d.count} click{d.count !== 1 ? "s" : ""} <span className="text-white/30 font-normal">({d.uniqueCount} unique)</span></span>
                     </div>
                   ))}
                 </div>
@@ -6390,6 +6392,7 @@ interface AffiliateRow {
   linkId: string | null;
   destinationUrl: string | null;
   clicks: number;
+  uniqueClicks: number;
   orders: number;
   tickets: number;
   totalSales: number;
@@ -6600,15 +6603,18 @@ function AffiliatesSection({ adminToken }: { adminToken: string }) {
   // payload the list already has — no extra endpoint needed.
   const totals = affiliates.reduce((acc, a) => {
     acc.clicks += a.clicks;
+    acc.uniqueClicks += a.uniqueClicks;
     acc.orders += a.orders;
     acc.tickets += a.tickets;
     acc.sales += a.totalSales;
     acc.commission += a.totalCommission;
     acc.paid += a.totalPaid;
     return acc;
-  }, { clicks: 0, orders: 0, tickets: 0, sales: 0, commission: 0, paid: 0 });
+  }, { clicks: 0, uniqueClicks: 0, orders: 0, tickets: 0, sales: 0, commission: 0, paid: 0 });
   const activeCount = affiliates.filter(a => a.status === "active").length;
-  const conversionRate = totals.clicks > 0 ? (totals.orders / totals.clicks) * 100 : 0;
+  // Rate is against unique clicks, not raw clicks — one visitor clicking 5
+  // times and buying once is a 100% conversion rate, not 20%.
+  const conversionRate = totals.uniqueClicks > 0 ? (totals.orders / totals.uniqueClicks) * 100 : 0;
 
   const leaderboard = [...affiliates].sort((a, b) => {
     if (leaderboardSort === "commission") return b.totalCommission - a.totalCommission;
@@ -6645,10 +6651,11 @@ function AffiliatesSection({ adminToken }: { adminToken: string }) {
       {!loading && affiliates.length > 0 && (
         <>
           {/* Program-wide totals */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
             {[
               { label: "Affiliates", value: `${activeCount}/${affiliates.length}` },
               { label: "Clicks", value: totals.clicks },
+              { label: "Unique Clicks", value: totals.uniqueClicks },
               { label: "Orders", value: totals.orders },
               { label: "Tickets", value: totals.tickets },
               { label: "Sales", value: `$${totals.sales.toFixed(2)}` },
@@ -6687,7 +6694,7 @@ function AffiliatesSection({ adminToken }: { adminToken: string }) {
                   <tr className="text-white/30 text-[11px] uppercase tracking-wider text-left">
                     <th className="pb-2 pr-3">#</th>
                     <th className="pb-2 pr-3">Affiliate</th>
-                    <th className="pb-2 pr-3 text-right">Clicks</th>
+                    <th className="pb-2 pr-3 text-right">Clicks (Unique)</th>
                     <th className="pb-2 pr-3 text-right">Orders</th>
                     <th className="pb-2 pr-3 text-right">Rate</th>
                     <th className="pb-2 pr-3 text-right">Sales</th>
@@ -6696,7 +6703,7 @@ function AffiliatesSection({ adminToken }: { adminToken: string }) {
                 </thead>
                 <tbody>
                   {leaderboard.slice(0, 10).map((a, i) => {
-                    const rate = a.clicks > 0 ? (a.orders / a.clicks) * 100 : 0;
+                    const rate = a.uniqueClicks > 0 ? (a.orders / a.uniqueClicks) * 100 : 0;
                     return (
                       <tr key={a.id} onClick={() => setSelected(a)}
                         className="border-t border-white/5 hover:bg-white/[0.03] cursor-pointer transition-colors">
@@ -6705,7 +6712,7 @@ function AffiliatesSection({ adminToken }: { adminToken: string }) {
                           <span className="text-white font-medium">{a.first_name} {a.last_name || ""}</span>
                           {a.status !== "active" && <span className="ml-2 text-[10px] text-red-400">revoked</span>}
                         </td>
-                        <td className="py-2 pr-3 text-right text-white/70">{a.clicks}</td>
+                        <td className="py-2 pr-3 text-right text-white/70">{a.clicks} <span className="text-white/30">({a.uniqueClicks})</span></td>
                         <td className="py-2 pr-3 text-right text-white/70">{a.orders}</td>
                         <td className="py-2 pr-3 text-right text-white/40">{rate.toFixed(1)}%</td>
                         <td className="py-2 pr-3 text-right text-white/70">${a.totalSales.toFixed(2)}</td>
@@ -6755,7 +6762,7 @@ function AffiliatesSection({ adminToken }: { adminToken: string }) {
                 </div>
                 <p className="text-white/30 text-xs truncate">{a.email}</p>
                 <div className="flex items-center gap-3 mt-1.5 text-[11px] text-white/40">
-                  <span>{a.clicks} clicks</span>
+                  <span>{a.clicks} clicks ({a.uniqueClicks} unique)</span>
                   <span>{a.orders} sales</span>
                   <span className="text-green-400 font-semibold">${a.totalCommission.toFixed(2)}</span>
                 </div>
@@ -6832,9 +6839,10 @@ function AffiliatesSection({ adminToken }: { adminToken: string }) {
                 </div>
               )}
 
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                 {[
                   { label: "Clicks", value: selected.clicks },
+                  { label: "Unique", value: selected.uniqueClicks },
                   { label: "Orders", value: selected.orders },
                   { label: "Tickets", value: selected.tickets },
                   { label: "Sales", value: `$${selected.totalSales.toFixed(2)}` },

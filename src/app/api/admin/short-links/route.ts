@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAdminToken, unauthorizedResponse } from "@/lib/adminAuth";
 import { supabaseAdmin } from "@/lib/supabase";
+import { getUniqueClickCounts } from "@/lib/uniqueClicks";
 import crypto from "crypto";
 
 export async function GET(req: NextRequest) {
@@ -11,7 +12,11 @@ export async function GET(req: NextRequest) {
     .select("id, slug, destination_url, label, clicks, created_at")
     .order("created_at", { ascending: false });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ links: data || [] });
+
+  const uniqueCounts = await getUniqueClickCounts((data || []).map((l: any) => l.id));
+  const links = (data || []).map((l: any) => ({ ...l, uniqueClicks: uniqueCounts.get(l.id) || 0 }));
+
+  return NextResponse.json({ links });
 }
 
 function slugify(input: string) {
