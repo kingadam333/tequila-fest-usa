@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Plus, Minus, User, Mail, Phone, ArrowRight, Loader2, ShoppingCart } from "lucide-react";
 import type { TicketType } from "@/lib/ticket-config";
@@ -46,6 +46,24 @@ export default function TicketCartModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [captchaToken, setCaptchaToken] = useState("");
+
+  // Prefill from an existing logged-in session so a returning customer
+  // isn't asked to re-enter info they already have on file — previously
+  // this form ignored login state entirely and always started blank.
+  useEffect(() => {
+    fetch("/api/auth/session")
+      .then(r => r.json())
+      .then(({ user }) => {
+        if (!user) return;
+        setForm(f => ({
+          firstName: f.firstName || user.firstName || "",
+          lastName: f.lastName || user.lastName || "",
+          email: f.email || user.email || "",
+          phone: f.phone || user.phone || "",
+        }));
+      })
+      .catch(() => {});
+  }, []);
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm(f => ({ ...f, [k]: e.target.value }));
