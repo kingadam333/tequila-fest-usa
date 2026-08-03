@@ -4112,17 +4112,24 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
                   </div>
                   <div className="space-y-2">
                     {invoiceForm.line_items.map((item, i) => (
-                      <div key={i} className="grid grid-cols-[1fr,80px,100px,80px,auto] gap-2 items-center">
+                      <div key={i} className="grid grid-cols-[1fr,80px,100px,80px,auto,auto] gap-2 items-center">
                         <input value={item.description} onChange={e => updateLineItem(i, "description", e.target.value)} className={inputCls} placeholder="Description" />
                         <input type="number" min={1} value={item.quantity} onChange={e => updateLineItem(i, "quantity", Number(e.target.value))} className={inputCls} placeholder="Qty" />
-                        <input type="number" min={0} value={item.unit_price || ""} onChange={e => updateLineItem(i, "unit_price", Number(e.target.value))} className={inputCls} placeholder="Unit $" />
-                        <div className="text-right text-yellow-400 text-sm font-semibold">${item.total.toFixed(2)}</div>
+                        <input type="number" value={item.unit_price || ""} onChange={e => updateLineItem(i, "unit_price", Number(e.target.value))} className={inputCls} placeholder="Unit $ (– for discount)" />
+                        <div className={`text-right text-sm font-semibold ${item.total < 0 ? "text-green-400" : "text-yellow-400"}`}>
+                          {item.total < 0 ? `−$${Math.abs(item.total).toFixed(2)}` : `$${item.total.toFixed(2)}`}
+                        </div>
+                        <button type="button" onClick={() => updateLineItem(i, "unit_price", 0)}
+                          className="text-[11px] text-white/40 hover:text-green-400 border border-white/10 hover:border-green-500/30 rounded-lg px-2 py-1.5 cursor-pointer whitespace-nowrap">
+                          Comp
+                        </button>
                         {invoiceForm.line_items.length > 1 && (
                           <button onClick={() => removeLineItem(i)} className="text-white/30 hover:text-red-400 cursor-pointer"><Trash2 size={14} /></button>
                         )}
                       </div>
                     ))}
                   </div>
+                  <p className="text-white/25 text-xs mt-2">Enter a negative unit price for a partial discount line, or click <strong>Comp</strong> to zero out a line while still listing it on the invoice.</p>
                   <div className="text-right mt-3 text-lg font-bold text-white">Total: <span className="text-yellow-400">${invoiceTotal.toFixed(2)}</span></div>
                 </div>
 
@@ -4134,7 +4141,7 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
 
                 <div className="flex gap-3 pt-2">
                   <button onClick={() => setShowNewInvoice(false)} className="flex-1 py-2.5 border border-white/10 text-white/50 rounded-xl text-sm hover:text-white transition-all cursor-pointer">Cancel</button>
-                  <button onClick={saveInvoice} disabled={savingInvoice || !invoiceForm.brand_contact_id || invoiceTotal === 0}
+                  <button onClick={saveInvoice} disabled={savingInvoice || !invoiceForm.brand_contact_id || !invoiceForm.line_items.some(i => i.description.trim())}
                     className="flex-1 py-2.5 bg-yellow-500 hover:bg-yellow-400 text-black font-semibold rounded-xl text-sm transition-all cursor-pointer disabled:opacity-40">
                     {savingInvoice ? "Creating…" : "Create & Send Invoice"}
                   </button>
