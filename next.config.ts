@@ -14,6 +14,23 @@ const withPWA = withPWAInit({
 
 const nextConfig: NextConfig = {
   turbopack: {},
+  async redirects() {
+    return [
+      // /Contest -> current SweepWidget giveaway. Next.js route matching is
+      // case-sensitive, so both casings are covered explicitly since people
+      // type/share this URL capitalized as often as not.
+      {
+        source: "/contest",
+        destination: "https://sweepwidget.com/c/101330-tl9zaf3c",
+        permanent: false,
+      },
+      {
+        source: "/Contest",
+        destination: "https://sweepwidget.com/c/101330-tl9zaf3c",
+        permanent: false,
+      },
+    ];
+  },
   images: {
     remotePatterns: [
       {
