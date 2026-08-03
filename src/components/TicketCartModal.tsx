@@ -46,21 +46,23 @@ export default function TicketCartModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [captchaToken, setCaptchaToken] = useState("");
+  const [sessionUser, setSessionUser] = useState<{ firstName: string; lastName: string; email: string; phone: string } | null>(null);
+  const [editingInfo, setEditingInfo] = useState(false);
 
-  // Prefill from an existing logged-in session so a returning customer
-  // isn't asked to re-enter info they already have on file — previously
-  // this form ignored login state entirely and always started blank.
+  // A logged-in customer skips re-typing info they already have on file —
+  // shown as a summary card instead of the editable form.
   useEffect(() => {
     fetch("/api/auth/session")
       .then(r => r.json())
       .then(({ user }) => {
         if (!user) return;
-        setForm(f => ({
-          firstName: f.firstName || user.firstName || "",
-          lastName: f.lastName || user.lastName || "",
-          email: f.email || user.email || "",
-          phone: f.phone || user.phone || "",
-        }));
+        setSessionUser(user);
+        setForm({
+          firstName: user.firstName || "",
+          lastName: user.lastName || "",
+          email: user.email || "",
+          phone: user.phone || "",
+        });
       })
       .catch(() => {});
   }, []);
@@ -247,39 +249,63 @@ export default function TicketCartModal({
                 {error && (
                   <div className="bg-red-900/30 border border-red-500/30 text-red-400 text-sm rounded-xl px-4 py-3 mb-4">{error}</div>
                 )}
-                <form id="checkout-form" onSubmit={handleCheckout} className="space-y-3">
-                  <div className="flex gap-3">
-                    <div className="relative flex-1">
-                      <User size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30" />
-                      <input type="text" value={form.firstName} onChange={set("firstName")}
-                        placeholder="First name" required autoFocus
-                        className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl pl-9 pr-3 py-3 text-white placeholder-white/25 text-sm outline-none" />
+
+                {sessionUser && !editingInfo ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between gap-3 bg-white/5 border border-white/15 rounded-xl px-4 py-3">
+                      <div className="min-w-0">
+                        <p className="text-white/40 text-xs">Checking out as</p>
+                        <p className="text-white font-semibold text-sm truncate">{form.firstName} {form.lastName}</p>
+                        <p className="text-white/50 text-sm truncate">{form.email}</p>
+                      </div>
+                      <button type="button" onClick={() => setEditingInfo(true)}
+                        className="text-yellow-500/70 hover:text-yellow-400 text-xs font-semibold flex-shrink-0 cursor-pointer">
+                        Not you?
+                      </button>
                     </div>
-                    <div className="flex-1">
-                      <input type="text" value={form.lastName} onChange={set("lastName")}
-                        placeholder="Last name" required
-                        className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-3 text-white placeholder-white/25 text-sm outline-none" />
+                    <form id="checkout-form" onSubmit={handleCheckout}>
+                      <Turnstile
+                        onVerify={setCaptchaToken}
+                        onError={() => setCaptchaToken("")}
+                        onExpire={() => setCaptchaToken("")}
+                      />
+                    </form>
+                  </div>
+                ) : (
+                  <form id="checkout-form" onSubmit={handleCheckout} className="space-y-3">
+                    <div className="flex gap-3">
+                      <div className="relative flex-1">
+                        <User size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30" />
+                        <input type="text" value={form.firstName} onChange={set("firstName")}
+                          placeholder="First name" required autoFocus
+                          className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl pl-9 pr-3 py-3 text-white placeholder-white/25 text-sm outline-none" />
+                      </div>
+                      <div className="flex-1">
+                        <input type="text" value={form.lastName} onChange={set("lastName")}
+                          placeholder="Last name" required
+                          className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-3 text-white placeholder-white/25 text-sm outline-none" />
+                      </div>
                     </div>
-                  </div>
-                  <div className="relative">
-                    <Mail size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30" />
-                    <input type="email" value={form.email} onChange={set("email")}
-                      placeholder="Email address" required
-                      className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl pl-9 pr-4 py-3 text-white placeholder-white/25 text-sm outline-none" />
-                  </div>
-                  <div className="relative">
-                    <Phone size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30" />
-                    <input type="tel" value={form.phone} onChange={set("phone")}
-                      placeholder="Phone number (optional)"
-                      className="w-full bg-white/5 border border-yellow-500/15 focus:border-yellow-500/40 rounded-xl pl-9 pr-4 py-3 text-white placeholder-white/25 text-sm outline-none" />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-yellow-500/50 text-xs font-semibold hidden sm:block">⚡ Flash Deals</span>
-                  </div>
-                  <Turnstile
-                    onVerify={setCaptchaToken}
-                    onError={() => setCaptchaToken("")}
-                    onExpire={() => setCaptchaToken("")}
-                  />
-                </form>
+                    <div className="relative">
+                      <Mail size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30" />
+                      <input type="email" value={form.email} onChange={set("email")}
+                        placeholder="Email address" required
+                        className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl pl-9 pr-4 py-3 text-white placeholder-white/25 text-sm outline-none" />
+                    </div>
+                    <div className="relative">
+                      <Phone size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30" />
+                      <input type="tel" value={form.phone} onChange={set("phone")}
+                        placeholder="Phone number (optional)"
+                        className="w-full bg-white/5 border border-yellow-500/15 focus:border-yellow-500/40 rounded-xl pl-9 pr-4 py-3 text-white placeholder-white/25 text-sm outline-none" />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-yellow-500/50 text-xs font-semibold hidden sm:block">⚡ Flash Deals</span>
+                    </div>
+                    <Turnstile
+                      onVerify={setCaptchaToken}
+                      onError={() => setCaptchaToken("")}
+                      onExpire={() => setCaptchaToken("")}
+                    />
+                  </form>
+                )}
                 <p className="text-white/20 text-xs text-center mt-3">By continuing you agree to our Terms of Service. Must be 21+.</p>
               </div>
             )}
