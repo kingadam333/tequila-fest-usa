@@ -3164,6 +3164,67 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
   const [invoiceForm, setInvoiceForm] = useState({ brand_contact_id: "", event_name: "", due_date: "", notes: "", line_items: [{ ...BLANK_LINE_ITEM }] });
   const [savingInvoice, setSavingInvoice] = useState(false);
 
+  // ── Invoice payment settings (check/Zelle info shown on every invoice email)
+  const [paymentSettingsOpen, setPaymentSettingsOpen] = useState(false);
+  const [paymentSettings, setPaymentSettings] = useState({ check_payable_to: "", mailing_address: "", zelle_handle: "", zelle_qr_url: "" });
+  const [loadingPaymentSettings, setLoadingPaymentSettings] = useState(false);
+  const [savingPaymentSettings, setSavingPaymentSettings] = useState(false);
+  const [paymentSettingsStatus, setPaymentSettingsStatus] = useState("");
+  const [uploadingQr, setUploadingQr] = useState(false);
+
+  const fetchPaymentSettings = useCallback(async () => {
+    setLoadingPaymentSettings(true);
+    const res = await fetch("/api/admin/invoice-settings", { headers });
+    if (res.ok) {
+      const data = (await res.json()).settings;
+      if (data) setPaymentSettings({
+        check_payable_to: data.check_payable_to || "",
+        mailing_address: data.mailing_address || "",
+        zelle_handle: data.zelle_handle || "",
+        zelle_qr_url: data.zelle_qr_url || "",
+      });
+    }
+    setLoadingPaymentSettings(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adminToken]);
+
+  const savePaymentSettings = async () => {
+    setSavingPaymentSettings(true);
+    setPaymentSettingsStatus("");
+    try {
+      const res = await fetch("/api/admin/invoice-settings", {
+        method: "PATCH",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify(paymentSettings),
+      });
+      if (res.ok) {
+        setPaymentSettingsStatus("Saved");
+        setTimeout(() => setPaymentSettingsStatus(""), 2000);
+      } else {
+        const d = await res.json();
+        setPaymentSettingsStatus(`Error: ${d.error || "failed"}`);
+      }
+    } catch (e: any) {
+      setPaymentSettingsStatus(`Error: ${e?.message || "failed"}`);
+    }
+    setSavingPaymentSettings(false);
+  };
+
+  const uploadZelleQr = async (file: File) => {
+    setUploadingQr(true);
+    try {
+      const fd = new FormData();
+      fd.set("file", file);
+      const res = await fetch("/api/admin/invoice-settings/upload-qr", { method: "POST", headers, body: fd });
+      const data = await res.json();
+      if (res.ok) setPaymentSettings(s => ({ ...s, zelle_qr_url: data.url }));
+      else alert(`Error: ${data.error || "failed to upload"}`);
+    } catch (e: any) {
+      alert(`Error: ${e?.message || "failed to upload"}`);
+    }
+    setUploadingQr(false);
+  };
+
   // ── Inbox state (brands inbox)
   const [brandMessages, setBrandMessages] = useState<ContactSubmission[]>([]);
   const [loadingInbox, setLoadingInbox] = useState(false);
@@ -3328,7 +3389,7 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
 
   useEffect(() => { fetchContacts(); }, [fetchContacts]);
   useEffect(() => { fetchOrders(); }, [fetchOrders]); // load up-front so Contacts cards can show each contact's orders
-  useEffect(() => { if (view === "invoices") fetchInvoices(); }, [view, fetchInvoices]);
+  useEffect(() => { if (view === "invoices") { fetchInvoices(); fetchPaymentSettings(); } }, [view, fetchInvoices, fetchPaymentSettings]);
   useEffect(() => { if (view === "inbox") fetchInbox(); }, [view, fetchInbox]);
 
   const openAdd = () => { setContactForm({ ...BLANK_CONTACT, brands: [{ ...BLANK_BRAND }] }); setEditContact(null); setShowAddContact(true); };
@@ -3555,6 +3616,67 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
       {/* ── INVOICES ── */}
       {view === "invoices" && (
         <div className="space-y-4">
+          {/* Payment settings — check/Zelle info shown on every invoice email */}
+          <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-5">
+            <button onClick={() => setPaymentSettingsOpen(o => !o)} className="w-full flex items-center justify-between cursor-pointer">
+              <div className="text-left">
+                <h3 className="text-white font-bold text-sm">💳 Invoice Payment Settings</h3>
+                <p className="text-white/40 text-xs mt-0.5">Check &amp; Zelle info shown on every invoice email, alongside the Stripe payment link.</p>
+              </div>
+              <span className="text-white/40 text-lg flex-shrink-0">{paymentSettingsOpen ? "−" : "+"}</span>
+            </button>
+            {paymentSettingsOpen && (
+              <div className="mt-4 pt-4 border-t border-white/5 space-y-4">
+                {loadingPaymentSettings ? (
+                  <p className="text-white/30 text-sm">Loading…</p>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Check Payable To</label>
+                        <input value={paymentSettings.check_payable_to} onChange={e => setPaymentSettings(s => ({ ...s, check_payable_to: e.target.value }))}
+                          className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-2.5 text-white outline-none text-sm" />
+                      </div>
+                      <div>
+                        <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Zelle Handle</label>
+                        <input value={paymentSettings.zelle_handle} onChange={e => setPaymentSettings(s => ({ ...s, zelle_handle: e.target.value }))}
+                          placeholder="e.g. tastefestivals"
+                          className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-2.5 text-white outline-none text-sm" />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Mailing Address</label>
+                      <textarea value={paymentSettings.mailing_address} onChange={e => setPaymentSettings(s => ({ ...s, mailing_address: e.target.value }))} rows={3}
+                        className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-2.5 text-white outline-none text-sm resize-none" />
+                    </div>
+                    <div>
+                      <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Zelle QR Code</label>
+                      <div className="flex items-center gap-4">
+                        {paymentSettings.zelle_qr_url && (
+                          <img src={paymentSettings.zelle_qr_url} alt="Zelle QR" width={72} height={72} className="rounded-lg border-2 border-white flex-shrink-0" />
+                        )}
+                        <label className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/15 text-white/70 text-sm font-semibold rounded-xl cursor-pointer transition-all">
+                          {uploadingQr ? "Uploading…" : paymentSettings.zelle_qr_url ? "Replace Image" : "Upload Image"}
+                          <input type="file" accept="image/*" hidden disabled={uploadingQr}
+                            onChange={e => { const f = e.target.files?.[0]; if (f) uploadZelleQr(f); }} />
+                        </label>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <button onClick={savePaymentSettings} disabled={savingPaymentSettings}
+                        className="bg-yellow-500 hover:bg-yellow-400 disabled:opacity-60 text-black font-bold px-5 py-2 rounded-xl text-sm transition-all cursor-pointer">
+                        {savingPaymentSettings ? "Saving…" : "Save"}
+                      </button>
+                      {paymentSettingsStatus && (
+                        <span className={`text-sm ${paymentSettingsStatus.startsWith("Error") ? "text-red-400" : "text-green-400"}`}>{paymentSettingsStatus}</span>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+
           <div className="flex justify-end">
             <button onClick={() => setShowNewInvoice(true)} className="flex items-center gap-2 px-4 py-2 bg-yellow-500 hover:bg-yellow-400 text-black text-sm font-semibold rounded-xl transition-all cursor-pointer">
               <Plus size={15} /> New Invoice

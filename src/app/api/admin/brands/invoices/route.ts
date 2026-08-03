@@ -89,11 +89,12 @@ export async function POST(req: NextRequest) {
   if (contact?.contact_email && stripe_payment_link_url) {
     try {
       const { resend } = await import("@/lib/resend");
+      const { data: paymentSettings } = await db().from("invoice_payment_settings").select("*").limit(1).maybeSingle();
       await (resend as any).emails.send({
         from: "Tequila Fest USA Brands <brands@mail.tequilafestusa.com>",
         to: contact.contact_email,
         subject: `Invoice ${invoice_number} — ${event_name || "Tequila Fest USA"}`,
-        html: buildInvoiceEmailHtml({ contact_name: contact.contact_name, invoice_number, event_name, line_items, total, due_date, payment_url: stripe_payment_link_url }),
+        html: buildInvoiceEmailHtml({ contact_name: contact.contact_name, invoice_number, event_name, line_items, total, due_date, payment_url: stripe_payment_link_url, paymentSettings }),
       });
     } catch (e) {
       console.error("Invoice email send error:", e);
@@ -113,10 +114,40 @@ export async function PATCH(req: NextRequest) {
   return NextResponse.json({ invoice: data });
 }
 
-function buildInvoiceEmailHtml({ contact_name, invoice_number, event_name, line_items, total, due_date, payment_url }: {
+interface InvoicePaymentSettings {
+  check_payable_to: string | null;
+  mailing_address: string | null;
+  zelle_handle: string | null;
+  zelle_qr_url: string | null;
+}
+
+function buildInvoiceEmailHtml({ contact_name, invoice_number, event_name, line_items, total, due_date, payment_url, paymentSettings }: {
   contact_name: string; invoice_number: string; event_name?: string; line_items: { description: string; quantity: number; unit_price: number; total: number }[];
-  total: number; due_date?: string; payment_url: string;
+  total: number; due_date?: string; payment_url: string; paymentSettings?: InvoicePaymentSettings | null;
 }) {
+  const hasCheck = paymentSettings?.check_payable_to && paymentSettings?.mailing_address;
+  const hasZelle = paymentSettings?.zelle_handle;
+  const otherWaysToPay = (hasCheck || hasZelle) ? `
+    <div style="margin-top:32px;padding-top:24px;border-top:1px solid #2a1a00">
+      <h3 style="color:#f5a623;font-size:14px;text-transform:uppercase;letter-spacing:1px;margin:0 0 16px">Other Ways to Pay</h3>
+      <div style="display:block">
+        ${hasCheck ? `
+        <div style="margin-bottom:${hasZelle ? "20px" : "0"}">
+          <p style="color:#fff8f0;font-weight:bold;margin:0 0 4px">Pay by Check</p>
+          <p style="color:#fff8f0;opacity:0.7;margin:0;line-height:1.5">
+            Make payable to: <strong>${paymentSettings!.check_payable_to}</strong><br>
+            Mail to:<br>${paymentSettings!.mailing_address!.replace(/\n/g, "<br>")}
+          </p>
+        </div>` : ""}
+        ${hasZelle ? `
+        <div>
+          <p style="color:#fff8f0;font-weight:bold;margin:0 0 4px">Pay by Zelle</p>
+          <p style="color:#fff8f0;opacity:0.7;margin:0 0 12px">Send to: <strong>${paymentSettings!.zelle_handle}</strong></p>
+          ${paymentSettings?.zelle_qr_url ? `<img src="${paymentSettings.zelle_qr_url}" width="160" height="160" alt="Zelle QR code" style="border-radius:8px;border:1px solid #2a1a00" />` : ""}
+        </div>` : ""}
+      </div>
+      <p style="color:#fff8f0;opacity:0.4;font-size:12px;margin:16px 0 0">Paying by check or Zelle? Please include invoice #${invoice_number} as a note/memo, and let us know at brands@mail.tequilafestusa.com so we can mark it received.</p>
+    </div>` : "";
   const rows = line_items.map(item => `
     <tr>
       <td style="padding:10px 0;border-bottom:1px solid #2a1a00;color:#fff8f0">${item.description}</td>
@@ -145,6 +176,7 @@ function buildInvoiceEmailHtml({ contact_name, invoice_number, event_name, line_
     <div style="text-align:center;margin:40px 0">
       <a href="${payment_url}" style="background:#f5a623;color:#0d0500;font-weight:bold;font-size:16px;padding:16px 40px;border-radius:8px;text-decoration:none;display:inline-block">Pay Invoice Online →</a>
     </div>
-    <p style="color:#fff8f0;opacity:0.4;font-size:12px;text-align:center">Tequila Fest USA · brands@mail.tequilafestusa.com</p>
+    ${otherWaysToPay}
+    <p style="color:#fff8f0;opacity:0.4;font-size:12px;text-align:center;margin-top:32px">Tequila Fest USA · brands@mail.tequilafestusa.com</p>
   </div></body></html>`;
 }
