@@ -4101,7 +4101,7 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
                   </div>
                   <div>
                     <label className={labelCls}>Due Date</label>
-                    <input type="date" value={invoiceForm.due_date} onChange={e => setInvoiceForm(f => ({ ...f, due_date: e.target.value }))} className={inputCls} />
+                    <input type="date" value={invoiceForm.due_date} onChange={e => setInvoiceForm(f => ({ ...f, due_date: e.target.value }))} className={inputCls} style={{ colorScheme: "dark" }} />
                   </div>
                 </div>
 
