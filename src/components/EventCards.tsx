@@ -75,7 +75,7 @@ export default function EventCards() {
           <h2 className="font-display text-shimmer" style={{ fontSize: "clamp(3rem, 8vw, 6rem)" }}>
             FIND YOUR CITY
           </h2>
-          <p className="mt-4 text-white/50 max-w-xl mx-auto text-lg">
+          <p className="mt-4 text-white/80 max-w-xl mx-auto text-lg">
             Four festivals. One unforgettable tour. Grab your tickets before they sell out.
           </p>
         </motion.div>
@@ -112,13 +112,13 @@ export default function EventCards() {
                       <h3 className="font-display leading-none" style={{ fontSize: "clamp(2.5rem, 6vw, 4rem)", color: event.color }}>
                         {event.city.toUpperCase()}
                       </h3>
-                      <p className="text-white/40 text-sm font-bold tracking-widest uppercase">{event.state}</p>
+                      <p className="text-white/80 text-sm font-bold tracking-widest uppercase">{event.state}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-white/30 text-xs uppercase tracking-widest mb-1">All Inclusive</p>
+                      <p className="text-white/80 text-xs uppercase tracking-widest mb-1">All Inclusive</p>
                       <p className="font-display text-white" style={{ fontSize: "2.5rem" }}>$55</p>
                       <p className="text-yellow-500/70 text-xs font-semibold">Early Bird</p>
-                      <p className="text-white/20 text-xs">then $60 / $65</p>
+                      <p className="text-white/80 text-xs">then $60 / $65</p>
                     </div>
                   </div>
 
@@ -141,7 +141,7 @@ export default function EventCards() {
                   {/* What's included */}
                   <div className={`flex flex-wrap gap-1.5 ${event.gaPrice !== null ? "mb-3" : "mb-6"}`}>
                     {["12 Tasting Tickets", "Live Music", "Authentic Food", "Souvenir Item"].map(item => (
-                      <span key={item} className="whitespace-nowrap text-xs text-white/50 bg-white/5 border border-white/10 rounded-full px-3 py-1">{item}</span>
+                      <span key={item} className="whitespace-nowrap text-xs text-white/80 bg-white/5 border border-white/10 rounded-full px-3 py-1">{item}</span>
                     ))}
                     {event.free_parking && (
                       <span className="whitespace-nowrap text-xs font-semibold rounded-full px-3 py-1 bg-green-900/30 border border-green-500/30 text-green-400">🅿️ Free Parking</span>
@@ -167,7 +167,7 @@ export default function EventCards() {
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
                     </div>
                   ) : (
-                    <div className="mt-auto flex items-center justify-center gap-2 w-full font-bold px-6 py-3 rounded-full border-2 border-white/10 text-white/30">
+                    <div className="mt-auto flex items-center justify-center gap-2 w-full font-bold px-6 py-3 rounded-full border-2 border-white/10 text-white/80">
                       <span>Tickets Unavailable</span>
                     </div>
                   )}

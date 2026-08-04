@@ -118,7 +118,7 @@ export default function SupportChat() {
                     </p>
                   </div>
                 </div>
-                <button onClick={() => setOpen(false)} className="text-white/30 hover:text-white/70 transition-colors cursor-pointer p-1">
+                <button onClick={() => setOpen(false)} className="text-white/80 hover:text-white/70 transition-colors cursor-pointer p-1">
                   <X size={18} />
                 </button>
               </div>

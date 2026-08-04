@@ -46,7 +46,7 @@ function Countdown({ dateISO }: { dateISO: string }) {
           <span className="font-display text-3xl md:text-4xl text-yellow-400">
             {String(value).padStart(2, "0")}
           </span>
-          <span className="text-xs text-white/50 uppercase tracking-widest mt-1">{label}</span>
+          <span className="text-xs text-white/80 uppercase tracking-widest mt-1">{label}</span>
         </div>
       ))}
     </div>
@@ -416,7 +416,7 @@ export default function EventPage({ event, ogImage, dbStatus }: { event: EventDa
             {/* Sampling Hours */}
             {event.samplingHours && (
               <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.45 }}
-                className="text-white/50 text-sm mt-2">
+                className="text-white/80 text-sm mt-2">
                 🥃 Sampling Hours: <span className="text-white/70 font-medium">{event.samplingHours}</span>
               </motion.p>
             )}
@@ -450,7 +450,7 @@ export default function EventPage({ event, ogImage, dbStatus }: { event: EventDa
               <h2 className="font-display text-white" style={{ fontSize: "clamp(2rem, 6vw, 4.5rem)" }}>
                 CHOOSE YOUR <span className="text-shimmer">TICKET</span>
               </h2>
-              <p className="text-white/40 mt-3 text-sm">Mix ticket types · Bring friends · Pay once</p>
+              <p className="text-white/80 mt-3 text-sm">Mix ticket types · Bring friends · Pay once</p>
             </motion.div>
 
             {/* All Inclusive tiers */}
@@ -484,17 +484,17 @@ export default function EventPage({ event, ogImage, dbStatus }: { event: EventDa
                       <p className="font-display mt-2 mb-1" style={{ fontSize: "3.5rem", color: soldOut ? "#ef4444" : highlight ? event.color : "white" }}>
                         ${price}
                       </p>
-                      <p className="text-white/40 text-xs mb-6">
+                      <p className="text-white/80 text-xs mb-6">
                         {soldOut ? "This tier is sold out" : live ? `${live.sold_count} of ${live.capacity} sold` : note}
                       </p>
                       {isCompleted ? (
-                        <div className="mt-auto block text-center text-white/30 font-bold text-base py-3 rounded-full border border-white/10">EVENT COMPLETED</div>
+                        <div className="mt-auto block text-center text-white/80 font-bold text-base py-3 rounded-full border border-white/10">EVENT COMPLETED</div>
                       ) : isComingSoon ? (
                         <div className="mt-auto block text-center text-yellow-400 font-bold text-base py-3 rounded-full border border-yellow-500/30 bg-yellow-500/10">COMING SOON</div>
                       ) : soldOut ? (
                         <div className="mt-auto block text-center text-red-400 font-bold text-base py-3 rounded-full border border-red-500/30 bg-red-500/10">SOLD OUT</div>
                       ) : unavailableNote && !isFinalWeek ? (
-                        <div className="mt-auto block text-center text-white/30 text-sm py-3 rounded-full border border-white/10">{unavailableNote}</div>
+                        <div className="mt-auto block text-center text-white/80 text-sm py-3 rounded-full border border-white/10">{unavailableNote}</div>
                       ) : (
                         <button onClick={() => openCart(key)}
                           className="mt-auto w-full font-bold text-base py-3 rounded-full transition-all duration-200 hover:scale-105 cursor-pointer"
@@ -509,7 +509,7 @@ export default function EventPage({ event, ogImage, dbStatus }: { event: EventDa
             </div>
 
             <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }}
-              className="text-center mb-12 text-white/30 text-xs tracking-wide">
+              className="text-center mb-12 text-white/80 text-xs tracking-wide">
               All Inclusive tiers include: 12 tasting tickets · Live music · Authentic food · Souvenir item · Full festival access
               {event.freeParking && <span className="text-green-400/70"> · Free parking</span>}
             </motion.div>
@@ -527,15 +527,15 @@ export default function EventPage({ event, ogImage, dbStatus }: { event: EventDa
                   <div className="flex items-start justify-between mb-2 mt-2">
                     <div>
                       <h3 className="font-display text-shimmer-platinum leading-none" style={{ fontSize: "2.5rem" }}>VIP EXPERIENCE</h3>
-                      <p className="text-white/50 text-sm mt-1">Everything in All Inclusive, plus:</p>
+                      <p className="text-white/80 text-sm mt-1">Everything in All Inclusive, plus:</p>
                     </div>
                     <div className="text-right">
                       <p className="font-display text-shimmer-platinum" style={{ fontSize: "3rem" }}>${PRICING.vip.price}</p>
-                      <p className="text-white/30 text-xs">per person</p>
+                      <p className="text-white/80 text-xs">per person</p>
                     </div>
                   </div>
                   <div className="bg-white/5 border border-white/10 rounded-xl px-4 py-3 mb-4">
-                    <p className="text-white/40 text-xs font-bold uppercase tracking-wider mb-2">Includes All Inclusive +</p>
+                    <p className="text-white/80 text-xs font-bold uppercase tracking-wider mb-2">Includes All Inclusive +</p>
                     <ul className="grid grid-cols-2 gap-x-4 gap-y-1.5">
                       {VIP_PERKS.map(perk => (
                         <li key={perk} className="flex items-center gap-2 text-white/70 text-xs">
@@ -548,7 +548,7 @@ export default function EventPage({ event, ogImage, dbStatus }: { event: EventDa
                     const liveVip = liveTypes.find(t => t.name === "VIP Experience");
                     const vipSoldOut = liveVip ? (liveVip.is_active === false || liveVip.sold_count >= liveVip.capacity) : false;
                     return isCompleted ? (
-                      <div className="mt-auto block text-center text-white/30 font-bold text-base py-4 rounded-full border border-white/10">EVENT COMPLETED</div>
+                      <div className="mt-auto block text-center text-white/80 font-bold text-base py-4 rounded-full border border-white/10">EVENT COMPLETED</div>
                     ) : isComingSoon ? (
                       <div className="mt-auto block text-center text-yellow-400 font-bold text-base py-4 rounded-full border border-yellow-500/30 bg-yellow-500/10">COMING SOON</div>
                     ) : vipSoldOut ? (
@@ -571,11 +571,11 @@ export default function EventPage({ event, ogImage, dbStatus }: { event: EventDa
                     <div className="flex items-start justify-between mb-4">
                       <div>
                         <h3 className="font-display text-white text-3xl">GA ENTRY</h3>
-                        <p className="text-white/50 text-sm mt-1">Door access only</p>
+                        <p className="text-white/80 text-sm mt-1">Door access only</p>
                       </div>
                       <div className="text-right">
                         <p className="font-display text-white text-5xl">$5</p>
-                        <p className="text-white/30 text-xs">per person</p>
+                        <p className="text-white/80 text-xs">per person</p>
                         <p className="text-white text-sm font-semibold mt-1">$10 at the door</p>
                       </div>
                     </div>
@@ -586,16 +586,16 @@ export default function EventPage({ event, ogImage, dbStatus }: { event: EventDa
                     )}
                     <ul className="space-y-2 mb-6 flex-1">
                       {["Festival entry", "Access to vendor market", "Cash bar available"].map(item => (
-                        <li key={item} className="flex items-center gap-2 text-white/50 text-sm">
+                        <li key={item} className="flex items-center gap-2 text-white/80 text-sm">
                           <svg viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" className="w-4 h-4 flex-shrink-0">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/>
                           </svg>{item}
                         </li>
                       ))}
-                      <li className="text-white/30 text-xs pt-1">* Tasting tickets not included</li>
+                      <li className="text-white/80 text-xs pt-1">* Tasting tickets not included</li>
                     </ul>
                     {isCompleted ? (
-                      <div className="block text-center text-white/30 font-bold text-base py-3 rounded-full border border-white/10">EVENT COMPLETED</div>
+                      <div className="block text-center text-white/80 font-bold text-base py-3 rounded-full border border-white/10">EVENT COMPLETED</div>
                     ) : isComingSoon ? (
                       <div className="block text-center text-yellow-400 font-bold text-base py-3 rounded-full border border-yellow-500/30 bg-yellow-500/10">COMING SOON</div>
                     ) : (
@@ -630,7 +630,7 @@ export default function EventPage({ event, ogImage, dbStatus }: { event: EventDa
                   { icon: <MapPin size={16} />, label: event.venue },
                   { icon: <MapPin size={14} />, label: event.venueAddress },
                 ].map((item, i) => (
-                  <div key={i} className="flex items-center gap-3 text-white/50 text-sm">
+                  <div key={i} className="flex items-center gap-3 text-white/80 text-sm">
                     <span style={{ color: event.color }}>{item.icon}</span>
                     {item.label}
                   </div>
@@ -652,7 +652,7 @@ export default function EventPage({ event, ogImage, dbStatus }: { event: EventDa
                   <div key={item.label} className="bg-white/[0.03] border border-white/10 rounded-xl p-4">
                     <span className="text-2xl">{item.icon}</span>
                     <p className="font-semibold text-white text-sm mt-2">{item.label}</p>
-                    <p className="text-white/40 text-xs mt-0.5">{item.desc}</p>
+                    <p className="text-white/80 text-xs mt-0.5">{item.desc}</p>
                   </div>
                 ))}
               </div>
@@ -668,7 +668,7 @@ export default function EventPage({ event, ogImage, dbStatus }: { event: EventDa
             <h2 className="font-display text-white" style={{ fontSize: "clamp(2.5rem, 6vw, 4.5rem)" }}>
               50+ <span className="text-shimmer">TEQUILAS</span>
             </h2>
-            <p className="text-white/50 mt-4 max-w-xl mx-auto">
+            <p className="text-white/80 mt-4 max-w-xl mx-auto">
               From smooth blancos to complex añejos — explore the full spectrum of agave spirits from the world&apos;s finest distillers.
             </p>
             <div className="w-24 h-1 bg-yellow-500 mx-auto mt-4 rounded-full" />
@@ -701,7 +701,7 @@ export default function EventPage({ event, ogImage, dbStatus }: { event: EventDa
                 <div key={t.type} className="text-center p-5 rounded-xl border border-white/10 bg-white/5">
                   <div className="w-3 h-3 rounded-full mx-auto mb-3" style={{ backgroundColor: t.color }} />
                   <p className="font-display text-xl text-white">{t.type.toUpperCase()}</p>
-                  <p className="text-white/40 text-sm mt-1">{t.desc}</p>
+                  <p className="text-white/80 text-sm mt-1">{t.desc}</p>
                 </div>
               ))}
             </div>
@@ -745,7 +745,7 @@ export default function EventPage({ event, ogImage, dbStatus }: { event: EventDa
         {/* Bottom CTA */}
         <section className="py-16 px-4 bg-[#0a0300] text-center">
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
-            <p className="text-white/40 text-sm mb-2">Don&apos;t wait — tickets sell out every year</p>
+            <p className="text-white/80 text-sm mb-2">Don&apos;t wait — tickets sell out every year</p>
             <h2 className="font-display text-shimmer mb-8" style={{ fontSize: "clamp(2rem, 6vw, 4.5rem)" }}>
               GET YOUR TICKETS NOW
             </h2>
@@ -754,7 +754,7 @@ export default function EventPage({ event, ogImage, dbStatus }: { event: EventDa
               <Ticket size={20} />
               Select Tickets
             </button>
-            <p className="mt-4 text-white/20 text-sm">Must be 21+ · Mix ticket types · Bring friends</p>
+            <p className="mt-4 text-white/80 text-sm">Must be 21+ · Mix ticket types · Bring friends</p>
           </motion.div>
         </section>
 

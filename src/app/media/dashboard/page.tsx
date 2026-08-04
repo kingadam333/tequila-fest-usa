@@ -73,7 +73,7 @@ export default function MediaDashboard() {
     setSubmitting(false);
   };
 
-  if (loading) return <main className="min-h-screen bg-[#0d0500] flex items-center justify-center text-white/30">Loading…</main>;
+  if (loading) return <main className="min-h-screen bg-[#0d0500] flex items-center justify-center text-white/80">Loading…</main>;
 
   return (
     <main className="min-h-screen bg-[#0d0500] px-4 py-10">
@@ -83,13 +83,13 @@ export default function MediaDashboard() {
             <p className="text-yellow-500 text-xs font-bold tracking-[0.3em] uppercase mb-1">Media Partner Portal</p>
             <h1 className="font-display text-white text-3xl">{partner?.companyName || "Dashboard"}</h1>
           </div>
-          <button onClick={handleLogout} className="flex items-center gap-2 text-white/40 hover:text-white text-sm cursor-pointer">
+          <button onClick={handleLogout} className="flex items-center gap-2 text-white/80 hover:text-white text-sm cursor-pointer">
             <LogOut size={16} /> Log Out
           </button>
         </div>
 
         {allocations.length === 0 ? (
-          <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-10 text-center text-white/40">
+          <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-10 text-center text-white/80">
             No ticket allocations yet. Contact Tequila Fest USA to get set up with tickets to give away.
           </div>
         ) : (
@@ -102,11 +102,11 @@ export default function MediaDashboard() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-white font-bold text-lg">{a.events?.city || "Event"}, {a.events?.state}</p>
-                      <p className="text-white/40 text-sm">{a.events?.date} · {a.ticket_type}</p>
+                      <p className="text-white/80 text-sm">{a.events?.date} · {a.ticket_type}</p>
                     </div>
                     <div className="text-right">
                       <p className={`font-display text-2xl ${remaining > 0 ? "text-yellow-400" : "text-red-400"}`}>{remaining}</p>
-                      <p className="text-white/30 text-xs uppercase tracking-wider">remaining / {a.quota}</p>
+                      <p className="text-white/80 text-xs uppercase tracking-wider">remaining / {a.quota}</p>
                     </div>
                   </div>
                 </button>
@@ -127,17 +127,17 @@ export default function MediaDashboard() {
               </div>
             )}
             <div>
-              <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Winner Name *</label>
+              <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Winner Name *</label>
               <input value={winnerName} onChange={e => setWinnerName(e.target.value)} required
                 className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-3 text-white outline-none text-sm" />
             </div>
             <div>
-              <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Winner Email *</label>
+              <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Winner Email *</label>
               <input type="email" value={winnerEmail} onChange={e => setWinnerEmail(e.target.value)} required
                 className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-3 text-white outline-none text-sm" />
             </div>
             <div>
-              <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Quantity</label>
+              <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Quantity</label>
               <input type="number" min={1} max={selected.quota - selected.issued_count} value={quantity}
                 onChange={e => setQuantity(parseInt(e.target.value) || 1)}
                 className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-3 text-white outline-none text-sm" />

@@ -62,39 +62,39 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ s
           {order ? (
             <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-6 sm:p-8 text-left space-y-4">
               <div>
-                <p className="text-white/40 text-xs uppercase tracking-wider">Order</p>
+                <p className="text-white/80 text-xs uppercase tracking-wider">Order</p>
                 <p className="text-white font-mono">{order.order_number}</p>
               </div>
               <div>
-                <p className="text-white/40 text-xs uppercase tracking-wider">Brand</p>
+                <p className="text-white/80 text-xs uppercase tracking-wider">Brand</p>
                 <p className="text-white font-semibold">{order.brand_name}</p>
               </div>
               <div>
-                <p className="text-white/40 text-xs uppercase tracking-wider">Package</p>
+                <p className="text-white/80 text-xs uppercase tracking-wider">Package</p>
                 <p className="text-white font-semibold">{order.tier} Brand Package</p>
               </div>
               <div>
-                <p className="text-white/40 text-xs uppercase tracking-wider">Cities</p>
+                <p className="text-white/80 text-xs uppercase tracking-wider">Cities</p>
                 <p className="text-white">{(order.cities || []).map((c: string) => CITY_LABELS[c] || c).join(", ")}</p>
               </div>
               <div className="pt-4 border-t border-white/10 flex items-baseline justify-between">
-                <p className="text-white/40 text-xs uppercase tracking-wider">Total</p>
+                <p className="text-white/80 text-xs uppercase tracking-wider">Total</p>
                 <p className="font-display text-3xl text-yellow-400">${Number(order.amount || 0).toFixed(2)}</p>
               </div>
               {order.status !== "paid" && (
-                <p className="text-white/40 text-xs">Payment confirmation pending — this page will reflect "paid" once Stripe confirms.</p>
+                <p className="text-white/80 text-xs">Payment confirmation pending — this page will reflect "paid" once Stripe confirms.</p>
               )}
             </div>
           ) : (
-            <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-6 text-white/50 text-sm">
+            <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-6 text-white/80 text-sm">
               We've received your payment. A confirmation email is on its way.
             </div>
           )}
 
           <div className="mt-10 flex items-center justify-center gap-4">
-            <Link href="/brand-packages" className="text-white/40 hover:text-white text-sm">← Back to packages</Link>
-            <span className="text-white/20">·</span>
-            <Link href="/" className="text-white/40 hover:text-white text-sm">Home</Link>
+            <Link href="/brand-packages" className="text-white/80 hover:text-white text-sm">← Back to packages</Link>
+            <span className="text-white/80">·</span>
+            <Link href="/" className="text-white/80 hover:text-white text-sm">Home</Link>
           </div>
         </section>
       </main>

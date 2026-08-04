@@ -45,7 +45,7 @@ export default function SocialShareSection({ adminToken }: { adminToken: string 
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="font-display text-3xl text-yellow-400">Social Share</h1>
-          <p className="text-white/40 text-sm">Post to Facebook + Instagram, and let AI run daily auto-posts.</p>
+          <p className="text-white/80 text-sm">Post to Facebook + Instagram, and let AI run daily auto-posts.</p>
         </div>
       </div>
 
@@ -55,7 +55,7 @@ export default function SocialShareSection({ adminToken }: { adminToken: string 
             key={t}
             onClick={() => setTab(t)}
             className={`px-4 py-2 text-sm font-semibold capitalize cursor-pointer border-b-2 transition-all ${
-              tab === t ? "border-yellow-500 text-yellow-400" : "border-transparent text-white/40 hover:text-white"
+              tab === t ? "border-yellow-500 text-yellow-400" : "border-transparent text-white/80 hover:text-white"
             }`}
           >
             {t}
@@ -213,11 +213,11 @@ function ComposeTab({ adminToken }: { adminToken: string }) {
                 />
                 <div className="rounded-lg border border-white/10 bg-black/40 p-2 max-h-64 overflow-y-auto">
                   <div className="flex items-center justify-between mb-2">
-                    <p className="text-xs text-white/40">Dropbox: {dbxFolder || "(no folder)"}</p>
+                    <p className="text-xs text-white/80">Dropbox: {dbxFolder || "(no folder)"}</p>
                     <button onClick={() => loadDbx(dbxFolder)} className="text-xs text-yellow-400 hover:underline cursor-pointer">Refresh</button>
                   </div>
-                  {!dbxConfigured && <p className="text-xs text-white/40">Dropbox not configured — set env vars.</p>}
-                  {dbxFiles.length === 0 && dbxConfigured && <p className="text-xs text-white/40">No files in folder.</p>}
+                  {!dbxConfigured && <p className="text-xs text-white/80">Dropbox not configured — set env vars.</p>}
+                  {dbxFiles.length === 0 && dbxConfigured && <p className="text-xs text-white/80">No files in folder.</p>}
                   <div className="space-y-1">
                     {dbxFiles.map(f => (
                       <button
@@ -321,8 +321,8 @@ function AccountsTab({ adminToken }: { adminToken: string }) {
           <div key={a.id} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 p-4">
             <div>
               <p className="text-white font-semibold capitalize">{a.city}</p>
-              <p className="text-white/40 text-xs">FB: {a.fb_page_name || a.fb_page_id} {a.ig_user_id && `· IG: ${a.ig_user_id}`}</p>
-              <p className="text-white/30 text-xs">Dropbox: {a.dropbox_city_folder || "—"} · Token: {a.fb_page_access_token}</p>
+              <p className="text-white/80 text-xs">FB: {a.fb_page_name || a.fb_page_id} {a.ig_user_id && `· IG: ${a.ig_user_id}`}</p>
+              <p className="text-white/80 text-xs">Dropbox: {a.dropbox_city_folder || "—"} · Token: {a.fb_page_access_token}</p>
             </div>
             <div className="flex gap-2">
               <button onClick={() => setEditing({ ...a, fb_page_access_token: "" })} className="text-xs px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 cursor-pointer">Edit</button>
@@ -330,7 +330,7 @@ function AccountsTab({ adminToken }: { adminToken: string }) {
             </div>
           </div>
         ))}
-        {!accounts.length && <p className="text-white/40 text-sm">No accounts yet.</p>}
+        {!accounts.length && <p className="text-white/80 text-sm">No accounts yet.</p>}
       </div>
 
       {editing && (
@@ -377,14 +377,14 @@ function HistoryTab({ adminToken }: { adminToken: string }) {
         <div key={p.id} className="rounded-xl border border-white/10 bg-white/5 p-4">
           <div className="flex items-center gap-2 mb-1">
             <span className={`px-2 py-0.5 rounded text-xs font-semibold ${p.status === "posted" ? "bg-green-500/20 text-green-300" : "bg-red-500/20 text-red-300"}`}>{p.status}</span>
-            <span className="text-xs text-white/40">{p.platform} · {p.post_type} · {p.city || "—"} · {new Date(p.posted_at).toLocaleString()}</span>
+            <span className="text-xs text-white/80">{p.platform} · {p.post_type} · {p.city || "—"} · {new Date(p.posted_at).toLocaleString()}</span>
           </div>
           <p className="text-sm text-white/80 whitespace-pre-wrap">{p.caption}</p>
-          {p.asset_path && <p className="text-xs text-white/30 mt-1">📎 {p.asset_path}</p>}
+          {p.asset_path && <p className="text-xs text-white/80 mt-1">📎 {p.asset_path}</p>}
           {p.error && <p className="text-xs text-red-300 mt-1">⚠️ {p.error}</p>}
         </div>
       ))}
-      {!posts.length && <p className="text-white/40 text-sm">No posts yet.</p>}
+      {!posts.length && <p className="text-white/80 text-sm">No posts yet.</p>}
     </div>
   );
 }
@@ -420,7 +420,7 @@ function SettingsTab({ adminToken }: { adminToken: string }) {
     setMsg(JSON.stringify(j, null, 2));
   };
 
-  if (!s) return <p className="text-white/40 text-sm">Loading…</p>;
+  if (!s) return <p className="text-white/80 text-sm">Loading…</p>;
 
   return (
     <div className="space-y-4 max-w-2xl">
@@ -455,7 +455,7 @@ function SettingsTab({ adminToken }: { adminToken: string }) {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-xs text-white/50 mb-1 font-medium">{label}</label>
+      <label className="block text-xs text-white/80 mb-1 font-medium">{label}</label>
       {children}
       <style jsx>{`
         :global(.input) {

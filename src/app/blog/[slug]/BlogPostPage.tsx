@@ -91,7 +91,7 @@ export default function BlogPostPage({ post }: { post: BlogPost }) {
 
           {/* Back */}
           <motion.div initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.4 }}>
-            <Link href="/blog" className="inline-flex items-center gap-2 text-white/35 hover:text-white/65 text-sm mb-10 transition-colors duration-200">
+            <Link href="/blog" className="inline-flex items-center gap-2 text-white/80 hover:text-white/65 text-sm mb-10 transition-colors duration-200">
               <ArrowLeft size={14} /> Back to Blog
             </Link>
           </motion.div>
@@ -116,10 +116,10 @@ export default function BlogPostPage({ post }: { post: BlogPost }) {
                 style={{ background: `${color}20`, color, border: `1px solid ${color}30` }}>
                 {post.category}
               </span>
-              <span className="flex items-center gap-1.5 text-white/30 text-sm">
+              <span className="flex items-center gap-1.5 text-white/80 text-sm">
                 <Clock size={13} /> {post.readTime} min read
               </span>
-              <span className="flex items-center gap-1.5 text-white/30 text-sm">
+              <span className="flex items-center gap-1.5 text-white/80 text-sm">
                 <Calendar size={13} /> {formatDate(post.publishedAt)}
               </span>
             </div>
@@ -128,7 +128,7 @@ export default function BlogPostPage({ post }: { post: BlogPost }) {
               {post.title}
             </h1>
 
-            <p className="text-white/50 text-lg leading-relaxed mb-8 border-l-2 pl-4" style={{ borderColor: color }}>
+            <p className="text-white/80 text-lg leading-relaxed mb-8 border-l-2 pl-4" style={{ borderColor: color }}>
               {post.excerpt}
             </p>
 
@@ -144,7 +144,7 @@ export default function BlogPostPage({ post }: { post: BlogPost }) {
           {/* Tags */}
           <div className="flex flex-wrap gap-2 mt-12 pt-8 border-t border-white/10">
             {post.tags.map(tag => (
-              <span key={tag} className="flex items-center gap-1.5 text-white/30 text-xs bg-white/5 border border-white/10 px-3 py-1.5 rounded-full">
+              <span key={tag} className="flex items-center gap-1.5 text-white/80 text-xs bg-white/5 border border-white/10 px-3 py-1.5 rounded-full">
                 <Tag size={10} /> #{tag}
               </span>
             ))}
@@ -159,7 +159,7 @@ export default function BlogPostPage({ post }: { post: BlogPost }) {
             style={{ background: `${color}10`, borderColor: `${color}30` }}
           >
             <p className="font-display text-white text-2xl mb-2">READY TO JOIN US?</p>
-            <p className="text-white/50 text-sm mb-5">Grab your tickets before Early Bird pricing ends.</p>
+            <p className="text-white/80 text-sm mb-5">Grab your tickets before Early Bird pricing ends.</p>
             <Link href="/#events"
               className="inline-flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-black font-bold px-8 py-3.5 rounded-full transition-all duration-200 hover:scale-105">
               Get Tickets — From $55
@@ -169,7 +169,7 @@ export default function BlogPostPage({ post }: { post: BlogPost }) {
           {/* Related posts */}
           {related.length > 0 && (
             <div className="mt-16">
-              <p className="text-white/30 text-xs font-bold tracking-[0.3em] uppercase mb-5">More From The Blog</p>
+              <p className="text-white/80 text-xs font-bold tracking-[0.3em] uppercase mb-5">More From The Blog</p>
               <div className="space-y-3">
                 {related.map(p => {
                   const c = CATEGORY_COLORS[p.category] || "#F5A623";
@@ -179,9 +179,9 @@ export default function BlogPostPage({ post }: { post: BlogPost }) {
                       <div className="w-1 self-stretch rounded-full flex-shrink-0" style={{ background: c }} />
                       <div className="flex-1 min-w-0">
                         <p className="text-white/70 group-hover:text-yellow-400 text-sm font-medium truncate transition-colors duration-200">{p.title}</p>
-                        <p className="text-white/25 text-xs mt-0.5">{p.category} · {p.readTime} min read</p>
+                        <p className="text-white/80 text-xs mt-0.5">{p.category} · {p.readTime} min read</p>
                       </div>
-                      <span className="text-white/20 group-hover:text-yellow-400 transition-colors duration-200 flex-shrink-0">→</span>
+                      <span className="text-white/80 group-hover:text-yellow-400 transition-colors duration-200 flex-shrink-0">→</span>
                     </Link>
                   );
                 })}

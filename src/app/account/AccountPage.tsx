@@ -136,7 +136,7 @@ function ProfileTab({ user }: { user: AuthUser }) {
           <div className="flex-1">
             <label className="text-white text-xs font-bold uppercase tracking-wider mb-1.5 block">First Name</label>
             <div className="relative">
-              <User size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/50" />
+              <User size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/80" />
               <input
                 type="text"
                 value={form.firstName}
@@ -161,7 +161,7 @@ function ProfileTab({ user }: { user: AuthUser }) {
         <div>
           <label className="text-white text-xs font-bold uppercase tracking-wider mb-1.5 block">Email</label>
           <div className="relative">
-            <Mail size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/50" />
+            <Mail size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/80" />
             <input
               type="email"
               value={form.email}
@@ -175,7 +175,7 @@ function ProfileTab({ user }: { user: AuthUser }) {
         <div>
           <label className="text-white text-xs font-bold uppercase tracking-wider mb-1.5 block">Phone</label>
           <div className="relative">
-            <Phone size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/50" />
+            <Phone size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/80" />
             <input
               type="tel"
               value={form.phone}
@@ -206,7 +206,7 @@ function OrdersTab({ onViewTickets, orders }: { onViewTickets: (orderId: string)
     <div>
       <h2 className="font-display text-white text-3xl mb-6">ORDER HISTORY</h2>
       {orders.length === 0 ? (
-        <div className="text-center py-20 text-white/30">
+        <div className="text-center py-20 text-white/80">
           <ShoppingBag size={40} className="mx-auto mb-4 opacity-30" />
           <p>No orders yet.</p>
           <Link href="/#events" className="mt-4 inline-block text-yellow-400 text-sm hover:underline">Browse Events →</Link>
@@ -226,15 +226,15 @@ function OrdersTab({ onViewTickets, orders }: { onViewTickets: (orderId: string)
                     <span className="bg-green-900/40 border border-green-500/30 text-green-400 text-xs font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
                       {order.status}
                     </span>
-                    <span className="text-white/25 text-xs">{order.order_number}</span>
+                    <span className="text-white/80 text-xs">{order.order_number}</span>
                   </div>
                   <h3 className="font-display text-yellow-400 text-xl">Tequila Fest {order.event_city}</h3>
                   <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2">
-                    <span className="flex items-center gap-1.5 text-white/50 text-sm">
+                    <span className="flex items-center gap-1.5 text-white/80 text-sm">
                       <Calendar size={13} /> {new Date(order.created_at).toLocaleDateString()}
                     </span>
                   </div>
-                  <p className="text-white/40 text-sm mt-1">
+                  <p className="text-white/80 text-sm mt-1">
                     {order.quantity}× {order.ticket_type} · <span className="text-white/60 font-semibold">${Number(order.total).toFixed(2)}</span>
                   </p>
                 </div>
@@ -342,7 +342,7 @@ function TicketsTab({ highlightOrderId, orders }: { highlightOrderId?: string; o
   return (
     <div>
       <h2 className="font-display text-white text-3xl mb-2">MY TICKETS</h2>
-      <p className="text-white/40 text-sm mb-8">Show this QR code at the door — one scan per entry.</p>
+      <p className="text-white/80 text-sm mb-8">Show this QR code at the door — one scan per entry.</p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
         {allTickets.map(ticket => {
           const isCheckedIn = ticket.status === "used";
@@ -369,14 +369,14 @@ function TicketsTab({ highlightOrderId, orders }: { highlightOrderId?: string; o
               }`}>
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-white/40 text-xs font-bold tracking-[0.2em] uppercase mb-0.5">
+                    <p className="text-white/80 text-xs font-bold tracking-[0.2em] uppercase mb-0.5">
                       Ticket #{ticket.ticketNumber}
                       {ticket.totalInOrder > 1 && (
-                        <span className="text-white/25 font-normal"> of {ticket.totalInOrder}</span>
+                        <span className="text-white/80 font-normal"> of {ticket.totalInOrder}</span>
                       )}
                     </p>
                     <p className="font-display text-yellow-400 text-lg leading-tight">{ticket.event}</p>
-                    <p className="text-white/50 text-xs mt-0.5">{ticket.date}</p>
+                    <p className="text-white/80 text-xs mt-0.5">{ticket.date}</p>
                   </div>
                   {isCheckedIn && (
                     <span className="flex items-center gap-1.5 bg-red-500/20 border border-red-500/40 text-red-300 text-xs font-bold px-2.5 py-1 rounded-full">
@@ -396,7 +396,7 @@ function TicketsTab({ highlightOrderId, orders }: { highlightOrderId?: string; o
                 <div className="flex-1 min-w-0 flex flex-col gap-3">
                   {/* Ticket holder */}
                   <div>
-                    <p className="text-white/50 text-xs uppercase tracking-wider mb-0.5">Ticket Holder</p>
+                    <p className="text-white/80 text-xs uppercase tracking-wider mb-0.5">Ticket Holder</p>
                     <p className="text-white font-bold text-base truncate">{ticket.name}</p>
                   </div>
 
@@ -418,7 +418,7 @@ function TicketsTab({ highlightOrderId, orders }: { highlightOrderId?: string; o
 
                   {/* Ticket ID */}
                   <div>
-                    <p className="text-white/40 text-xs uppercase tracking-wider mb-0.5">Ticket ID</p>
+                    <p className="text-white/80 text-xs uppercase tracking-wider mb-0.5">Ticket ID</p>
                     <p className="text-white/60 text-xs font-mono">{ticket.id}</p>
                   </div>
 
@@ -439,7 +439,7 @@ function TicketsTab({ highlightOrderId, orders }: { highlightOrderId?: string; o
                     <button
                       onClick={() => downloadTicketPdf(ticket)}
                       disabled={downloadingId === ticket.id}
-                      className="flex-1 text-xs text-white/40 hover:text-white/60 border border-white/10 hover:border-white/20 py-2 rounded-lg transition-all duration-200 cursor-pointer disabled:opacity-50"
+                      className="flex-1 text-xs text-white/80 hover:text-white/60 border border-white/10 hover:border-white/20 py-2 rounded-lg transition-all duration-200 cursor-pointer disabled:opacity-50"
                     >
                       {downloadingId === ticket.id ? "Generating…" : "Download PDF"}
                     </button>
@@ -456,8 +456,8 @@ function TicketsTab({ highlightOrderId, orders }: { highlightOrderId?: string; o
 
               {/* Footer */}
               <div className={`px-5 py-3 flex items-center justify-between transition-colors duration-500 ${isCheckedIn ? "bg-red-950/40" : "bg-black/20"}`}>
-                <span className={`text-xs ${isCheckedIn ? "text-red-400/50" : "text-white/20"}`}>Must be 21+</span>
-                <span className={`text-xs ${isCheckedIn ? "text-red-400/50" : "text-white/20"}`}>TequilaFestUSA.com</span>
+                <span className={`text-xs ${isCheckedIn ? "text-red-400/50" : "text-white/80"}`}>Must be 21+</span>
+                <span className={`text-xs ${isCheckedIn ? "text-red-400/50" : "text-white/80"}`}>TequilaFestUSA.com</span>
               </div>
             </motion.div>
           );
@@ -530,9 +530,9 @@ function ReferTab({ orders, userName }: { orders: RealOrder[]; userName: string 
   if (userEvents.length === 0) {
     return (
       <div className="text-center py-16">
-        <Gift size={40} className="mx-auto text-white/20 mb-4" />
+        <Gift size={40} className="mx-auto text-white/80 mb-4" />
         <p className="font-display text-white text-2xl mb-2">REFER A FRIEND</p>
-        <p className="text-white/40 text-sm">Purchase a ticket first to get your referral link.</p>
+        <p className="text-white/80 text-sm">Purchase a ticket first to get your referral link.</p>
       </div>
     );
   }
@@ -541,7 +541,7 @@ function ReferTab({ orders, userName }: { orders: RealOrder[]; userName: string 
     <div className="space-y-8">
       <div>
         <h2 className="font-display text-white text-3xl mb-1">REFER A FRIEND</h2>
-        <p className="text-white/40 text-sm">Earn 5 points + 1 raffle entry for every friend who buys a ticket. Win a VIP upgrade!</p>
+        <p className="text-white/80 text-sm">Earn 5 points + 1 raffle entry for every friend who buys a ticket. Win a VIP upgrade!</p>
       </div>
 
       {/* Raffle banner */}
@@ -565,7 +565,7 @@ function ReferTab({ orders, userName }: { orders: RealOrder[]; userName: string 
           ].map(s => (
             <div key={s.label} className="bg-white/[0.03] border border-white/10 rounded-2xl p-4 text-center">
               <p className="font-display text-3xl" style={{ color: s.color }}>{s.value}</p>
-              <p className="text-white/40 text-xs mt-1">{s.label}</p>
+              <p className="text-white/80 text-xs mt-1">{s.label}</p>
             </div>
           ))}
         </div>
@@ -574,7 +574,7 @@ function ReferTab({ orders, userName }: { orders: RealOrder[]; userName: string 
       {/* Event selector (if multiple) */}
       {userEvents.length > 1 && (
         <div>
-          <p className="text-white/50 text-xs uppercase tracking-wider mb-2">Your Event</p>
+          <p className="text-white/80 text-xs uppercase tracking-wider mb-2">Your Event</p>
           <div className="flex gap-2 flex-wrap">
             {userEvents.map(ev => (
               <button key={ev.slug} onClick={() => setSelectedSlug(ev.slug)}
@@ -594,7 +594,7 @@ function ReferTab({ orders, userName }: { orders: RealOrder[]; userName: string 
           <div className="space-y-5">
             {/* Referral link */}
             <div>
-              <p className="text-white/50 text-xs uppercase tracking-wider mb-2">Your Referral Link</p>
+              <p className="text-white/80 text-xs uppercase tracking-wider mb-2">Your Referral Link</p>
               <div className="flex gap-2">
                 <div className="flex-1 bg-white/5 border border-white/15 rounded-xl px-4 py-3 text-yellow-400 text-sm font-mono truncate">
                   {refData.referralUrl}
@@ -610,18 +610,18 @@ function ReferTab({ orders, userName }: { orders: RealOrder[]; userName: string 
             {/* QR Code */}
             {qrDataUrl && (
               <div>
-                <p className="text-white/50 text-xs uppercase tracking-wider mb-2">Share QR Code</p>
+                <p className="text-white/80 text-xs uppercase tracking-wider mb-2">Share QR Code</p>
                 <div className="bg-[#0d0500] border border-white/10 rounded-2xl p-4 inline-block">
                   <img src={qrDataUrl} alt="Referral QR Code" className="w-36 h-36" />
                 </div>
-                <p className="text-white/30 text-xs mt-2">Screenshot and share anywhere</p>
+                <p className="text-white/80 text-xs mt-2">Screenshot and share anywhere</p>
               </div>
             )}
           </div>
 
           {/* Right: email invite */}
           <div>
-            <p className="text-white/50 text-xs uppercase tracking-wider mb-2">Send Email Invites</p>
+            <p className="text-white/80 text-xs uppercase tracking-wider mb-2">Send Email Invites</p>
             <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-5 space-y-4">
               <textarea
                 value={inviteEmails}
@@ -640,7 +640,7 @@ function ReferTab({ orders, userName }: { orders: RealOrder[]; userName: string 
                   <Check size={14} /> Invites sent! You&apos;ll earn points when they buy.
                 </p>
               )}
-              <p className="text-white/30 text-xs text-center">Up to 10 invites per send</p>
+              <p className="text-white/80 text-xs text-center">Up to 10 invites per send</p>
             </div>
           </div>
         </div>
@@ -690,7 +690,7 @@ function RewardsTab({ loyaltyPoints, onPointsUpdate }: { loyaltyPoints: number; 
   return (
     <div className="space-y-6">
       <div>
-        <p className="text-white/30 text-xs font-bold tracking-[0.3em] uppercase mb-1">Redeem Your Points</p>
+        <p className="text-white/80 text-xs font-bold tracking-[0.3em] uppercase mb-1">Redeem Your Points</p>
         <h2 className="font-display text-white text-3xl">REWARDS</h2>
       </div>
 
@@ -723,11 +723,11 @@ function RewardsTab({ loyaltyPoints, onPointsUpdate }: { loyaltyPoints: number; 
               className={`bg-white/[0.03] border rounded-2xl p-5 flex flex-col transition-all ${canAfford ? "border-yellow-500/20 hover:border-yellow-500/40" : "border-white/8 opacity-60"}`}>
               <p className="text-3xl mb-3">{reward.emoji}</p>
               <p className="text-white font-bold text-base mb-1">{reward.name}</p>
-              <p className="text-white/40 text-xs mb-4 flex-1">{reward.desc}</p>
+              <p className="text-white/80 text-xs mb-4 flex-1">{reward.desc}</p>
               <div className="flex items-center justify-between">
                 <div>
                   <p className="font-display text-yellow-400 text-xl leading-none">{reward.points.toLocaleString()}</p>
-                  <p className="text-white/30 text-xs">points</p>
+                  <p className="text-white/80 text-xs">points</p>
                 </div>
                 <button
                   onClick={() => handleRedeem(reward)}
@@ -741,7 +741,7 @@ function RewardsTab({ loyaltyPoints, onPointsUpdate }: { loyaltyPoints: number; 
         })}
       </div>
 
-      <p className="text-white/20 text-xs text-center">After redeeming, our team will contact you within 48 hours to fulfill your reward.</p>
+      <p className="text-white/80 text-xs text-center">After redeeming, our team will contact you within 48 hours to fulfill your reward.</p>
     </div>
   );
 }
@@ -799,7 +799,7 @@ export default function AccountPage() {
 
   if (loadingData || !user) return (
     <div className="min-h-screen bg-[#0d0500] flex items-center justify-center">
-      <div className="text-white/30 text-sm">Loading your account...</div>
+      <div className="text-white/80 text-sm">Loading your account...</div>
     </div>
   );
 
@@ -826,7 +826,7 @@ export default function AccountPage() {
                 </span>
               </div>
               <div>
-                <p className="text-white/40 text-xs uppercase tracking-wider">Welcome back</p>
+                <p className="text-white/80 text-xs uppercase tracking-wider">Welcome back</p>
                 <h1 className="font-display text-white text-2xl leading-tight">
                   {user.firstName.toUpperCase()} {user.lastName.toUpperCase()}
                 </h1>
@@ -847,7 +847,7 @@ export default function AccountPage() {
                 </>
               )}
               <button onClick={handleLogout} title="Log Out"
-                className="flex items-center gap-2 text-white/30 hover:text-white/60 text-sm transition-colors duration-200 cursor-pointer">
+                className="flex items-center gap-2 text-white/80 hover:text-white/60 text-sm transition-colors duration-200 cursor-pointer">
                 <LogOut size={15} />
                 <span className="hidden sm:inline">Log Out</span>
               </button>
@@ -859,12 +859,12 @@ export default function AccountPage() {
               full row on sm+ where there's room. */}
           <div className="sm:hidden flex gap-2 mb-8">
             <button onClick={() => { setTab("dashboard"); setTabMenuOpen(false); }}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 cursor-pointer ${tab === "dashboard" ? "bg-yellow-500 text-black" : "bg-white/[0.03] border border-white/10 text-white/40"}`}>
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 cursor-pointer ${tab === "dashboard" ? "bg-yellow-500 text-black" : "bg-white/[0.03] border border-white/10 text-white/80"}`}>
               <LayoutDashboard size={16} /> Dashboard
             </button>
             <div className="relative flex-1">
               <button onClick={() => setTabMenuOpen(o => !o)}
-                className={`w-full flex items-center justify-between gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 cursor-pointer ${tab !== "dashboard" ? "bg-yellow-500 text-black" : "bg-white/[0.03] border border-white/10 text-white/40"}`}>
+                className={`w-full flex items-center justify-between gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 cursor-pointer ${tab !== "dashboard" ? "bg-yellow-500 text-black" : "bg-white/[0.03] border border-white/10 text-white/80"}`}>
                 <span className="flex items-center gap-2">
                   {tab !== "dashboard" ? tabs.find(t => t.id === tab)?.icon : null}
                   {tab !== "dashboard" ? tabs.find(t => t.id === tab)?.label : "More"}
@@ -888,7 +888,7 @@ export default function AccountPage() {
               <button
                 key={t.id}
                 onClick={() => setTab(t.id)}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 cursor-pointer flex-shrink-0 whitespace-nowrap ${tab === t.id ? "bg-yellow-500 text-black" : "text-white/40 hover:text-white/70"}`}
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 cursor-pointer flex-shrink-0 whitespace-nowrap ${tab === t.id ? "bg-yellow-500 text-black" : "text-white/80 hover:text-white/70"}`}
               >
                 {t.icon}
                 {t.label}

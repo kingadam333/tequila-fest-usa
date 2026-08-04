@@ -119,8 +119,8 @@ function StatCard({ icon, label, value, sub, color }: { icon: React.ReactNode; l
         </div>
       </div>
       <p className="font-display text-white text-3xl">{value}</p>
-      <p className="text-white/50 text-sm mt-0.5">{label}</p>
-      {sub && <p className="text-white/30 text-xs mt-1">{sub}</p>}
+      <p className="text-white/80 text-sm mt-0.5">{label}</p>
+      {sub && <p className="text-white/80 text-xs mt-1">{sub}</p>}
     </div>
   );
 }
@@ -131,19 +131,19 @@ function StatusBadge({ status }: { status: string }) {
     refunded: "bg-red-500/15 text-red-400 border-red-500/30",
     pending: "bg-yellow-500/15 text-yellow-400 border-yellow-500/30",
     new: "bg-blue-500/15 text-blue-400 border-blue-500/30",
-    read: "bg-white/10 text-white/50 border-white/20",
+    read: "bg-white/10 text-white/80 border-white/20",
     replied: "bg-green-500/15 text-green-400 border-green-500/30",
     on_sale:        "bg-green-500/15 text-green-400 border-green-500/30",
     coming_soon:    "bg-yellow-500/15 text-yellow-400 border-yellow-500/30",
     sold_out:       "bg-red-500/15 text-red-400 border-red-500/30",
     cancelled:      "bg-red-900/20 text-red-500/70 border-red-900/30",
-    draft:          "bg-white/5 text-white/30 border-white/10",
+    draft:          "bg-white/5 text-white/80 border-white/10",
     "auto-replied": "bg-blue-500/15 text-blue-400 border-blue-500/30",
     "needs-review": "bg-orange-500/15 text-orange-400 border-orange-500/30",
-    closed: "bg-white/5 text-white/25 border-white/10",
+    closed: "bg-white/5 text-white/80 border-white/10",
   };
   return (
-    <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full border uppercase tracking-wide ${styles[status as keyof typeof styles] || "bg-white/10 text-white/50 border-white/20"}`}>
+    <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full border uppercase tracking-wide ${styles[status as keyof typeof styles] || "bg-white/10 text-white/80 border-white/20"}`}>
       {status.replace(/_/g, " ")}
     </span>
   );
@@ -194,7 +194,7 @@ function OverviewSection({ stats: globalStats, orders, events, loading: globalLo
           </select>
           {isFiltered && (
             <button onClick={() => { setFilterCity("All Cities"); setFilterYear("All Years"); }}
-              className="text-white/40 hover:text-white text-xs border border-white/10 px-2 py-1 rounded-lg transition-all cursor-pointer">
+              className="text-white/80 hover:text-white text-xs border border-white/10 px-2 py-1 rounded-lg transition-all cursor-pointer">
               Clear
             </button>
           )}
@@ -215,14 +215,14 @@ function OverviewSection({ stats: globalStats, orders, events, loading: globalLo
               </div>
             </div>
             <p className="font-display text-white text-3xl">${(stats?.totalServiceFees || 0).toFixed(2)}</p>
-            <p className="text-white/50 text-sm mt-0.5">Service Fees</p>
+            <p className="text-white/80 text-sm mt-0.5">Service Fees</p>
             <div className="mt-2 space-y-0.5">
               <div className="flex justify-between text-xs">
-                <span className="text-white/40">Platform</span>
+                <span className="text-white/80">Platform</span>
                 <span className="text-white/60">${(stats?.totalPlatformFees || 0).toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-xs">
-                <span className="text-white/40">Processing</span>
+                <span className="text-white/80">Processing</span>
                 <span className="text-white/60">${(stats?.totalStripeFees || 0).toFixed(2)}</span>
               </div>
             </div>
@@ -235,7 +235,7 @@ function OverviewSection({ stats: globalStats, orders, events, loading: globalLo
           a new year (e.g. Cincinnati 2027) shows up automatically and each
           year gets its own row instead of being merged by city name. */}
       <div>
-        <h3 className="text-white/50 text-xs font-bold uppercase tracking-wider mb-4">Ticket Sales by City</h3>
+        <h3 className="text-white/80 text-xs font-bold uppercase tracking-wider mb-4">Ticket Sales by City</h3>
         <div className="space-y-3">
           {events
             .filter(ev => ev.status !== "draft" && ev.status !== "cancelled")
@@ -258,12 +258,12 @@ function OverviewSection({ stats: globalStats, orders, events, loading: globalLo
             <div key={ev.id} className={`bg-white/[0.03] border border-white/10 rounded-xl p-4 ${ev.status === "completed" ? "opacity-60" : ""}`}>
               <div className="flex items-center justify-between mb-2">
                 <span className="font-display text-lg" style={{ color: ev.color }}>
-                  {ev.city} <span className="text-white/40 text-base">{year}</span>
-                  {ev.status === "completed" && <span className="text-white/30 text-xs font-sans uppercase tracking-wider ml-2 align-middle">Completed</span>}
+                  {ev.city} <span className="text-white/80 text-base">{year}</span>
+                  {ev.status === "completed" && <span className="text-white/80 text-xs font-sans uppercase tracking-wider ml-2 align-middle">Completed</span>}
                 </span>
                 <div className="text-right">
-                  <span className="text-white/50 text-sm">{sold} / {capacity} sold</span>
-                  {eventStats?.revenue ? <span className="text-white/30 text-xs ml-2">${eventStats.revenue.toLocaleString()}</span> : null}
+                  <span className="text-white/80 text-sm">{sold} / {capacity} sold</span>
+                  {eventStats?.revenue ? <span className="text-white/80 text-xs ml-2">${eventStats.revenue.toLocaleString()}</span> : null}
                 </div>
               </div>
               <div className="h-2 bg-white/10 rounded-full overflow-hidden mb-2">
@@ -273,13 +273,13 @@ function OverviewSection({ stats: globalStats, orders, events, loading: globalLo
               {eventStats?.byType && Object.keys(eventStats.byType).length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mt-2">
                   {Object.entries(eventStats.byType).map(([type, count]) => (
-                    <span key={type} className="text-xs px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-white/50">
+                    <span key={type} className="text-xs px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-white/80">
                       {type}: <span className="text-white/80 font-semibold">{count}</span>
                     </span>
                   ))}
                 </div>
               )}
-              <p className="text-white/30 text-xs mt-1">{Math.round((sold / capacity) * 100)}% capacity · {ev.date}</p>
+              <p className="text-white/80 text-xs mt-1">{Math.round((sold / capacity) * 100)}% capacity · {ev.date}</p>
             </div>
           );})}
         </div>
@@ -287,13 +287,13 @@ function OverviewSection({ stats: globalStats, orders, events, loading: globalLo
 
       {/* Recent orders */}
       <div>
-        <h3 className="text-white/50 text-xs font-bold uppercase tracking-wider mb-4">Recent Orders</h3>
+        <h3 className="text-white/80 text-xs font-bold uppercase tracking-wider mb-4">Recent Orders</h3>
         <div className="space-y-2">
           {orders.slice(0, 5).map(order => (
             <div key={order.id} className="flex items-center justify-between bg-white/[0.03] border border-white/10 rounded-xl px-4 py-3">
               <div>
                 <p className="text-white text-sm font-semibold">{order.customer}</p>
-                <p className="text-white/40 text-xs">{order.event} · {order.ticketType}</p>
+                <p className="text-white/80 text-xs">{order.event} · {order.ticketType}</p>
               </div>
               <div className="flex items-center gap-3">
                 <StatusBadge status={order.status} />
@@ -302,7 +302,7 @@ function OverviewSection({ stats: globalStats, orders, events, loading: globalLo
             </div>
           ))}
           {orders.length === 0 && !loading && (
-            <p className="text-white/30 text-sm text-center py-4">No orders yet</p>
+            <p className="text-white/80 text-sm text-center py-4">No orders yet</p>
           )}
         </div>
       </div>
@@ -413,14 +413,14 @@ function OrdersSection({ orders, loading, adminToken, onRefetch }: { orders: Ord
 
       <div className="flex gap-3 mb-5 flex-wrap">
         <div className="relative flex-1 min-w-[200px]">
-          <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30" />
+          <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/80" />
           <input value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Search by name, email, order ID..."
             className="w-full bg-white/5 border border-white/15 rounded-xl pl-9 pr-4 py-2.5 text-white placeholder-white/30 text-sm outline-none focus:border-yellow-500/40" />
         </div>
         {["all", "confirmed", "refunded", "pending"].map(f => (
           <button key={f} onClick={() => setFilter(f)}
-            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all cursor-pointer capitalize ${filter === f ? "bg-yellow-500 text-black" : "bg-white/5 border border-white/15 text-white/50 hover:text-white"}`}>
+            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all cursor-pointer capitalize ${filter === f ? "bg-yellow-500 text-black" : "bg-white/5 border border-white/15 text-white/80 hover:text-white"}`}>
             {f}
           </button>
         ))}
@@ -436,24 +436,24 @@ function OrdersSection({ orders, loading, adminToken, onRefetch }: { orders: Ord
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1 flex-wrap">
                   <StatusBadge status={order.status} />
-                  <span className="text-white/25 text-xs font-mono">{order.orderNumber}</span>
-                  <span className="text-white/25 text-xs">{order.date}</span>
+                  <span className="text-white/80 text-xs font-mono">{order.orderNumber}</span>
+                  <span className="text-white/80 text-xs">{order.date}</span>
                 </div>
                 <p className="text-white font-semibold">{order.customer}</p>
-                <p className="text-white/40 text-xs">{order.email} · {order.event} · {order.quantity}× {order.ticketType}</p>
+                <p className="text-white/80 text-xs">{order.email} · {order.event} · {order.quantity}× {order.ticketType}</p>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
                 <span className="font-display text-yellow-400 text-xl">${order.total}</span>
                 {order.receiptUrl && (
                   <a href={order.receiptUrl} target="_blank" rel="noopener noreferrer"
-                    className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-white/40 hover:text-white transition-all cursor-pointer" title="View in Stripe">
+                    className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-white/80 hover:text-white transition-all cursor-pointer" title="View in Stripe">
                     <Eye size={13} />
                   </a>
                 )}
                 <button
                   onClick={() => handleResendTicket(order)}
                   disabled={resending === order.id}
-                  className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-white/40 hover:text-white transition-all cursor-pointer disabled:opacity-50"
+                  className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-white/80 hover:text-white transition-all cursor-pointer disabled:opacity-50"
                   title="Resend ticket email">
                   <Send size={13} className={resending === order.id ? "animate-pulse" : ""} />
                 </button>
@@ -470,7 +470,7 @@ function OrdersSection({ orders, loading, adminToken, onRefetch }: { orders: Ord
           </div>
         ))}
         {filtered.length === 0 && (
-          <p className="text-center text-white/30 py-10">No orders found</p>
+          <p className="text-center text-white/80 py-10">No orders found</p>
         )}
       </div>
       )}
@@ -671,14 +671,14 @@ function EventEditor({ event, adminToken, onSaved }: { event: EventRow; adminTok
             { label: "Tag", key: "tag" as const },
           ].map(f => (
             <div key={f.key}>
-              <label className="text-white/40 text-xs uppercase tracking-wider block mb-1">{f.label}</label>
+              <label className="text-white/80 text-xs uppercase tracking-wider block mb-1">{f.label}</label>
               <input value={String(ev[f.key] || "")} onChange={field(f.key)}
                 className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-3 py-2.5 text-white text-sm outline-none" />
             </div>
           ))}
           {/* Date picker — updates date_iso and auto-formats the display date string */}
           <div>
-            <label className="text-white/40 text-xs uppercase tracking-wider block mb-1">Event Date</label>
+            <label className="text-white/80 text-xs uppercase tracking-wider block mb-1">Event Date</label>
             <input
               type="date"
               value={ev.date_iso ? ev.date_iso.slice(0, 10) : ""}
@@ -691,22 +691,22 @@ function EventEditor({ event, adminToken, onSaved }: { event: EventRow; adminTok
               }}
               className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-3 py-2.5 text-white text-sm outline-none cursor-pointer [color-scheme:dark]"
             />
-            {ev.date && <p className="text-white/30 text-xs mt-1">{ev.date}</p>}
+            {ev.date && <p className="text-white/80 text-xs mt-1">{ev.date}</p>}
           </div>
           <div className="sm:col-span-2">
-            <label className="text-white/40 text-xs uppercase tracking-wider block mb-1">Description</label>
+            <label className="text-white/80 text-xs uppercase tracking-wider block mb-1">Description</label>
             <textarea value={ev.description || ""} onChange={field("description")} rows={3}
               className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-3 py-2.5 text-white text-sm outline-none resize-none" />
           </div>
           <div>
-            <label className="text-white/40 text-xs uppercase tracking-wider block mb-1">Status</label>
+            <label className="text-white/80 text-xs uppercase tracking-wider block mb-1">Status</label>
             <select value={ev.status} onChange={field("status")}
               className="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2.5 text-white text-sm outline-none cursor-pointer appearance-none">
               {["on_sale","coming_soon","sold_out","completed","draft","cancelled"].map(s => <option key={s} value={s} className="bg-[#0d0500]">{s.replace(/_/g," ")}</option>)}
             </select>
           </div>
           <div>
-            <label className="text-white/40 text-xs uppercase tracking-wider block mb-1">Total Capacity</label>
+            <label className="text-white/80 text-xs uppercase tracking-wider block mb-1">Total Capacity</label>
             <input type="number" value={ev.capacity} onChange={e => setEv(p => ({ ...p, capacity: parseInt(e.target.value) || 0 }))}
               className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-3 py-2.5 text-white text-sm outline-none" />
           </div>
@@ -729,14 +729,14 @@ function EventEditor({ event, adminToken, onSaved }: { event: EventRow; adminTok
         <h3 className="text-white font-bold mb-1 flex items-center gap-2">
           <span className="text-yellow-400">🖼</span> City Header Image
         </h3>
-        <p className="text-white/30 text-xs mb-4">Used as the hero background on the city event page. Recommended: 1600×900px or wider, JPG/PNG/WebP.</p>
+        <p className="text-white/80 text-xs mb-4">Used as the hero background on the city event page. Recommended: 1600×900px or wider, JPG/PNG/WebP.</p>
 
         {/* Preview */}
         {imagePreview && (
           <div className="relative mb-4 rounded-xl overflow-hidden border border-white/10" style={{ aspectRatio: "16/6" }}>
             <img src={imagePreview} alt="OG header" className="w-full h-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-            <span className="absolute bottom-2 right-3 text-white/40 text-xs">Current image</span>
+            <span className="absolute bottom-2 right-3 text-white/80 text-xs">Current image</span>
           </div>
         )}
 
@@ -769,40 +769,40 @@ function EventEditor({ event, adminToken, onSaved }: { event: EventRow; adminTok
             <div key={tt.id} className={`border rounded-xl p-4 transition-all ${tt.is_active ? "border-white/15 bg-white/[0.02]" : "border-white/5 opacity-50"}`}>
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 items-end">
                 <div className="sm:col-span-2">
-                  <label className="text-white/40 text-xs uppercase tracking-wider block mb-1">Name</label>
+                  <label className="text-white/80 text-xs uppercase tracking-wider block mb-1">Name</label>
                   <input value={tt.name}
                     onChange={e => updateTicketType(tt.id, { name: e.target.value })}
                     className="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2 text-white text-sm outline-none" />
                 </div>
                 <div>
-                  <label className="text-white/40 text-xs uppercase tracking-wider block mb-1">Price ($)</label>
+                  <label className="text-white/80 text-xs uppercase tracking-wider block mb-1">Price ($)</label>
                   <input type="number" step="0.01" value={tt.price}
                     onChange={e => updateTicketType(tt.id, { price: parseFloat(e.target.value) })}
                     className="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2 text-white text-sm outline-none" />
                 </div>
                 <div>
-                  <label className="text-white/40 text-xs uppercase tracking-wider block mb-1 flex items-center gap-1">
+                  <label className="text-white/80 text-xs uppercase tracking-wider block mb-1 flex items-center gap-1">
                     Platform Fee ($)
-                    <span className="text-white/20 normal-case font-normal text-[10px]">per ticket</span>
+                    <span className="text-white/80 normal-case font-normal text-[10px]">per ticket</span>
                   </label>
                   <input type="number" step="0.01" min="0" value={tt.platform_fee ?? 3}
                     onChange={e => updateTicketType(tt.id, { platform_fee: parseFloat(e.target.value) })}
                     className="w-full bg-yellow-500/10 border border-yellow-500/20 focus:border-yellow-500/50 rounded-xl px-3 py-2 text-yellow-400 text-sm outline-none" />
                 </div>
                 <div>
-                  <label className="text-white/40 text-xs uppercase tracking-wider block mb-1">Capacity</label>
+                  <label className="text-white/80 text-xs uppercase tracking-wider block mb-1">Capacity</label>
                   <input type="number" value={tt.capacity}
                     onChange={e => updateTicketType(tt.id, { capacity: parseInt(e.target.value) })}
                     className="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2 text-white text-sm outline-none" />
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="text-center">
-                    <p className="text-white/30 text-xs mb-1">Sold</p>
+                    <p className="text-white/80 text-xs mb-1">Sold</p>
                     <p className="text-white font-bold">{tt.sold_count}</p>
                   </div>
                   <div className="flex flex-col gap-1 ml-auto">
                     <button onClick={() => updateTicketType(tt.id, { is_active: !tt.is_active })}
-                      className={`text-xs font-bold px-2.5 py-1 rounded-full border cursor-pointer transition-all ${tt.is_active ? "bg-green-500/15 border-green-500/30 text-green-400" : "bg-white/10 border-white/20 text-white/40"}`}>
+                      className={`text-xs font-bold px-2.5 py-1 rounded-full border cursor-pointer transition-all ${tt.is_active ? "bg-green-500/15 border-green-500/30 text-green-400" : "bg-white/10 border-white/20 text-white/80"}`}>
                       {tt.is_active ? "Active" : "Off"}
                     </button>
                     <button onClick={() => deleteTicketType(tt.id)}
@@ -817,7 +817,7 @@ function EventEditor({ event, adminToken, onSaved }: { event: EventRow; adminTok
                   <div className="h-full rounded-full transition-all" style={{ width: `${Math.min((tt.sold_count / tt.capacity) * 100, 100)}%`, background: tt.sold_count >= tt.capacity ? "#ef4444" : ev.color }} />
                 </div>
                 <div className="flex items-center justify-between mt-0.5">
-                  <p className="text-white/20 text-xs">{tt.sold_count} / {tt.capacity} sold</p>
+                  <p className="text-white/80 text-xs">{tt.sold_count} / {tt.capacity} sold</p>
                   {tt.sold_count >= tt.capacity && <span className="text-red-400 text-xs font-bold">SOLD OUT</span>}
                   {tt.sold_count >= tt.capacity * 0.9 && tt.sold_count < tt.capacity && <span className="text-orange-400 text-xs font-semibold">Almost Full</span>}
                 </div>
@@ -828,7 +828,7 @@ function EventEditor({ event, adminToken, onSaved }: { event: EventRow; adminTok
 
         {/* Add ticket type */}
         <div className="border border-dashed border-white/15 rounded-xl p-4">
-          <p className="text-white/40 text-xs uppercase tracking-wider mb-3">Add Ticket Type</p>
+          <p className="text-white/80 text-xs uppercase tracking-wider mb-3">Add Ticket Type</p>
           <div className="grid grid-cols-3 gap-2 mb-3">
             <input value={newTypeName} onChange={e => setNewTypeName(e.target.value)} placeholder="Name (e.g. Early Bird)"
               className="bg-white/5 border border-white/15 rounded-xl px-3 py-2 text-white text-sm outline-none placeholder-white/20" />
@@ -922,7 +922,7 @@ function EventsSection({ adminToken, stats, editingId, setEditingId }: { adminTo
         <div className="flex items-center gap-2">
           {editing ? (
             <button onClick={() => setEditingId(null)}
-              className="flex items-center gap-2 text-white/40 hover:text-white text-sm border border-white/15 px-4 py-2 rounded-xl transition-all cursor-pointer">
+              className="flex items-center gap-2 text-white/80 hover:text-white text-sm border border-white/15 px-4 py-2 rounded-xl transition-all cursor-pointer">
               ← Back to Events
             </button>
           ) : (
@@ -940,7 +940,7 @@ function EventsSection({ adminToken, stats, editingId, setEditingId }: { adminTo
         <div className="space-y-8">
           {years.map(year => (
             <div key={year}>
-              <p className="text-white/30 text-xs font-bold uppercase tracking-wider mb-3">{year} Events</p>
+              <p className="text-white/80 text-xs font-bold uppercase tracking-wider mb-3">{year} Events</p>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                 {eventsByYear[year].map(ev => {
                   const totalCapacity = ev.ticket_types.reduce((s, t) => s + t.capacity, 0) || ev.capacity;
@@ -954,14 +954,14 @@ function EventsSection({ adminToken, stats, editingId, setEditingId }: { adminTo
                           <StatusBadge status={ev.status} />
                           <h3 className="font-display text-2xl mt-1" style={{ color: ev.color }}>
                             {ev.city.toUpperCase()}
-                            {evYear && <span className="text-white/25 ml-2 text-lg">{evYear}</span>}
+                            {evYear && <span className="text-white/80 ml-2 text-lg">{evYear}</span>}
                           </h3>
-                          <p className="text-white/50 text-sm">{ev.date} · {ev.time}</p>
-                          <p className="text-white/40 text-xs">{ev.venue}</p>
+                          <p className="text-white/80 text-sm">{ev.date} · {ev.time}</p>
+                          <p className="text-white/80 text-xs">{ev.venue}</p>
                         </div>
                         <div className="text-right">
                           <p className="font-display text-white text-3xl">{sold}</p>
-                          <p className="text-white/30 text-xs">of {totalCapacity} sold</p>
+                          <p className="text-white/80 text-xs">of {totalCapacity} sold</p>
                           {pct >= 100 && <p className="text-red-400 text-xs font-bold mt-0.5">SOLD OUT</p>}
                           {pct >= 90 && pct < 100 && <p className="text-orange-400 text-xs font-semibold mt-0.5">Almost Full</p>}
                         </div>
@@ -973,9 +973,9 @@ function EventsSection({ adminToken, stats, editingId, setEditingId }: { adminTo
                         {[...ev.ticket_types].sort((a, b) => a.sort_order - b.sort_order).map(tt => {
                           const isFull = tt.sold_count >= tt.capacity;
                           return (
-                            <span key={tt.id} className={`text-xs px-2 py-0.5 rounded-full border ${isFull ? "bg-red-500/15 border-red-500/30 text-red-400" : "bg-white/5 border-white/10 text-white/50"}`}>
+                            <span key={tt.id} className={`text-xs px-2 py-0.5 rounded-full border ${isFull ? "bg-red-500/15 border-red-500/30 text-red-400" : "bg-white/5 border-white/10 text-white/80"}`}>
                               {tt.name}: <span className={`font-semibold ${isFull ? "text-red-300" : "text-white/80"}`}>{tt.sold_count}</span>
-                              <span className="text-white/20">/{tt.capacity}</span>
+                              <span className="text-white/80">/{tt.capacity}</span>
                               {isFull && <span className="ml-1 font-bold">SOLD OUT</span>}
                             </span>
                           );
@@ -1079,16 +1079,16 @@ function LoyaltyModal({ userId, userName, adminToken, onClose }: { userId: strin
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 flex-shrink-0">
           <div>
             <p className="text-white font-bold text-lg">{userName}</p>
-            <p className="text-white/40 text-sm">Loyalty & Rewards</p>
+            <p className="text-white/80 text-sm">Loyalty & Rewards</p>
           </div>
           <div className="flex items-center gap-4">
             {data?.account && (
               <div className="text-right">
                 <p className="font-display text-yellow-400 text-2xl leading-none">{(data.account.loyalty_points || 0).toLocaleString()}</p>
-                <p className="text-white/30 text-xs">points</p>
+                <p className="text-white/80 text-xs">points</p>
               </div>
             )}
-            <button onClick={onClose} className="p-2 text-white/30 hover:text-white transition-colors cursor-pointer"><X size={18} /></button>
+            <button onClick={onClose} className="p-2 text-white/80 hover:text-white transition-colors cursor-pointer"><X size={18} /></button>
           </div>
         </div>
 
@@ -1100,7 +1100,7 @@ function LoyaltyModal({ userId, userName, adminToken, onClose }: { userId: strin
             ["redemptions", "Redemptions", <Gift size={13} key="g" />],
           ] as const).map(([id, label, icon]) => (
             <button key={id} onClick={() => setActiveTab(id)}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${activeTab === id ? "bg-yellow-500 text-black" : "text-white/40 hover:text-white"}`}>
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${activeTab === id ? "bg-yellow-500 text-black" : "text-white/80 hover:text-white"}`}>
               {icon}{label}
               {id === "referrals" && data?.referrals?.length > 0 && (
                 <span className="bg-black/20 rounded-full px-1.5 py-0.5 text-xs">{data.referrals.length}</span>
@@ -1115,20 +1115,20 @@ function LoyaltyModal({ userId, userName, adminToken, onClose }: { userId: strin
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-6 py-4">
           {loading ? (
-            <p className="text-white/30 text-sm text-center py-8">Loading...</p>
+            <p className="text-white/80 text-sm text-center py-8">Loading...</p>
           ) : (
             <>
               {/* Point History */}
               {activeTab === "transactions" && (
                 <div className="space-y-2">
                   {data.transactions.length === 0 ? (
-                    <p className="text-white/30 text-sm text-center py-8">No transactions yet</p>
+                    <p className="text-white/80 text-sm text-center py-8">No transactions yet</p>
                   ) : data.transactions.map((t: any) => (
                     <div key={t.id} className="flex items-center justify-between bg-white/[0.03] border border-white/8 rounded-xl px-4 py-3">
                       <div>
                         <p className="text-white/80 text-sm font-medium">{ACTION_LABELS[t.action_code] || t.action_code}</p>
-                        <p className="text-white/30 text-xs mt-0.5">{t.description}</p>
-                        <p className="text-white/20 text-xs">{new Date(t.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</p>
+                        <p className="text-white/80 text-xs mt-0.5">{t.description}</p>
+                        <p className="text-white/80 text-xs">{new Date(t.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</p>
                       </div>
                       <span className={`font-display text-lg font-bold ${t.points >= 0 ? "text-green-400" : "text-red-400"}`}>
                         {t.points >= 0 ? "+" : ""}{t.points}
@@ -1143,23 +1143,23 @@ function LoyaltyModal({ userId, userName, adminToken, onClose }: { userId: strin
                 <div className="space-y-3">
                   {data.referralCodes.length > 0 && (
                     <div className="bg-white/[0.03] border border-white/8 rounded-xl px-4 py-3 mb-4">
-                      <p className="text-white/40 text-xs uppercase tracking-wider mb-2">Referral Codes</p>
+                      <p className="text-white/80 text-xs uppercase tracking-wider mb-2">Referral Codes</p>
                       {data.referralCodes.map((c: any) => (
-                        <p key={c.code} className="font-mono text-yellow-400 text-sm">{c.code} <span className="text-white/30">— {c.event_slug}</span></p>
+                        <p key={c.code} className="font-mono text-yellow-400 text-sm">{c.code} <span className="text-white/80">— {c.event_slug}</span></p>
                       ))}
                     </div>
                   )}
                   {data.referrals.length === 0 ? (
-                    <p className="text-white/30 text-sm text-center py-8">No referrals yet</p>
+                    <p className="text-white/80 text-sm text-center py-8">No referrals yet</p>
                   ) : data.referrals.map((r: any) => (
                     <div key={r.id} className="flex items-center justify-between bg-white/[0.03] border border-white/8 rounded-xl px-4 py-3">
                       <div>
                         <p className="text-white/80 text-sm font-medium">{r.referred_email || "Unknown"}</p>
-                        <p className="text-white/30 text-xs mt-0.5">Order {r.referred_order_id?.slice(0, 8)}…</p>
-                        <p className="text-white/20 text-xs">{new Date(r.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</p>
+                        <p className="text-white/80 text-xs mt-0.5">Order {r.referred_order_id?.slice(0, 8)}…</p>
+                        <p className="text-white/80 text-xs">{new Date(r.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</p>
                       </div>
                       <div className="text-right">
-                        <span className={`text-xs font-bold px-2 py-1 rounded-full ${r.status === "converted" ? "bg-green-500/15 text-green-400" : "bg-white/8 text-white/30"}`}>
+                        <span className={`text-xs font-bold px-2 py-1 rounded-full ${r.status === "converted" ? "bg-green-500/15 text-green-400" : "bg-white/8 text-white/80"}`}>
                           {r.status}
                         </span>
                         {r.points_awarded > 0 && <p className="text-green-400 text-xs mt-1">+{r.points_awarded} pts</p>}
@@ -1173,18 +1173,18 @@ function LoyaltyModal({ userId, userName, adminToken, onClose }: { userId: strin
               {activeTab === "redemptions" && (
                 <div className="space-y-2">
                   {data.redemptions.length === 0 ? (
-                    <p className="text-white/30 text-sm text-center py-8">No redemptions yet</p>
+                    <p className="text-white/80 text-sm text-center py-8">No redemptions yet</p>
                   ) : data.redemptions.map((r: any) => (
                     <div key={r.id} className="flex items-center justify-between bg-white/[0.03] border border-white/8 rounded-xl px-4 py-3">
                       <div>
                         <p className="text-white/80 text-sm font-medium">{r.reward_name}</p>
-                        <p className="text-white/30 text-xs mt-0.5">{r.points_cost} pts · {new Date(r.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</p>
-                        {r.notes && <p className="text-white/20 text-xs mt-0.5">{r.notes}</p>}
+                        <p className="text-white/80 text-xs mt-0.5">{r.points_cost} pts · {new Date(r.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</p>
+                        {r.notes && <p className="text-white/80 text-xs mt-0.5">{r.notes}</p>}
                       </div>
                       <span className={`text-xs font-bold px-2 py-1 rounded-full ${
                         r.status === "fulfilled" ? "bg-green-500/15 text-green-400" :
                         r.status === "pending" ? "bg-yellow-500/15 text-yellow-400" :
-                        "bg-white/8 text-white/30"
+                        "bg-white/8 text-white/80"
                       }`}>
                         {r.status}
                       </span>
@@ -1236,7 +1236,7 @@ function UserDashboardModal({ user, adminToken, onClose }: { user: UserRecord; a
     load();
   }, [user.email, adminToken]);
 
-  const statusColor = (s: string) => s === "checked_in" ? "text-green-400 bg-green-500/10 border-green-500/30" : s === "valid" ? "text-yellow-400 bg-yellow-500/10 border-yellow-500/30" : "text-white/40 bg-white/5 border-white/15";
+  const statusColor = (s: string) => s === "checked_in" ? "text-green-400 bg-green-500/10 border-green-500/30" : s === "valid" ? "text-yellow-400 bg-yellow-500/10 border-yellow-500/30" : "text-white/80 bg-white/5 border-white/15";
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -1250,14 +1250,14 @@ function UserDashboardModal({ user, adminToken, onClose }: { user: UserRecord; a
         <div className="flex items-center justify-between px-6 py-5 border-b border-white/10">
           <div>
             <h2 className="font-display text-white text-2xl">{user.name.toUpperCase()}</h2>
-            <p className="text-white/40 text-sm mt-0.5">{user.email}</p>
+            <p className="text-white/80 text-sm mt-0.5">{user.email}</p>
           </div>
           <div className="flex items-center gap-3">
             <div className="text-right">
               <p className="text-yellow-400 font-bold text-lg">${user.totalSpent.toFixed(0)}</p>
-              <p className="text-white/30 text-xs">{user.ticketCount} ticket{user.ticketCount !== 1 ? "s" : ""}</p>
+              <p className="text-white/80 text-xs">{user.ticketCount} ticket{user.ticketCount !== 1 ? "s" : ""}</p>
             </div>
-            <button onClick={onClose} className="text-white/30 hover:text-white/70 transition-colors cursor-pointer p-1">
+            <button onClick={onClose} className="text-white/80 hover:text-white/70 transition-colors cursor-pointer p-1">
               <X size={20} />
             </button>
           </div>
@@ -1270,7 +1270,7 @@ function UserDashboardModal({ user, adminToken, onClose }: { user: UserRecord; a
               {[1,2].map(i => <div key={i} className="h-32 bg-white/5 rounded-2xl animate-pulse" />)}
             </div>
           ) : tickets.length === 0 ? (
-            <p className="text-white/30 text-center py-10">No tickets found</p>
+            <p className="text-white/80 text-center py-10">No tickets found</p>
           ) : (
             <div className="space-y-4">
               {tickets.map((t: any) => (
@@ -1284,7 +1284,7 @@ function UserDashboardModal({ user, adminToken, onClose }: { user: UserRecord; a
                         </div>
                       ) : (
                         <div className="w-[116px] h-[116px] bg-white/5 border border-white/10 rounded-xl flex items-center justify-center">
-                          <QrCode size={28} className="text-white/20" />
+                          <QrCode size={28} className="text-white/80" />
                         </div>
                       )}
                     </div>
@@ -1299,8 +1299,8 @@ function UserDashboardModal({ user, adminToken, onClose }: { user: UserRecord; a
                       <p className="text-white font-bold text-base capitalize">{t.ticket_type}</p>
                       <p className="text-yellow-400 font-semibold text-sm">{t.event_city}</p>
                       <div className="mt-2 space-y-0.5">
-                        <p className="text-white/40 text-xs">Ticket #{t.ticket_number}</p>
-                        <p className="text-white/40 text-xs font-mono">{t.qr_code}</p>
+                        <p className="text-white/80 text-xs">Ticket #{t.ticket_number}</p>
+                        <p className="text-white/80 text-xs font-mono">{t.qr_code}</p>
                         {t.checked_in_at && (
                           <p className="text-green-400/70 text-xs">Checked in: {new Date(t.checked_in_at).toLocaleString()}</p>
                         )}
@@ -1311,8 +1311,8 @@ function UserDashboardModal({ user, adminToken, onClose }: { user: UserRecord; a
                   {/* Order info */}
                   {t.ticket_orders && (
                     <div className="border-t border-white/[0.06] px-4 py-2.5 flex items-center justify-between bg-white/[0.02]">
-                      <p className="text-white/30 text-xs font-mono">{t.ticket_orders.order_number}</p>
-                      <p className="text-white/30 text-xs">{new Date(t.created_at).toLocaleDateString()}</p>
+                      <p className="text-white/80 text-xs font-mono">{t.ticket_orders.order_number}</p>
+                      <p className="text-white/80 text-xs">{new Date(t.created_at).toLocaleDateString()}</p>
                     </div>
                   )}
                 </div>
@@ -1443,7 +1443,7 @@ function UsersSection({ adminToken }: { adminToken: string }) {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="font-display text-white text-3xl">USERS</h2>
-          <p className="text-white/30 text-sm mt-0.5">{users.length} total accounts</p>
+          <p className="text-white/80 text-sm mt-0.5">{users.length} total accounts</p>
         </div>
         <button onClick={() => { setShowAdd(!showAdd); setAddError(""); }}
           className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-black font-bold text-sm px-4 py-2.5 rounded-xl transition-all cursor-pointer">
@@ -1460,22 +1460,22 @@ function UsersSection({ adminToken }: { adminToken: string }) {
               {addError && <p className="text-red-400 text-sm bg-red-900/20 border border-red-500/30 rounded-xl px-4 py-2">{addError}</p>}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">First Name</label>
+                  <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">First Name</label>
                   <input value={addForm.firstName} onChange={e => setAddForm(f => ({ ...f, firstName: e.target.value }))} placeholder="First name"
                     className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-2.5 text-white placeholder-white/25 outline-none text-sm" />
                 </div>
                 <div>
-                  <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Last Name</label>
+                  <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Last Name</label>
                   <input value={addForm.lastName} onChange={e => setAddForm(f => ({ ...f, lastName: e.target.value }))} placeholder="Last name"
                     className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-2.5 text-white placeholder-white/25 outline-none text-sm" />
                 </div>
                 <div>
-                  <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Email *</label>
+                  <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Email *</label>
                   <input type="email" value={addForm.email} onChange={e => setAddForm(f => ({ ...f, email: e.target.value }))} placeholder="user@email.com"
                     className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-2.5 text-white placeholder-white/25 outline-none text-sm" />
                 </div>
                 <div>
-                  <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Phone</label>
+                  <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Phone</label>
                   <input type="tel" value={addForm.phone} onChange={e => setAddForm(f => ({ ...f, phone: e.target.value }))} placeholder="(555) 000-0000"
                     className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-2.5 text-white placeholder-white/25 outline-none text-sm" />
                 </div>
@@ -1492,7 +1492,7 @@ function UsersSection({ adminToken }: { adminToken: string }) {
                   className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-60 text-black font-bold text-sm px-5 py-2.5 rounded-xl transition-all cursor-pointer">
                   <Plus size={14} /> {adding ? "Creating..." : "Create User"}
                 </button>
-                <button onClick={() => setShowAdd(false)} className="text-white/40 hover:text-white/70 text-sm px-4 py-2.5 rounded-xl border border-white/10 hover:border-white/20 transition-all cursor-pointer">Cancel</button>
+                <button onClick={() => setShowAdd(false)} className="text-white/80 hover:text-white/70 text-sm px-4 py-2.5 rounded-xl border border-white/10 hover:border-white/20 transition-all cursor-pointer">Cancel</button>
               </div>
             </div>
           </motion.div>
@@ -1503,7 +1503,7 @@ function UsersSection({ adminToken }: { adminToken: string }) {
       <div className="flex gap-1 bg-white/[0.04] border border-white/10 rounded-xl p-1 w-fit">
         {([["tickets", `Ticket Buyers (${ticketCount})`], ["free", `No Tickets (${freeCount})`]] as const).map(([id, label]) => (
           <button key={id} onClick={() => { setTab(id); setExpandedId(null); setSearch(""); }}
-            className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer ${tab === id ? "bg-yellow-500 text-black" : "text-white/40 hover:text-white/70"}`}>
+            className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer ${tab === id ? "bg-yellow-500 text-black" : "text-white/80 hover:text-white/70"}`}>
             {label}
           </button>
         ))}
@@ -1511,7 +1511,7 @@ function UsersSection({ adminToken }: { adminToken: string }) {
 
       {/* Search */}
       <div className="relative">
-        <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30" />
+        <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/80" />
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder={`Search ${tab} users...`}
           className="w-full bg-white/5 border border-white/15 rounded-xl pl-9 pr-4 py-2.5 text-white placeholder-white/30 text-sm outline-none focus:border-yellow-500/40" />
       </div>
@@ -1547,7 +1547,7 @@ function UsersSection({ adminToken }: { adminToken: string }) {
             <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }}
               className="bg-[#1a0e02] border border-white/15 rounded-2xl p-6 w-full max-w-sm" onClick={e => e.stopPropagation()}>
               <h3 className="font-bold text-white text-lg mb-1">Comp a Ticket</h3>
-              <p className="text-white/40 text-sm mb-5">
+              <p className="text-white/80 text-sm mb-5">
                 {users.find(u => u.id === compUserId)?.name}
               </p>
               {compSuccess ? (
@@ -1555,7 +1555,7 @@ function UsersSection({ adminToken }: { adminToken: string }) {
               ) : (
                 <div className="space-y-4">
                   <div>
-                    <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Event</label>
+                    <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Event</label>
                     <select value={compForm.eventSlug} onChange={e => setCompForm(f => ({ ...f, eventSlug: e.target.value }))}
                       className="w-full appearance-none bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-2.5 text-white outline-none text-sm cursor-pointer">
                       {EVENTS_LIST.map(ev => (
@@ -1564,7 +1564,7 @@ function UsersSection({ adminToken }: { adminToken: string }) {
                     </select>
                   </div>
                   <div>
-                    <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Ticket Type</label>
+                    <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Ticket Type</label>
                     <select value={compForm.ticketType} onChange={e => setCompForm(f => ({ ...f, ticketType: e.target.value }))}
                       className="w-full appearance-none bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-2.5 text-white outline-none text-sm cursor-pointer">
                       {TICKET_TYPES.map(t => <option key={t} value={t} className="bg-[#0d0500]">{t}</option>)}
@@ -1576,7 +1576,7 @@ function UsersSection({ adminToken }: { adminToken: string }) {
                       {comping ? "Creating..." : "Comp Ticket"}
                     </button>
                     <button onClick={() => setCompUserId(null)}
-                      className="text-white/40 hover:text-white/70 text-sm px-4 py-2.5 rounded-xl border border-white/10 transition-all cursor-pointer">Cancel</button>
+                      className="text-white/80 hover:text-white/70 text-sm px-4 py-2.5 rounded-xl border border-white/10 transition-all cursor-pointer">Cancel</button>
                   </div>
                 </div>
               )}
@@ -1587,9 +1587,9 @@ function UsersSection({ adminToken }: { adminToken: string }) {
 
       {/* User list */}
       {loading ? (
-        <div className="text-center py-16 text-white/30 text-sm">Loading users...</div>
+        <div className="text-center py-16 text-white/80 text-sm">Loading users...</div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-16 text-white/20">
+        <div className="text-center py-16 text-white/80">
           <Users size={32} className="mx-auto mb-3 opacity-30" />
           <p className="text-sm">{search ? "No users match your search" : `No ${tab} users yet`}</p>
         </div>
@@ -1601,13 +1601,13 @@ function UsersSection({ adminToken }: { adminToken: string }) {
               <div className="flex items-center justify-between px-4 py-3.5">
                 <div className="flex-1 min-w-0">
                   <p className="text-white font-semibold text-sm truncate">{u.name}</p>
-                  <p className="text-white/35 text-xs mt-0.5 truncate">{u.email}{u.phone ? ` · ${u.phone}` : ""}</p>
+                  <p className="text-white/80 text-xs mt-0.5 truncate">{u.email}{u.phone ? ` · ${u.phone}` : ""}</p>
                 </div>
                 <div className="flex items-center gap-3 ml-3 flex-shrink-0">
                   {u.hasTickets && (
                     <div className="text-right">
                       <p className="text-white text-sm font-bold">${u.totalSpent.toFixed(0)}</p>
-                      <p className="text-white/30 text-xs">{u.ticketCount} ticket{u.ticketCount !== 1 ? "s" : ""}</p>
+                      <p className="text-white/80 text-xs">{u.ticketCount} ticket{u.ticketCount !== 1 ? "s" : ""}</p>
                     </div>
                   )}
                   {/* Action buttons */}
@@ -1621,7 +1621,7 @@ function UsersSection({ adminToken }: { adminToken: string }) {
                     )}
                     {u.hasTickets && (
                       <button onClick={() => { const key = u.id || u.email; setExpandedId(expandedId === key ? null : key); }}
-                        className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-lg text-white/40 hover:text-white transition-all cursor-pointer" title="View orders">
+                        className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-lg text-white/80 hover:text-white transition-all cursor-pointer" title="View orders">
                         <Eye size={13} />
                       </button>
                     )}
@@ -1647,7 +1647,7 @@ function UsersSection({ adminToken }: { adminToken: string }) {
                 </div>
               </div>
               {repairMessage?.id === u.id && (
-                <p className="text-white/50 text-xs px-4 pb-3">{repairMessage.text}</p>
+                <p className="text-white/80 text-xs px-4 pb-3">{repairMessage.text}</p>
               )}
 
               {/* Expanded orders */}
@@ -1656,16 +1656,16 @@ function UsersSection({ adminToken }: { adminToken: string }) {
                   <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
                     className="overflow-hidden border-t border-white/[0.06]">
                     <div className="px-4 py-3 space-y-2">
-                      <p className="text-white/30 text-xs uppercase tracking-wider mb-2">Orders</p>
+                      <p className="text-white/80 text-xs uppercase tracking-wider mb-2">Orders</p>
                       {u.orders.map((o, i) => (
                         <div key={i} className="flex items-center justify-between bg-white/[0.02] rounded-lg px-3 py-2">
                           <div>
                             <p className="text-white/70 text-xs font-mono">{o.order_number}</p>
-                            <p className="text-white/40 text-xs">{o.event_city} · {o.ticket_type} × {o.quantity}</p>
+                            <p className="text-white/80 text-xs">{o.event_city} · {o.ticket_type} × {o.quantity}</p>
                           </div>
                           <div className="text-right">
                             <p className="text-white/70 text-xs font-semibold">{o.total === 0 ? "COMP" : `$${Number(o.total).toFixed(2)}`}</p>
-                            <p className="text-white/25 text-xs">{new Date(o.created_at).toLocaleDateString()}</p>
+                            <p className="text-white/80 text-xs">{new Date(o.created_at).toLocaleDateString()}</p>
                           </div>
                         </div>
                       ))}
@@ -1701,12 +1701,12 @@ function CouponsSection() {
           <h3 className="text-white font-bold mb-4">Create Coupon</h3>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             <div>
-              <label className="text-white/40 text-xs uppercase tracking-wider block mb-1">Code</label>
+              <label className="text-white/80 text-xs uppercase tracking-wider block mb-1">Code</label>
               <input value={newCoupon.code} onChange={e => setNewCoupon(p => ({ ...p, code: e.target.value.toUpperCase() }))}
                 placeholder="PROMO10" className="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2.5 text-white font-mono text-sm outline-none focus:border-yellow-500/40" />
             </div>
             <div>
-              <label className="text-white/40 text-xs uppercase tracking-wider block mb-1">Type</label>
+              <label className="text-white/80 text-xs uppercase tracking-wider block mb-1">Type</label>
               <select value={newCoupon.type}
                 onChange={e => { const v = e.target.value; setNewCoupon(p => ({ ...p, type: v })); }}
                 className="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2.5 text-white text-sm outline-none focus:border-yellow-500/40 cursor-pointer">
@@ -1715,18 +1715,18 @@ function CouponsSection() {
               </select>
             </div>
             <div>
-              <label className="text-white/40 text-xs uppercase tracking-wider block mb-1">Value</label>
+              <label className="text-white/80 text-xs uppercase tracking-wider block mb-1">Value</label>
               <input type="number" value={newCoupon.value} onChange={e => setNewCoupon(p => ({ ...p, value: e.target.value }))}
                 placeholder={newCoupon.type === "percentage" ? "10" : "5"}
                 className="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2.5 text-white text-sm outline-none focus:border-yellow-500/40" />
             </div>
             <div>
-              <label className="text-white/40 text-xs uppercase tracking-wider block mb-1">Max Uses</label>
+              <label className="text-white/80 text-xs uppercase tracking-wider block mb-1">Max Uses</label>
               <input type="number" value={newCoupon.maxUses} onChange={e => setNewCoupon(p => ({ ...p, maxUses: e.target.value }))}
                 placeholder="100" className="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2.5 text-white text-sm outline-none focus:border-yellow-500/40" />
             </div>
             <div>
-              <label className="text-white/40 text-xs uppercase tracking-wider block mb-1">Expires</label>
+              <label className="text-white/80 text-xs uppercase tracking-wider block mb-1">Expires</label>
               <input type="date" value={newCoupon.expires} onChange={e => setNewCoupon(p => ({ ...p, expires: e.target.value }))}
                 className="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2.5 text-white text-sm outline-none focus:border-yellow-500/40" />
             </div>
@@ -1738,9 +1738,9 @@ function CouponsSection() {
         </motion.div>
       )}
 
-      <div className="text-center py-12 text-white/25 border border-dashed border-white/10 rounded-2xl">
+      <div className="text-center py-12 text-white/80 border border-dashed border-white/10 rounded-2xl">
         <Tag size={32} className="mx-auto mb-3 opacity-30" />
-        <p className="font-semibold text-white/40 mb-1">No coupons yet</p>
+        <p className="font-semibold text-white/80 mb-1">No coupons yet</p>
         <p className="text-sm">Create your first coupon code above.</p>
       </div>
     </div>
@@ -1884,7 +1884,7 @@ function CheckInSection({ adminToken }: { adminToken: string }) {
       const expired = member.invite_expires_at && new Date(member.invite_expires_at) < new Date();
       return <span className={`text-xs font-semibold ${expired ? "text-red-400" : "text-yellow-400"}`}>{expired ? "Invite expired" : "Invite pending"}</span>;
     }
-    return <span className="text-xs text-white/30">{member.status}</span>;
+    return <span className="text-xs text-white/80">{member.status}</span>;
   };
 
   const checkinPct = stats && stats.total > 0 ? Math.round((stats.checkedIn / stats.total) * 100) : 0;
@@ -1897,7 +1897,7 @@ function CheckInSection({ adminToken }: { adminToken: string }) {
       <div className="flex flex-wrap gap-2 mb-6">
         {EVENTS_CONFIG.map(ev => (
           <button key={ev.id} onClick={() => setActiveEvent(ev)}
-            className={`px-4 py-2 rounded-xl text-sm font-bold transition-all cursor-pointer ${activeEvent.id === ev.id ? "text-black" : "bg-white/5 border border-white/15 text-white/50 hover:text-white"}`}
+            className={`px-4 py-2 rounded-xl text-sm font-bold transition-all cursor-pointer ${activeEvent.id === ev.id ? "text-black" : "bg-white/5 border border-white/15 text-white/80 hover:text-white"}`}
             style={activeEvent.id === ev.id ? { background: ev.color } : {}}>
             {ev.city}
           </button>
@@ -1908,7 +1908,7 @@ function CheckInSection({ adminToken }: { adminToken: string }) {
         {/* Manual scan / check-in */}
         <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-5">
           <h3 className="text-white font-bold mb-1">Manual Check-In</h3>
-          <p className="text-white/40 text-sm mb-4">Enter a QR code value or ticket number</p>
+          <p className="text-white/80 text-sm mb-4">Enter a QR code value or ticket number</p>
           <div className="flex gap-2">
             <input
               value={scanInput}
@@ -1928,14 +1928,14 @@ function CheckInSection({ adminToken }: { adminToken: string }) {
               {scanResult.message}
             </motion.div>
           )}
-          <p className="text-white/20 text-xs mt-3">Use the <a href="/checkin" target="_blank" className="text-yellow-500/60 underline">door staff portal</a> for full QR camera scanning</p>
+          <p className="text-white/80 text-xs mt-3">Use the <a href="/checkin" target="_blank" className="text-yellow-500/60 underline">door staff portal</a> for full QR camera scanning</p>
         </div>
 
         {/* Live Stats */}
         <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-5">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-white font-bold">{activeEvent.city} — Live Stats</h3>
-            <button onClick={() => loadStats(activeEvent.city)} className="text-white/30 hover:text-white/70 text-xs cursor-pointer">↻ Refresh</button>
+            <button onClick={() => loadStats(activeEvent.city)} className="text-white/80 hover:text-white/70 text-xs cursor-pointer">↻ Refresh</button>
           </div>
           {statsLoading && !stats ? (
             <div className="space-y-3 animate-pulse">
@@ -1950,7 +1950,7 @@ function CheckInSection({ adminToken }: { adminToken: string }) {
                   { label: "Remaining",    value: stats?.remaining ?? 0, color: "#C8102E" },
                 ].map(stat => (
                   <div key={stat.label} className="flex items-center justify-between">
-                    <span className="text-white/50 text-sm">{stat.label}</span>
+                    <span className="text-white/80 text-sm">{stat.label}</span>
                     <span className="font-display text-2xl" style={{ color: stat.color }}>{stat.value}</span>
                   </div>
                 ))}
@@ -1958,7 +1958,7 @@ function CheckInSection({ adminToken }: { adminToken: string }) {
               {/* Progress bar */}
               {(stats?.total ?? 0) > 0 && (
                 <div className="mt-4">
-                  <div className="flex justify-between text-xs text-white/30 mb-1">
+                  <div className="flex justify-between text-xs text-white/80 mb-1">
                     <span>Check-in progress</span>
                     <span>{checkinPct}%</span>
                   </div>
@@ -1973,7 +1973,7 @@ function CheckInSection({ adminToken }: { adminToken: string }) {
                 <div className="mt-4 pt-4 border-t border-white/10 space-y-1.5">
                   {Object.entries(stats.byType).map(([type, counts]: [string, any]) => (
                     <div key={type} className="flex items-center justify-between text-xs">
-                      <span className="text-white/40 capitalize">{type}</span>
+                      <span className="text-white/80 capitalize">{type}</span>
                       <span className="text-white/60">{counts.checkedIn} / {counts.total} checked in</span>
                     </div>
                   ))}
@@ -1988,11 +1988,11 @@ function CheckInSection({ adminToken }: { adminToken: string }) {
       <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-5 mb-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-white font-bold">Door Staff</h3>
-          <span className="text-white/30 text-xs">{stats?.staff?.length ?? 0} invited</span>
+          <span className="text-white/80 text-xs">{stats?.staff?.length ?? 0} invited</span>
         </div>
 
         {!stats?.staff?.length ? (
-          <p className="text-white/30 text-sm py-2">No staff invited yet</p>
+          <p className="text-white/80 text-sm py-2">No staff invited yet</p>
         ) : (
           <div className="space-y-2 mb-5">
             {stats.staff.map((member: any) => (
@@ -2005,19 +2005,19 @@ function CheckInSection({ adminToken }: { adminToken: string }) {
                     </div>
                     <div>
                       <p className="text-white text-sm font-semibold leading-tight">{member.name}</p>
-                      <p className="text-white/35 text-xs">{member.email}</p>
+                      <p className="text-white/80 text-xs">{member.email}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="text-right">
                       {staffStatusBadge(member)}
                       {member.last_login_at && (
-                        <p className="text-white/20 text-xs mt-0.5">{new Date(member.last_login_at).toLocaleDateString()}</p>
+                        <p className="text-white/80 text-xs mt-0.5">{new Date(member.last_login_at).toLocaleDateString()}</p>
                       )}
                     </div>
                     <button
                       onClick={() => { setEditingPwId(editingPwId === member.id ? null : member.id); setNewPassword(""); setPwStatus(null); }}
-                      className="text-xs text-white/30 hover:text-yellow-400 border border-white/10 hover:border-yellow-500/40 px-2.5 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap"
+                      className="text-xs text-white/80 hover:text-yellow-400 border border-white/10 hover:border-yellow-500/40 px-2.5 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap"
                     >
                       🔑 Password
                     </button>
@@ -2026,7 +2026,7 @@ function CheckInSection({ adminToken }: { adminToken: string }) {
                 {/* Inline password editor */}
                 {editingPwId === member.id && (
                   <div className="border-t border-white/8 px-4 py-3 bg-white/[0.02]">
-                    <p className="text-white/40 text-xs mb-2">Set new password for {member.name}</p>
+                    <p className="text-white/80 text-xs mb-2">Set new password for {member.name}</p>
                     <div className="flex gap-2">
                       <input
                         type="password"
@@ -2045,7 +2045,7 @@ function CheckInSection({ adminToken }: { adminToken: string }) {
                       </button>
                       <button
                         onClick={() => { setEditingPwId(null); setNewPassword(""); setPwStatus(null); }}
-                        className="text-white/30 hover:text-white/70 border border-white/10 px-3 py-2 rounded-xl text-xs cursor-pointer"
+                        className="text-white/80 hover:text-white/70 border border-white/10 px-3 py-2 rounded-xl text-xs cursor-pointer"
                       >
                         Cancel
                       </button>
@@ -2064,7 +2064,7 @@ function CheckInSection({ adminToken }: { adminToken: string }) {
 
         {/* Invite form */}
         <div className="border-t border-white/10 pt-4">
-          <p className="text-white/40 text-xs mb-3">Invite a new staff member — they'll get an email with a link to the check-in portal</p>
+          <p className="text-white/80 text-xs mb-3">Invite a new staff member — they'll get an email with a link to the check-in portal</p>
           <div className="grid grid-cols-1 sm:grid-cols-[1fr,1fr,auto] gap-2">
             <input value={inviteName} onChange={e => setInviteName(e.target.value)}
               placeholder="Name" disabled={inviting}
@@ -2210,13 +2210,13 @@ function AiAssistantSection({ adminToken }: { adminToken: string }) {
               }`}>
               <p className={`text-sm truncate ${activeId === c.id ? "text-yellow-400 font-semibold" : "text-white/70"}`}>{c.title}</p>
               <button onClick={(e) => deleteConversation(c.id, e)}
-                className="opacity-0 group-hover:opacity-100 text-white/30 hover:text-red-400 transition-all cursor-pointer flex-shrink-0">
+                className="opacity-0 group-hover:opacity-100 text-white/80 hover:text-red-400 transition-all cursor-pointer flex-shrink-0">
                 <Trash2 size={13} />
               </button>
             </div>
           ))}
           {!conversations.length && (
-            <p className="text-white/25 text-xs text-center py-6">No conversations yet</p>
+            <p className="text-white/80 text-xs text-center py-6">No conversations yet</p>
           )}
         </div>
       </div>
@@ -2229,17 +2229,17 @@ function AiAssistantSection({ adminToken }: { adminToken: string }) {
           </div>
           <div>
             <p className="text-white font-semibold text-sm">AI Assistant</p>
-            <p className="text-white/30 text-xs">Orders, tickets, users — search, fix, resend, reset</p>
+            <p className="text-white/80 text-xs">Orders, tickets, users — search, fix, resend, reset</p>
           </div>
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
           {loadingMessages ? (
-            <p className="text-white/30 text-sm text-center py-10">Loading…</p>
+            <p className="text-white/80 text-sm text-center py-10">Loading…</p>
           ) : !messages.length ? (
             <div className="text-center py-10">
               <Sparkles className="mx-auto text-yellow-500/40 mb-3" size={28} />
-              <p className="text-white/40 text-sm">Ask me to look someone up, fix a wrong email on an order, resend tickets, reset a password, repair a broken login, or manage events — create one, adjust dates, or change ticket capacity.</p>
+              <p className="text-white/80 text-sm">Ask me to look someone up, fix a wrong email on an order, resend tickets, reset a password, repair a broken login, or manage events — create one, adjust dates, or change ticket capacity.</p>
             </div>
           ) : messages.map((msg, i) => (
             <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
@@ -2637,7 +2637,7 @@ function ContactSection({ adminToken }: { adminToken: string }) {
         <div className="flex bg-white/[0.04] border border-white/10 rounded-xl p-1">
           {(["inbox", "knowledge"] as const).map(t => (
             <button key={t} onClick={() => setActiveTab(t)}
-              className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-all cursor-pointer capitalize ${activeTab === t ? "bg-yellow-500 text-black" : "text-white/40 hover:text-white/70"}`}>
+              className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-all cursor-pointer capitalize ${activeTab === t ? "bg-yellow-500 text-black" : "text-white/80 hover:text-white/70"}`}>
               {t === "knowledge" ? "Knowledge Base" : "Inbox"}
             </button>
           ))}
@@ -2653,16 +2653,16 @@ function ContactSection({ adminToken }: { adminToken: string }) {
           className="w-full flex items-center justify-between cursor-pointer">
           <div className="text-left">
             <h3 className="text-white font-bold text-sm flex items-center gap-2">🛒 Abandoned Checkout Recovery</h3>
-            <p className="text-white/40 text-xs mt-0.5">Email people whose ticket order never completed — they weren&apos;t charged. Auto-sends every Wednesday at 7pm ET.</p>
+            <p className="text-white/80 text-xs mt-0.5">Email people whose ticket order never completed — they weren&apos;t charged. Auto-sends every Wednesday at 7pm ET.</p>
           </div>
-          <span className="text-white/40 text-lg flex-shrink-0">{abandonedOpen ? "−" : "+"}</span>
+          <span className="text-white/80 text-lg flex-shrink-0">{abandonedOpen ? "−" : "+"}</span>
         </button>
         {abandonedOpen && (
           <div className="mt-4 pt-4 border-t border-white/5">
             {abandonedLoading ? (
-              <p className="text-white/40 text-sm">Loading…</p>
+              <p className="text-white/80 text-sm">Loading…</p>
             ) : abandonedGroups.length === 0 ? (
-              <p className="text-white/40 text-sm">No abandoned checkouts found in the last 45 days.</p>
+              <p className="text-white/80 text-sm">No abandoned checkouts found in the last 45 days.</p>
             ) : (
               <>
                 <div className="space-y-2 mb-4">
@@ -2670,7 +2670,7 @@ function ContactSection({ adminToken }: { adminToken: string }) {
                     <div key={g.eventSlug} className="flex items-center justify-between bg-white/[0.03] border border-white/5 rounded-xl px-4 py-2.5">
                       <div>
                         <span className="text-white font-semibold text-sm">{g.city}</span>
-                        <span className="text-white/40 text-xs ml-2">{g.count} abandoned</span>
+                        <span className="text-white/80 text-xs ml-2">{g.count} abandoned</span>
                       </div>
                       <button onClick={() => sendAbandonedRecovery(g.eventSlug)} disabled={sendingSlug !== null}
                         className="text-xs font-semibold px-3 py-1.5 rounded-full bg-yellow-500/10 text-yellow-400 border border-yellow-500/25 hover:bg-yellow-500/20 disabled:opacity-50 transition-all cursor-pointer">
@@ -2697,9 +2697,9 @@ function ContactSection({ adminToken }: { adminToken: string }) {
         <button onClick={() => setCampaignOpen(o => !o)} className="w-full flex items-center justify-between cursor-pointer">
           <div className="text-left">
             <h3 className="text-white font-bold text-sm flex items-center gap-2">✉️ New Email — Vendors / Ticket Holders by City</h3>
-            <p className="text-white/40 text-xs mt-0.5">e.g. tell past vendors applications are open for next year&apos;s event.</p>
+            <p className="text-white/80 text-xs mt-0.5">e.g. tell past vendors applications are open for next year&apos;s event.</p>
           </div>
-          <span className="text-white/40 text-lg flex-shrink-0">{campaignOpen ? "−" : "+"}</span>
+          <span className="text-white/80 text-lg flex-shrink-0">{campaignOpen ? "−" : "+"}</span>
         </button>
         {campaignOpen && (
           <div className="mt-4 pt-4 border-t border-white/5 space-y-4">
@@ -2713,11 +2713,11 @@ function ContactSection({ adminToken }: { adminToken: string }) {
             </div>
 
             <div>
-              <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Cities</label>
+              <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Cities</label>
               <div className="flex flex-wrap gap-2">
                 {KNOWN_VENDOR_CITIES.map(city => (
                   <button key={city} onClick={() => toggleCampaignCity(city)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all cursor-pointer ${campaignCities.includes(city) ? "bg-yellow-500/15 text-yellow-400 border-yellow-500/40" : "bg-white/5 text-white/50 border-white/15 hover:bg-white/10"}`}>
+                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all cursor-pointer ${campaignCities.includes(city) ? "bg-yellow-500/15 text-yellow-400 border-yellow-500/40" : "bg-white/5 text-white/80 border-white/15 hover:bg-white/10"}`}>
                     {city}
                   </button>
                 ))}
@@ -2725,13 +2725,13 @@ function ContactSection({ adminToken }: { adminToken: string }) {
             </div>
 
             <div>
-              <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Subject</label>
+              <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Subject</label>
               <input value={campaignSubject} onChange={e => setCampaignSubject(e.target.value)}
                 placeholder={campaignAudience === "vendors" ? "Vendor applications are open!" : "Tickets are on sale!"}
                 className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-2.5 text-white placeholder-white/25 outline-none text-sm" />
             </div>
             <div>
-              <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Message</label>
+              <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Message</label>
               <textarea value={campaignBody} onChange={e => setCampaignBody(e.target.value)} rows={6}
                 placeholder="Write your message…"
                 className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-2.5 text-white placeholder-white/25 outline-none text-sm resize-none" />
@@ -2773,7 +2773,7 @@ function ContactSection({ adminToken }: { adminToken: string }) {
                   <span className="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-red-500 text-white">{count}</span>
                 )}
               </div>
-              <p className="text-white/20 text-[10px] mt-1">{total} message{total !== 1 ? "s" : ""}</p>
+              <p className="text-white/80 text-[10px] mt-1">{total} message{total !== 1 ? "s" : ""}</p>
             </button>
           );
         })}
@@ -2783,7 +2783,7 @@ function ContactSection({ adminToken }: { adminToken: string }) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <div className="space-y-2 overflow-y-auto max-h-[500px]">
           {filtered.length === 0 ? (
-            <div className="text-center py-10 text-white/25 border border-dashed border-white/10 rounded-2xl">
+            <div className="text-center py-10 text-white/80 border border-dashed border-white/10 rounded-2xl">
               <MessageSquare size={28} className="mx-auto mb-2 opacity-30" />
               <p className="text-sm">No {activeInbox.toLowerCase()} messages yet.</p>
             </div>
@@ -2800,7 +2800,7 @@ function ContactSection({ adminToken }: { adminToken: string }) {
                   <button
                     onClick={e => { e.stopPropagation(); handleToggleClose(s.id, s.status); }}
                     disabled={closing}
-                    className="p-1 rounded-lg bg-white/5 hover:bg-green-500/20 border border-white/10 hover:border-green-500/30 text-white/40 hover:text-green-400 transition-all cursor-pointer"
+                    className="p-1 rounded-lg bg-white/5 hover:bg-green-500/20 border border-white/10 hover:border-green-500/30 text-white/80 hover:text-green-400 transition-all cursor-pointer"
                     title={s.status === "closed" ? "Reopen" : "Close"}
                   >
                     <CheckCircle size={11} />
@@ -2815,9 +2815,9 @@ function ContactSection({ adminToken }: { adminToken: string }) {
                   </button>
                 </div>
               </div>
-              <p className="text-white/50 text-xs">{s.subject}</p>
-              <p className="text-white/30 text-xs mt-0.5 truncate">{s.message}</p>
-              <p className="text-white/20 text-xs mt-1">{new Date(s.created_at).toLocaleDateString()}</p>
+              <p className="text-white/80 text-xs">{s.subject}</p>
+              <p className="text-white/80 text-xs mt-0.5 truncate">{s.message}</p>
+              <p className="text-white/80 text-xs mt-1">{new Date(s.created_at).toLocaleDateString()}</p>
             </button>
           ))}
         </div>
@@ -2831,16 +2831,16 @@ function ContactSection({ adminToken }: { adminToken: string }) {
                   <div className="flex items-center gap-3">
                     {activeInbox === "Vendors" && (
                       <button onClick={() => { setSaveVendorOpen(o => !o); setSaveVendorStatus(""); }}
-                        className="flex items-center gap-1 text-xs text-white/50 hover:text-yellow-400 transition-all cursor-pointer">
+                        className="flex items-center gap-1 text-xs text-white/80 hover:text-yellow-400 transition-all cursor-pointer">
                         <Star size={12} /> Save as Vendor
                       </button>
                     )}
                     <button onClick={() => { setForwardOpen(o => !o); setForwardStatus(""); }}
-                      className="flex items-center gap-1 text-xs text-white/50 hover:text-yellow-400 transition-all cursor-pointer">
+                      className="flex items-center gap-1 text-xs text-white/80 hover:text-yellow-400 transition-all cursor-pointer">
                       <Send size={12} /> Forward
                     </button>
                     <button onClick={() => handleToggleClose(selected.id, selected.status)} disabled={closing}
-                      className="flex items-center gap-1 text-xs text-white/50 hover:text-green-400 transition-all cursor-pointer">
+                      className="flex items-center gap-1 text-xs text-white/80 hover:text-green-400 transition-all cursor-pointer">
                       <CheckCircle size={12} /> {selected.status === "closed" ? "Reopen" : "Close"}
                     </button>
                     <button onClick={() => handleDelete(selected.id)} disabled={deleting}
@@ -2851,11 +2851,11 @@ function ContactSection({ adminToken }: { adminToken: string }) {
                 </div>
                 {saveVendorOpen && (
                   <div className="mt-3 p-3 bg-white/[0.03] border border-white/10 rounded-xl space-y-2">
-                    <p className="text-white/40 text-xs">Which city was this about? Adds {selected.email} to that city&apos;s vendor list for future campaigns.</p>
+                    <p className="text-white/80 text-xs">Which city was this about? Adds {selected.email} to that city&apos;s vendor list for future campaigns.</p>
                     <div className="flex flex-wrap gap-2">
                       {KNOWN_VENDOR_CITIES.map(city => (
                         <button key={city} onClick={() => setSaveVendorCity(city)}
-                          className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all cursor-pointer ${saveVendorCity === city ? "bg-yellow-500/15 text-yellow-400 border-yellow-500/40" : "bg-white/5 text-white/50 border-white/15 hover:bg-white/10"}`}>
+                          className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all cursor-pointer ${saveVendorCity === city ? "bg-yellow-500/15 text-yellow-400 border-yellow-500/40" : "bg-white/5 text-white/80 border-white/15 hover:bg-white/10"}`}>
                           {city}
                         </button>
                       ))}
@@ -2866,7 +2866,7 @@ function ContactSection({ adminToken }: { adminToken: string }) {
                         {saveVendorSaving ? "Saving…" : "Save"}
                       </button>
                       <button onClick={() => { setSaveVendorOpen(false); setSaveVendorCity(""); }}
-                        className="text-xs text-white/40 hover:text-white cursor-pointer">Cancel</button>
+                        className="text-xs text-white/80 hover:text-white cursor-pointer">Cancel</button>
                       {saveVendorStatus && <span className={`text-xs ml-auto ${saveVendorStatus.startsWith("Error") ? "text-red-400" : "text-green-400"}`}>{saveVendorStatus}</span>}
                     </div>
                   </div>
@@ -2892,12 +2892,12 @@ function ContactSection({ adminToken }: { adminToken: string }) {
                         {forwarding ? "Sending…" : "Send Forward"}
                       </button>
                       <button onClick={() => { setForwardOpen(false); setForwardTo(""); setForwardNote(""); }}
-                        className="text-xs text-white/40 hover:text-white cursor-pointer">Cancel</button>
+                        className="text-xs text-white/80 hover:text-white cursor-pointer">Cancel</button>
                       {forwardStatus && <span className="text-xs text-white/60 ml-auto">{forwardStatus}</span>}
                     </div>
                   </div>
                 )}
-                <p className="text-white/40 text-xs">{selected.email} · {new Date(selected.created_at).toLocaleDateString()}</p>
+                <p className="text-white/80 text-xs">{selected.email} · {new Date(selected.created_at).toLocaleDateString()}</p>
                 <p className="text-sm font-semibold mt-2" style={{ color: inbox.color }}>{selected.subject}</p>
                 {(() => {
                   // Unified conversation timeline: initial message + every
@@ -2940,7 +2940,7 @@ function ContactSection({ adminToken }: { adminToken: string }) {
                           <div key={item.id} className={`p-3 rounded-xl border ${tone.bg} ${tone.border} ${isLatest ? "ring-1 ring-yellow-500/20" : ""}`}>
                             <p className={`text-xs font-semibold mb-1 ${tone.label} flex items-center gap-2 flex-wrap`}>
                               <span>{tone.title}</span>
-                              <span className="text-white/30 font-normal">· {new Date(item.created_at).toLocaleString()}</span>
+                              <span className="text-white/80 font-normal">· {new Date(item.created_at).toLocaleString()}</span>
                               {isLatest && <span className="text-[10px] uppercase tracking-widest text-yellow-400/80 bg-yellow-500/10 border border-yellow-500/30 rounded-full px-1.5 py-0.5">Latest</span>}
                             </p>
                             <p className="text-white/80 text-xs whitespace-pre-wrap leading-relaxed">{item.body}</p>
@@ -2953,17 +2953,17 @@ function ContactSection({ adminToken }: { adminToken: string }) {
                 {/* Add historical / missing reply to thread (paste from Resend or email) */}
                 <div className="mt-3">
                   <button onClick={() => { setBackfillOpen(o => !o); setBackfillStatus(""); }}
-                    className="text-xs text-white/40 hover:text-yellow-400 cursor-pointer">
+                    className="text-xs text-white/80 hover:text-yellow-400 cursor-pointer">
                     {backfillOpen ? "− Hide" : "+ Add missing reply to thread"}
                   </button>
                   {backfillOpen && (
                     <div className="mt-2 p-3 rounded-xl border border-white/10 bg-white/[0.03] space-y-2">
-                      <p className="text-white/40 text-xs">Paste a reply that was sent but isn't showing in the thread (e.g. from Resend or your sent folder).</p>
+                      <p className="text-white/80 text-xs">Paste a reply that was sent but isn't showing in the thread (e.g. from Resend or your sent folder).</p>
                       <div className="flex items-center gap-2">
-                        <span className="text-white/40 text-xs">Sent by:</span>
+                        <span className="text-white/80 text-xs">Sent by:</span>
                         {(["ai", "admin", "customer"] as const).map(s => (
                           <button key={s} onClick={() => setBackfillSender(s)}
-                            className={`text-xs px-2 py-1 rounded-md border capitalize ${backfillSender === s ? "border-yellow-500/60 text-yellow-400 bg-yellow-500/10" : "border-white/10 text-white/50 hover:text-white"}`}>
+                            className={`text-xs px-2 py-1 rounded-md border capitalize ${backfillSender === s ? "border-yellow-500/60 text-yellow-400 bg-yellow-500/10" : "border-white/10 text-white/80 hover:text-white"}`}>
                             {s === "ai" ? "✨ AI" : s === "admin" ? "You" : "Customer"}
                           </button>
                         ))}
@@ -2976,10 +2976,10 @@ function ContactSection({ adminToken }: { adminToken: string }) {
                           className="px-3 py-1.5 bg-yellow-500 hover:bg-yellow-400 text-black text-xs font-semibold rounded-lg cursor-pointer disabled:opacity-40">
                           {backfillSaving ? "Saving…" : "Add to Thread"}
                         </button>
-                        <button onClick={() => { setBackfillOpen(false); setBackfillBody(""); }} className="text-xs text-white/40 hover:text-white cursor-pointer">Cancel</button>
+                        <button onClick={() => { setBackfillOpen(false); setBackfillBody(""); }} className="text-xs text-white/80 hover:text-white cursor-pointer">Cancel</button>
                         {backfillStatus && <span className="text-xs text-white/60 ml-auto">{backfillStatus}</span>}
                       </div>
-                      <p className="text-white/30 text-[10px]">This does not send any email — it only records the reply on the thread.</p>
+                      <p className="text-white/80 text-[10px]">This does not send any email — it only records the reply on the thread.</p>
                     </div>
                   )}
                 </div>
@@ -2990,7 +2990,7 @@ function ContactSection({ adminToken }: { adminToken: string }) {
                 )}
               </div>
               <div className="flex items-center gap-2 mb-3">
-                <span className="text-white/30 text-xs">Replying from:</span>
+                <span className="text-white/80 text-xs">Replying from:</span>
                 <span className="text-xs font-semibold px-2 py-0.5 rounded-full border" style={{ color: inbox.color, borderColor: `${inbox.color}40` }}>
                   {inbox.email}
                 </span>
@@ -3022,7 +3022,7 @@ function ContactSection({ adminToken }: { adminToken: string }) {
               </div>
             </>
           ) : (
-            <div className="h-full flex items-center justify-center text-white/20 py-10">
+            <div className="h-full flex items-center justify-center text-white/80 py-10">
               <p>Select a message to reply</p>
             </div>
           )}
@@ -3054,13 +3054,13 @@ function BlogAdminSection() {
           <div key={i} className="flex items-center justify-between bg-white/[0.03] border border-white/10 rounded-xl px-4 py-3.5 hover:border-white/20 transition-all">
             <div>
               <p className="text-white font-semibold text-sm">{post.title}</p>
-              <p className="text-white/40 text-xs">{post.category} · {post.published} {post.featured && "· ⭐ Featured"}</p>
+              <p className="text-white/80 text-xs">{post.category} · {post.published} {post.featured && "· ⭐ Featured"}</p>
             </div>
             <div className="flex gap-1 flex-shrink-0">
-              <button className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-white/40 hover:text-white transition-all cursor-pointer">
+              <button className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-white/80 hover:text-white transition-all cursor-pointer">
                 <Edit2 size={12} />
               </button>
-              <button className="p-2 bg-white/5 hover:bg-red-500/10 border border-white/10 hover:border-red-500/20 rounded-lg text-white/30 hover:text-red-400 transition-all cursor-pointer">
+              <button className="p-2 bg-white/5 hover:bg-red-500/10 border border-white/10 hover:border-red-500/20 rounded-lg text-white/80 hover:text-red-400 transition-all cursor-pointer">
                 <Trash2 size={12} />
               </button>
             </div>
@@ -3478,19 +3478,19 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
   const filteredContacts = contacts.filter(c => !contactSearch || c.contact_name.toLowerCase().includes(contactSearch.toLowerCase()) || c.contact_email.toLowerCase().includes(contactSearch.toLowerCase()) || c.brands.some(b => b.name.toLowerCase().includes(contactSearch.toLowerCase())));
 
   const inputCls = "w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-yellow-500/50";
-  const labelCls = "block text-xs text-white/40 uppercase tracking-wider mb-1";
+  const labelCls = "block text-xs text-white/80 uppercase tracking-wider mb-1";
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-display text-white">Brands</h2>
-          <p className="text-white/40 text-sm mt-0.5">Tequila brand contacts, invoicing & inbox</p>
+          <p className="text-white/80 text-sm mt-0.5">Tequila brand contacts, invoicing & inbox</p>
         </div>
         <div className="flex gap-2">
           {(["inbox", "orders", "contacts", "invoices"] as const).map(v => (
             <button key={v} onClick={() => setView(v)}
-              className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all cursor-pointer capitalize ${view === v ? "bg-yellow-500 text-black" : "text-white/40 hover:text-white border border-white/10"}`}>
+              className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all cursor-pointer capitalize ${view === v ? "bg-yellow-500 text-black" : "text-white/80 hover:text-white border border-white/10"}`}>
               {v}
               {v === "inbox" && brandMessages.length > 0 && <span className="ml-2 bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5">{brandMessages.filter(m => m.status === "new").length || ""}</span>}
             </button>
@@ -3503,7 +3503,7 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
         <div className="space-y-4">
           <div className="flex gap-3">
             <div className="relative flex-1">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/80" />
               <input value={contactSearch} onChange={e => setContactSearch(e.target.value)} placeholder="Search brands or contacts…" className="w-full pl-9 pr-3 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder-white/30 focus:outline-none focus:border-yellow-500/40" />
             </div>
             <button onClick={openAdd} className="flex items-center gap-2 px-4 py-2 bg-yellow-500 hover:bg-yellow-400 text-black text-sm font-semibold rounded-xl transition-all cursor-pointer">
@@ -3512,9 +3512,9 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
           </div>
 
           {loadingContacts ? (
-            <div className="text-white/30 text-sm py-10 text-center">Loading…</div>
+            <div className="text-white/80 text-sm py-10 text-center">Loading…</div>
           ) : filteredContacts.length === 0 ? (
-            <div className="text-white/30 text-sm py-10 text-center">No brand contacts yet.</div>
+            <div className="text-white/80 text-sm py-10 text-center">No brand contacts yet.</div>
           ) : (
             <div className="grid gap-3">
               {filteredContacts.map(c => (
@@ -3525,18 +3525,18 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
                         <p className="font-semibold text-white">{c.contact_name}</p>
                         <span className="text-xs bg-yellow-500/15 text-yellow-400 border border-yellow-500/20 rounded-full px-2 py-0.5 capitalize">{CONTACT_TYPES.find(t => t.value === c.contact_type)?.label}</span>
                       </div>
-                      <p className="text-white/50 text-sm mt-0.5">{c.contact_email}{c.contact_phone ? ` · ${c.contact_phone}` : ""}</p>
+                      <p className="text-white/80 text-sm mt-0.5">{c.contact_email}{c.contact_phone ? ` · ${c.contact_phone}` : ""}</p>
                       {(c.distributor || c.supplier) && (
-                        <p className="text-white/30 text-xs mt-1">{c.distributor ? `Distributor: ${c.distributor}` : ""}{c.distributor && c.supplier ? " · " : ""}{c.supplier ? `Supplier: ${c.supplier}` : ""}</p>
+                        <p className="text-white/80 text-xs mt-1">{c.distributor ? `Distributor: ${c.distributor}` : ""}{c.distributor && c.supplier ? " · " : ""}{c.supplier ? `Supplier: ${c.supplier}` : ""}</p>
                       )}
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <button onClick={() => { setShowNewInvoice(true); setView("invoices"); setInvoiceForm(f => ({ ...f, brand_contact_id: c.id })); }}
-                        className="text-xs border border-white/10 text-white/50 hover:text-yellow-400 hover:border-yellow-500/30 px-3 py-1.5 rounded-lg transition-all cursor-pointer">
+                        className="text-xs border border-white/10 text-white/80 hover:text-yellow-400 hover:border-yellow-500/30 px-3 py-1.5 rounded-lg transition-all cursor-pointer">
                         + Invoice
                       </button>
-                      <button onClick={() => openEdit(c)} className="p-1.5 text-white/30 hover:text-yellow-400 transition-colors cursor-pointer"><Edit2 size={14} /></button>
-                      <button onClick={() => deleteContact(c.id)} className="p-1.5 text-white/30 hover:text-red-400 transition-colors cursor-pointer"><Trash2 size={14} /></button>
+                      <button onClick={() => openEdit(c)} className="p-1.5 text-white/80 hover:text-yellow-400 transition-colors cursor-pointer"><Edit2 size={14} /></button>
+                      <button onClick={() => deleteContact(c.id)} className="p-1.5 text-white/80 hover:text-red-400 transition-colors cursor-pointer"><Trash2 size={14} /></button>
                     </div>
                   </div>
                   {c.brands.length > 0 && (
@@ -3544,7 +3544,7 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
                       {c.brands.map((b, i) => (
                         <div key={i} className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm">
                           <span className="text-white/80 font-medium">{b.name}</span>
-                          {b.price_per_bottle && <span className="text-white/40 ml-2">${b.price_per_bottle}/btl</span>}
+                          {b.price_per_bottle && <span className="text-white/80 ml-2">${b.price_per_bottle}/btl</span>}
                         </div>
                       ))}
                     </div>
@@ -3554,17 +3554,17 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
                     if (!contactOrders.length) return null;
                     return (
                       <div className="mt-4 pt-4 border-t border-white/10">
-                        <p className="text-white/30 text-xs font-semibold uppercase tracking-wider mb-2">Package Orders</p>
+                        <p className="text-white/80 text-xs font-semibold uppercase tracking-wider mb-2">Package Orders</p>
                         <div className="space-y-2">
                           {contactOrders.map(o => (
                             <div key={o.id} className="bg-black/20 border border-white/5 rounded-xl px-3 py-2.5 flex items-center justify-between gap-3 flex-wrap">
                               <div className="min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap">
                                   <span className="font-mono text-yellow-400 text-xs">{o.order_number}</span>
-                                  <span className={`text-[10px] rounded-full px-2 py-0.5 border capitalize ${o.status === "paid" ? "bg-green-500/15 text-green-400 border-green-500/20" : o.status === "pending" ? "bg-yellow-500/15 text-yellow-400 border-yellow-500/20" : o.status === "refunded" ? "bg-red-500/15 text-red-400 border-red-500/20" : "bg-white/5 text-white/40 border-white/10"}`}>{o.status}</span>
-                                  <span className="text-[10px] bg-white/5 border border-white/10 rounded-full px-2 py-0.5 text-white/50">{o.tier}</span>
+                                  <span className={`text-[10px] rounded-full px-2 py-0.5 border capitalize ${o.status === "paid" ? "bg-green-500/15 text-green-400 border-green-500/20" : o.status === "pending" ? "bg-yellow-500/15 text-yellow-400 border-yellow-500/20" : o.status === "refunded" ? "bg-red-500/15 text-red-400 border-red-500/20" : "bg-white/5 text-white/80 border-white/10"}`}>{o.status}</span>
+                                  <span className="text-[10px] bg-white/5 border border-white/10 rounded-full px-2 py-0.5 text-white/80">{o.tier}</span>
                                 </div>
-                                <p className="text-white/50 text-xs mt-1">{(o.cities || []).map(city => CITY_LABELS_BRAND[city] || city).join(", ")} · {new Date(o.created_at).toLocaleDateString()}{o.paid_at ? ` · paid ${new Date(o.paid_at).toLocaleDateString()}` : ""}</p>
+                                <p className="text-white/80 text-xs mt-1">{(o.cities || []).map(city => CITY_LABELS_BRAND[city] || city).join(", ")} · {new Date(o.created_at).toLocaleDateString()}{o.paid_at ? ` · paid ${new Date(o.paid_at).toLocaleDateString()}` : ""}</p>
                               </div>
                               <div className="flex items-center gap-3 flex-shrink-0">
                                 <p className="font-display text-lg text-white">${Number(o.amount).toFixed(2)}</p>
@@ -3589,24 +3589,24 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
       {/* ── BRAND PACKAGE ORDERS ── */}
       {view === "orders" && (
         <div className="space-y-3">
-          {loadingOrders ? <div className="text-white/30 text-sm py-10 text-center">Loading…</div>
-            : orders.length === 0 ? <div className="text-white/30 text-sm py-10 text-center">No brand package orders yet.</div>
+          {loadingOrders ? <div className="text-white/80 text-sm py-10 text-center">Loading…</div>
+            : orders.length === 0 ? <div className="text-white/80 text-sm py-10 text-center">No brand package orders yet.</div>
             : orders.map(o => (
               <div key={o.id} className="bg-white/[0.03] border border-white/10 rounded-2xl p-5 flex items-start justify-between gap-4 flex-wrap">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-3 flex-wrap">
                     <p className="font-mono text-yellow-400 text-sm">{o.order_number}</p>
-                    <span className={`text-xs rounded-full px-2 py-0.5 border capitalize ${o.status === "paid" ? "bg-green-500/15 text-green-400 border-green-500/20" : o.status === "pending" ? "bg-yellow-500/15 text-yellow-400 border-yellow-500/20" : o.status === "refunded" ? "bg-red-500/15 text-red-400 border-red-500/20" : "bg-white/5 text-white/40 border-white/10"}`}>{o.status}</span>
+                    <span className={`text-xs rounded-full px-2 py-0.5 border capitalize ${o.status === "paid" ? "bg-green-500/15 text-green-400 border-green-500/20" : o.status === "pending" ? "bg-yellow-500/15 text-yellow-400 border-yellow-500/20" : o.status === "refunded" ? "bg-red-500/15 text-red-400 border-red-500/20" : "bg-white/5 text-white/80 border-white/10"}`}>{o.status}</span>
                     <span className="text-xs bg-white/5 border border-white/10 rounded-full px-2 py-0.5 text-white/60">{o.tier}</span>
                   </div>
                   <p className="text-white font-semibold mt-1">{o.brand_name}</p>
-                  <p className="text-white/50 text-sm">{o.contact_name} · <a href={`mailto:${o.contact_email}`} className="hover:text-yellow-400">{o.contact_email}</a>{o.contact_phone ? ` · ${o.contact_phone}` : ""}</p>
-                  <p className="text-white/40 text-xs mt-1">{(o.cities || []).map(c => CITY_LABELS_BRAND[c] || c).join(", ")}</p>
-                  <p className="text-white/25 text-xs mt-1">{new Date(o.created_at).toLocaleString()}{o.paid_at ? ` · paid ${new Date(o.paid_at).toLocaleDateString()}` : ""}</p>
+                  <p className="text-white/80 text-sm">{o.contact_name} · <a href={`mailto:${o.contact_email}`} className="hover:text-yellow-400">{o.contact_email}</a>{o.contact_phone ? ` · ${o.contact_phone}` : ""}</p>
+                  <p className="text-white/80 text-xs mt-1">{(o.cities || []).map(c => CITY_LABELS_BRAND[c] || c).join(", ")}</p>
+                  <p className="text-white/80 text-xs mt-1">{new Date(o.created_at).toLocaleString()}{o.paid_at ? ` · paid ${new Date(o.paid_at).toLocaleDateString()}` : ""}</p>
                 </div>
                 <div className="text-right flex-shrink-0">
                   <p className="font-display text-2xl text-white">${Number(o.amount).toFixed(2)}</p>
-                  <p className="text-white/30 text-xs">{(o.cities || []).length} {((o.cities || []).length === 1 ? "city" : "cities")}</p>
+                  <p className="text-white/80 text-xs">{(o.cities || []).length} {((o.cities || []).length === 1 ? "city" : "cities")}</p>
                 </div>
               </div>
             ))}
@@ -3621,36 +3621,36 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
             <button onClick={() => setPaymentSettingsOpen(o => !o)} className="w-full flex items-center justify-between cursor-pointer">
               <div className="text-left">
                 <h3 className="text-white font-bold text-sm">💳 Invoice Payment Settings</h3>
-                <p className="text-white/40 text-xs mt-0.5">Check &amp; Zelle info shown on every invoice email, alongside the Stripe payment link.</p>
+                <p className="text-white/80 text-xs mt-0.5">Check &amp; Zelle info shown on every invoice email, alongside the Stripe payment link.</p>
               </div>
-              <span className="text-white/40 text-lg flex-shrink-0">{paymentSettingsOpen ? "−" : "+"}</span>
+              <span className="text-white/80 text-lg flex-shrink-0">{paymentSettingsOpen ? "−" : "+"}</span>
             </button>
             {paymentSettingsOpen && (
               <div className="mt-4 pt-4 border-t border-white/5 space-y-4">
                 {loadingPaymentSettings ? (
-                  <p className="text-white/30 text-sm">Loading…</p>
+                  <p className="text-white/80 text-sm">Loading…</p>
                 ) : (
                   <>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Check Payable To</label>
+                        <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Check Payable To</label>
                         <input value={paymentSettings.check_payable_to} onChange={e => setPaymentSettings(s => ({ ...s, check_payable_to: e.target.value }))}
                           className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-2.5 text-white outline-none text-sm" />
                       </div>
                       <div>
-                        <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Zelle Handle</label>
+                        <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Zelle Handle</label>
                         <input value={paymentSettings.zelle_handle} onChange={e => setPaymentSettings(s => ({ ...s, zelle_handle: e.target.value }))}
                           placeholder="e.g. tastefestivals"
                           className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-2.5 text-white outline-none text-sm" />
                       </div>
                     </div>
                     <div>
-                      <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Mailing Address</label>
+                      <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Mailing Address</label>
                       <textarea value={paymentSettings.mailing_address} onChange={e => setPaymentSettings(s => ({ ...s, mailing_address: e.target.value }))} rows={3}
                         className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-2.5 text-white outline-none text-sm resize-none" />
                     </div>
                     <div>
-                      <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Zelle QR Code</label>
+                      <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Zelle QR Code</label>
                       <div className="flex items-center gap-4">
                         {paymentSettings.zelle_qr_url && (
                           <img src={paymentSettings.zelle_qr_url} alt="Zelle QR" width={72} height={72} className="rounded-lg border-2 border-white flex-shrink-0" />
@@ -3682,8 +3682,8 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
               <Plus size={15} /> New Invoice
             </button>
           </div>
-          {loadingInvoices ? <div className="text-white/30 text-sm py-10 text-center">Loading…</div> : invoices.length === 0 ? (
-            <div className="text-white/30 text-sm py-10 text-center">No invoices yet.</div>
+          {loadingInvoices ? <div className="text-white/80 text-sm py-10 text-center">Loading…</div> : invoices.length === 0 ? (
+            <div className="text-white/80 text-sm py-10 text-center">No invoices yet.</div>
           ) : (
             <div className="grid gap-3">
               {invoices.map(inv => (
@@ -3691,10 +3691,10 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
                   <div>
                     <div className="flex items-center gap-3">
                       <p className="font-mono text-yellow-400 text-sm">{inv.invoice_number}</p>
-                      <span className={`text-xs rounded-full px-2 py-0.5 border ${inv.status === "paid" ? "bg-green-500/15 text-green-400 border-green-500/20" : inv.status === "sent" ? "bg-blue-500/15 text-blue-400 border-blue-500/20" : inv.status === "cancelled" ? "bg-red-500/15 text-red-400 border-red-500/20" : "bg-white/5 text-white/40 border-white/10"} capitalize`}>{inv.status}</span>
+                      <span className={`text-xs rounded-full px-2 py-0.5 border ${inv.status === "paid" ? "bg-green-500/15 text-green-400 border-green-500/20" : inv.status === "sent" ? "bg-blue-500/15 text-blue-400 border-blue-500/20" : inv.status === "cancelled" ? "bg-red-500/15 text-red-400 border-red-500/20" : "bg-white/5 text-white/80 border-white/10"} capitalize`}>{inv.status}</span>
                     </div>
                     <p className="text-white/80 text-sm mt-0.5">{inv.brand_contacts?.contact_name || "—"}{inv.event_name ? ` · ${inv.event_name}` : ""}</p>
-                    {inv.due_date && <p className="text-white/30 text-xs mt-0.5">Due {inv.due_date}</p>}
+                    {inv.due_date && <p className="text-white/80 text-xs mt-0.5">Due {inv.due_date}</p>}
                   </div>
                   <div className="flex items-center gap-4">
                     <p className="text-xl font-bold text-white">${inv.total.toFixed(2)}</p>
@@ -3718,8 +3718,8 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
             <div className="rounded-xl px-3 py-2.5 border border-yellow-500/40 bg-yellow-500/10 flex items-center gap-2">
               <span className="text-base">🥃</span>
               <p className="font-bold text-sm text-yellow-400">Brands</p>
-              <p className="text-white/30 text-xs ml-2">brands@mail.tequilafestusa.com</p>
-              <p className="text-white/20 text-xs ml-auto">{brandMessages.length} message{brandMessages.length !== 1 ? "s" : ""}</p>
+              <p className="text-white/80 text-xs ml-2">brands@mail.tequilafestusa.com</p>
+              <p className="text-white/80 text-xs ml-auto">{brandMessages.length} message{brandMessages.length !== 1 ? "s" : ""}</p>
             </div>
             <button onClick={openCompose} className="flex items-center gap-1.5 px-4 py-2.5 bg-yellow-500 hover:bg-yellow-400 text-black text-sm font-semibold rounded-xl transition-all cursor-pointer whitespace-nowrap">
               <Plus size={14} /> Compose
@@ -3730,9 +3730,9 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             <div className="space-y-2 overflow-y-auto max-h-[500px]">
               {loadingInbox ? (
-                <div className="text-center py-10 text-white/25 border border-dashed border-white/10 rounded-2xl text-sm">Loading…</div>
+                <div className="text-center py-10 text-white/80 border border-dashed border-white/10 rounded-2xl text-sm">Loading…</div>
               ) : brandMessages.length === 0 ? (
-                <div className="text-center py-10 text-white/25 border border-dashed border-white/10 rounded-2xl">
+                <div className="text-center py-10 text-white/80 border border-dashed border-white/10 rounded-2xl">
                   <MessageSquare size={28} className="mx-auto mb-2 opacity-30" />
                   <p className="text-sm">No brand messages yet.</p>
                 </div>
@@ -3752,9 +3752,9 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
                       </button>
                     </div>
                   </div>
-                  <p className="text-white/50 text-xs">{msg.subject}</p>
-                  <p className="text-white/30 text-xs mt-0.5 truncate">{msg.message}</p>
-                  <p className="text-white/20 text-xs mt-1">{new Date(msg.created_at).toLocaleDateString()}</p>
+                  <p className="text-white/80 text-xs">{msg.subject}</p>
+                  <p className="text-white/80 text-xs mt-0.5 truncate">{msg.message}</p>
+                  <p className="text-white/80 text-xs mt-1">{new Date(msg.created_at).toLocaleDateString()}</p>
                 </button>
               ))}
             </div>
@@ -3767,7 +3767,7 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
                       <p className="text-white font-bold">{selectedMsg.name}</p>
                       <div className="flex items-center gap-3">
                         <button onClick={() => { setBForwardOpen(o => !o); setBForwardStatus(""); }}
-                          className="flex items-center gap-1 text-xs text-white/50 hover:text-yellow-400 transition-all cursor-pointer">
+                          className="flex items-center gap-1 text-xs text-white/80 hover:text-yellow-400 transition-all cursor-pointer">
                           <Send size={12} /> Forward
                         </button>
                         <button onClick={() => deleteBrandMsg(selectedMsg.id)}
@@ -3796,12 +3796,12 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
                             className="px-3 py-1.5 bg-yellow-500 hover:bg-yellow-400 text-black text-xs font-semibold rounded-lg cursor-pointer disabled:opacity-40">
                             {bForwarding ? "Sending…" : "Send Forward"}
                           </button>
-                          <button onClick={() => { setBForwardOpen(false); setBForwardTo(""); setBForwardCc(""); setBForwardNote(""); }} className="text-xs text-white/40 hover:text-white cursor-pointer">Cancel</button>
+                          <button onClick={() => { setBForwardOpen(false); setBForwardTo(""); setBForwardCc(""); setBForwardNote(""); }} className="text-xs text-white/80 hover:text-white cursor-pointer">Cancel</button>
                           {bForwardStatus && <span className="text-xs text-white/60 ml-auto">{bForwardStatus}</span>}
                         </div>
                       </div>
                     )}
-                    <p className="text-white/40 text-xs">{selectedMsg.email} · {new Date(selectedMsg.created_at).toLocaleDateString()}</p>
+                    <p className="text-white/80 text-xs">{selectedMsg.email} · {new Date(selectedMsg.created_at).toLocaleDateString()}</p>
                     <p className="text-sm font-semibold mt-2 text-yellow-400">{selectedMsg.subject}</p>
                     {(() => {
                       // Unified conversation timeline (newest-first).
@@ -3842,7 +3842,7 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
                               <div key={item.id} className={`p-3 rounded-xl border ${tone.bg} ${tone.border} ${isLatest ? "ring-1 ring-yellow-500/20" : ""}`}>
                                 <p className={`text-xs font-semibold mb-1 ${tone.label} flex items-center gap-2 flex-wrap`}>
                                   <span>{tone.title}</span>
-                                  <span className="text-white/30 font-normal">· {new Date(item.created_at).toLocaleString()}</span>
+                                  <span className="text-white/80 font-normal">· {new Date(item.created_at).toLocaleString()}</span>
                                   {isLatest && <span className="text-[10px] uppercase tracking-widest text-yellow-400/80 bg-yellow-500/10 border border-yellow-500/30 rounded-full px-1.5 py-0.5">Latest</span>}
                                 </p>
                                 <p className="text-white/80 text-xs whitespace-pre-wrap leading-relaxed">{item.body}</p>
@@ -3855,17 +3855,17 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
                     {/* Add historical / missing reply to thread (paste from Resend or email) */}
                     <div className="mt-3">
                       <button onClick={() => { setBBackfillOpen(o => !o); setBBackfillStatus(""); }}
-                        className="text-xs text-white/40 hover:text-yellow-400 cursor-pointer">
+                        className="text-xs text-white/80 hover:text-yellow-400 cursor-pointer">
                         {bBackfillOpen ? "− Hide" : "+ Add missing reply to thread"}
                       </button>
                       {bBackfillOpen && (
                         <div className="mt-2 p-3 rounded-xl border border-white/10 bg-white/[0.03] space-y-2">
-                          <p className="text-white/40 text-xs">Paste a reply that was sent but isn't showing in the thread (e.g. from Resend or your sent folder).</p>
+                          <p className="text-white/80 text-xs">Paste a reply that was sent but isn't showing in the thread (e.g. from Resend or your sent folder).</p>
                           <div className="flex items-center gap-2">
-                            <span className="text-white/40 text-xs">Sent by:</span>
+                            <span className="text-white/80 text-xs">Sent by:</span>
                             {(["admin", "ai", "customer"] as const).map(s => (
                               <button key={s} onClick={() => setBBackfillSender(s)}
-                                className={`text-xs px-2 py-1 rounded-md border capitalize ${bBackfillSender === s ? "border-yellow-500/60 text-yellow-400 bg-yellow-500/10" : "border-white/10 text-white/50 hover:text-white"}`}>
+                                className={`text-xs px-2 py-1 rounded-md border capitalize ${bBackfillSender === s ? "border-yellow-500/60 text-yellow-400 bg-yellow-500/10" : "border-white/10 text-white/80 hover:text-white"}`}>
                                 {s === "ai" ? "✨ AI" : s === "admin" ? "You" : "Customer"}
                               </button>
                             ))}
@@ -3878,16 +3878,16 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
                               className="px-3 py-1.5 bg-yellow-500 hover:bg-yellow-400 text-black text-xs font-semibold rounded-lg cursor-pointer disabled:opacity-40">
                               {bBackfillSaving ? "Saving…" : "Add to Thread"}
                             </button>
-                            <button onClick={() => { setBBackfillOpen(false); setBBackfillBody(""); }} className="text-xs text-white/40 hover:text-white cursor-pointer">Cancel</button>
+                            <button onClick={() => { setBBackfillOpen(false); setBBackfillBody(""); }} className="text-xs text-white/80 hover:text-white cursor-pointer">Cancel</button>
                             {bBackfillStatus && <span className="text-xs text-white/60 ml-auto">{bBackfillStatus}</span>}
                           </div>
-                          <p className="text-white/30 text-[10px]">This does not send any email — it only records the reply on the thread.</p>
+                          <p className="text-white/80 text-[10px]">This does not send any email — it only records the reply on the thread.</p>
                         </div>
                       )}
                     </div>
                   </div>
                   <div className="flex items-center gap-2 mb-3">
-                    <span className="text-white/30 text-xs">Replying from:</span>
+                    <span className="text-white/80 text-xs">Replying from:</span>
                     <span className="text-xs font-semibold px-2 py-0.5 rounded-full border text-yellow-400 border-yellow-500/40">
                       brands@mail.tequilafestusa.com
                     </span>
@@ -3901,7 +3901,7 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
                   </button>
                 </>
               ) : (
-                <div className="h-full flex items-center justify-center text-white/20 py-10">
+                <div className="h-full flex items-center justify-center text-white/80 py-10">
                   <p>Select a message to reply</p>
                 </div>
               )}
@@ -3921,9 +3921,9 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
               <div className="flex items-center justify-between mb-5">
                 <div>
                   <h3 className="text-lg font-semibold text-white">New Email</h3>
-                  <p className="text-white/40 text-xs mt-0.5">From brands@mail.tequilafestusa.com</p>
+                  <p className="text-white/80 text-xs mt-0.5">From brands@mail.tequilafestusa.com</p>
                 </div>
-                <button onClick={() => setShowCompose(false)} className="text-white/40 hover:text-white cursor-pointer"><X size={18} /></button>
+                <button onClick={() => setShowCompose(false)} className="text-white/80 hover:text-white cursor-pointer"><X size={18} /></button>
               </div>
 
               <div className="space-y-4">
@@ -3935,21 +3935,21 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
                     </button>
                   </div>
                   <div className="relative mb-2">
-                    <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+                    <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/80" />
                     <input value={composeSearch} onChange={e => setComposeSearch(e.target.value)} placeholder="Search contacts or brands…"
                       className="w-full pl-8 pr-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder-white/30 focus:outline-none focus:border-yellow-500/40" />
                   </div>
                   <div className="border border-white/10 rounded-xl max-h-56 overflow-y-auto">
                     {composeFiltered.length === 0 ? (
-                      <p className="text-white/30 text-sm py-6 text-center">No brand contacts.</p>
+                      <p className="text-white/80 text-sm py-6 text-center">No brand contacts.</p>
                     ) : composeFiltered.map(c => {
                       const checked = composeSelected.has(c.id);
                       return (
                         <label key={c.id} className={`flex items-center gap-3 px-3 py-2 border-b border-white/5 last:border-0 cursor-pointer hover:bg-white/[0.03] ${checked ? "bg-yellow-500/[0.06]" : ""}`}>
                           <input type="checkbox" checked={checked} onChange={() => toggleRecipient(c.id)} className="accent-yellow-500" />
                           <div className="min-w-0 flex-1">
-                            <p className="text-sm text-white truncate">{c.contact_name} <span className="text-white/40">· {c.contact_email}</span></p>
-                            {c.brands.length > 0 && <p className="text-white/30 text-xs truncate">{c.brands.map(b => b.name).filter(Boolean).join(", ")}</p>}
+                            <p className="text-sm text-white truncate">{c.contact_name} <span className="text-white/80">· {c.contact_email}</span></p>
+                            {c.brands.length > 0 && <p className="text-white/80 text-xs truncate">{c.brands.map(b => b.name).filter(Boolean).join(", ")}</p>}
                           </div>
                         </label>
                       );
@@ -4006,7 +4006,7 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
               className="bg-[#0d0500] border border-white/10 rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-semibold text-white">{editContact ? "Edit Brand Contact" : "Add Brand Contact"}</h3>
-                <button onClick={() => setShowAddContact(false)} className="text-white/40 hover:text-white cursor-pointer"><X size={18} /></button>
+                <button onClick={() => setShowAddContact(false)} className="text-white/80 hover:text-white cursor-pointer"><X size={18} /></button>
               </div>
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
@@ -4049,7 +4049,7 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
                         <input value={b.name} onChange={e => updateBrand(i, "name", e.target.value)} className={inputCls} placeholder="Brand name" />
                         <input value={b.price_per_bottle} onChange={e => updateBrand(i, "price_per_bottle", e.target.value)} className="w-36 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-yellow-500/50 flex-shrink-0" placeholder="$/bottle" />
                         {contactForm.brands.length > 1 && (
-                          <button onClick={() => removeBrandRow(i)} className="text-white/30 hover:text-red-400 cursor-pointer flex-shrink-0"><Trash2 size={14} /></button>
+                          <button onClick={() => removeBrandRow(i)} className="text-white/80 hover:text-red-400 cursor-pointer flex-shrink-0"><Trash2 size={14} /></button>
                         )}
                       </div>
                     ))}
@@ -4062,7 +4062,7 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
                 </div>
 
                 <div className="flex gap-3 pt-2">
-                  <button onClick={() => setShowAddContact(false)} className="flex-1 py-2.5 border border-white/10 text-white/50 rounded-xl text-sm hover:text-white transition-all cursor-pointer">Cancel</button>
+                  <button onClick={() => setShowAddContact(false)} className="flex-1 py-2.5 border border-white/10 text-white/80 rounded-xl text-sm hover:text-white transition-all cursor-pointer">Cancel</button>
                   <button onClick={saveContact} disabled={savingContact || !contactForm.contact_name || !contactForm.contact_email}
                     className="flex-1 py-2.5 bg-yellow-500 hover:bg-yellow-400 text-black font-semibold rounded-xl text-sm transition-all cursor-pointer disabled:opacity-40">
                     {savingContact ? "Saving…" : editContact ? "Save Changes" : "Add Contact"}
@@ -4084,7 +4084,7 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
               className="bg-[#0d0500] border border-white/10 rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-semibold text-white">New Brand Invoice</h3>
-                <button onClick={() => setShowNewInvoice(false)} className="text-white/40 hover:text-white cursor-pointer"><X size={18} /></button>
+                <button onClick={() => setShowNewInvoice(false)} className="text-white/80 hover:text-white cursor-pointer"><X size={18} /></button>
               </div>
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
@@ -4120,16 +4120,16 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
                           {item.total < 0 ? `−$${Math.abs(item.total).toFixed(2)}` : `$${item.total.toFixed(2)}`}
                         </div>
                         <button type="button" onClick={() => updateLineItem(i, "unit_price", 0)}
-                          className="text-[11px] text-white/40 hover:text-green-400 border border-white/10 hover:border-green-500/30 rounded-lg px-2 py-1.5 cursor-pointer whitespace-nowrap">
+                          className="text-[11px] text-white/80 hover:text-green-400 border border-white/10 hover:border-green-500/30 rounded-lg px-2 py-1.5 cursor-pointer whitespace-nowrap">
                           Comp
                         </button>
                         {invoiceForm.line_items.length > 1 && (
-                          <button onClick={() => removeLineItem(i)} className="text-white/30 hover:text-red-400 cursor-pointer"><Trash2 size={14} /></button>
+                          <button onClick={() => removeLineItem(i)} className="text-white/80 hover:text-red-400 cursor-pointer"><Trash2 size={14} /></button>
                         )}
                       </div>
                     ))}
                   </div>
-                  <p className="text-white/25 text-xs mt-2">Enter a negative unit price for a partial discount line, or click <strong>Comp</strong> to zero out a line while still listing it on the invoice.</p>
+                  <p className="text-white/80 text-xs mt-2">Enter a negative unit price for a partial discount line, or click <strong>Comp</strong> to zero out a line while still listing it on the invoice.</p>
                   <div className="text-right mt-3 text-lg font-bold text-white">Total: <span className="text-yellow-400">${invoiceTotal.toFixed(2)}</span></div>
                 </div>
 
@@ -4137,10 +4137,10 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
                   <label className={labelCls}>Notes</label>
                   <textarea value={invoiceForm.notes} onChange={e => setInvoiceForm(f => ({ ...f, notes: e.target.value }))} className={inputCls} rows={2} placeholder="Invoice notes…" />
                 </div>
-                <p className="text-white/30 text-xs">A Stripe payment link will be generated and emailed to the brand contact automatically.</p>
+                <p className="text-white/80 text-xs">A Stripe payment link will be generated and emailed to the brand contact automatically.</p>
 
                 <div className="flex gap-3 pt-2">
-                  <button onClick={() => setShowNewInvoice(false)} className="flex-1 py-2.5 border border-white/10 text-white/50 rounded-xl text-sm hover:text-white transition-all cursor-pointer">Cancel</button>
+                  <button onClick={() => setShowNewInvoice(false)} className="flex-1 py-2.5 border border-white/10 text-white/80 rounded-xl text-sm hover:text-white transition-all cursor-pointer">Cancel</button>
                   <button onClick={saveInvoice} disabled={savingInvoice || !invoiceForm.brand_contact_id || !invoiceForm.line_items.some(i => i.description.trim())}
                     className="flex-1 py-2.5 bg-yellow-500 hover:bg-yellow-400 text-black font-semibold rounded-xl text-sm transition-all cursor-pointer disabled:opacity-40">
                     {savingInvoice ? "Creating…" : "Create & Send Invoice"}
@@ -4288,7 +4288,7 @@ function StaffSection({ adminToken }: { adminToken: string }) {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="font-display text-white text-2xl">STAFF</h2>
-          <p className="text-white/40 text-sm mt-0.5">Invite team members and manage their portal access</p>
+          <p className="text-white/80 text-sm mt-0.5">Invite team members and manage their portal access</p>
         </div>
         <button onClick={() => { setShowInvite(!showInvite); setInviteError(""); setInviteSuccess(""); }}
           className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-black font-bold text-sm px-4 py-2.5 rounded-xl transition-all cursor-pointer">
@@ -4317,19 +4317,19 @@ function StaffSection({ adminToken }: { adminToken: string }) {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Full Name *</label>
+                  <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Full Name *</label>
                   <input value={inviteName} onChange={e => setInviteName(e.target.value)} placeholder="Their name"
                     className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-2.5 text-white placeholder-white/25 outline-none text-sm" />
                 </div>
                 <div>
-                  <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Email *</label>
+                  <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Email *</label>
                   <input type="email" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} placeholder="their@email.com"
                     className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-2.5 text-white placeholder-white/25 outline-none text-sm" />
                 </div>
               </div>
 
               <div>
-                <label className="text-white/30 text-xs uppercase tracking-wider mb-3 block">Permissions *</label>
+                <label className="text-white/80 text-xs uppercase tracking-wider mb-3 block">Permissions *</label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {PERMISSION_OPTIONS.map(opt => {
                     const checked = invitePerms.includes(opt.id);
@@ -4345,7 +4345,7 @@ function StaffSection({ adminToken }: { adminToken: string }) {
                         </div>
                         <div>
                           <p className={`text-sm font-semibold ${checked ? "text-yellow-400" : "text-white/70"}`}>{opt.label}</p>
-                          <p className="text-white/30 text-xs mt-0.5">{opt.desc}</p>
+                          <p className="text-white/80 text-xs mt-0.5">{opt.desc}</p>
                         </div>
                       </button>
                     );
@@ -4359,7 +4359,7 @@ function StaffSection({ adminToken }: { adminToken: string }) {
                   <Send size={14} /> {inviting ? "Sending..." : "Send Invite"}
                 </button>
                 <button onClick={() => setShowInvite(false)}
-                  className="text-white/40 hover:text-white/70 text-sm px-4 py-2.5 rounded-xl border border-white/10 hover:border-white/20 transition-all cursor-pointer">
+                  className="text-white/80 hover:text-white/70 text-sm px-4 py-2.5 rounded-xl border border-white/10 hover:border-white/20 transition-all cursor-pointer">
                   Cancel
                 </button>
               </div>
@@ -4370,12 +4370,12 @@ function StaffSection({ adminToken }: { adminToken: string }) {
 
       {/* Staff list */}
       {loading ? (
-        <div className="text-center py-10 text-white/30 text-sm">Loading staff...</div>
+        <div className="text-center py-10 text-white/80 text-sm">Loading staff...</div>
       ) : staff.length === 0 ? (
         <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-10 text-center">
-          <Users size={32} className="text-white/10 mx-auto mb-3" />
-          <p className="text-white/30 text-sm">No staff members yet</p>
-          <p className="text-white/15 text-xs mt-1">Click &ldquo;Invite Staff&rdquo; to get started</p>
+          <Users size={32} className="text-white/80 mx-auto mb-3" />
+          <p className="text-white/80 text-sm">No staff members yet</p>
+          <p className="text-white/80 text-xs mt-1">Click &ldquo;Invite Staff&rdquo; to get started</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -4390,7 +4390,7 @@ function StaffSection({ adminToken }: { adminToken: string }) {
                       {member.status}
                     </span>
                   </div>
-                  <p className="text-white/40 text-xs mb-3">{member.email}</p>
+                  <p className="text-white/80 text-xs mb-3">{member.email}</p>
                   <div className="flex flex-wrap gap-1.5">
                     {member.permissions.map((p: string) => {
                       const opt = PERMISSION_OPTIONS.find(o => o.id === p);
@@ -4402,7 +4402,7 @@ function StaffSection({ adminToken }: { adminToken: string }) {
                     })}
                   </div>
                   {member.last_login_at && (
-                    <p className="text-white/20 text-xs mt-2">
+                    <p className="text-white/80 text-xs mt-2">
                       Last login: {new Date(member.last_login_at).toLocaleDateString()}
                     </p>
                   )}
@@ -4415,7 +4415,7 @@ function StaffSection({ adminToken }: { adminToken: string }) {
                     </button>
                   )}
                   <button onClick={() => startEdit(member)}
-                    className="text-white/40 hover:text-yellow-400 p-1.5 rounded-lg hover:bg-white/5 transition-all cursor-pointer">
+                    className="text-white/80 hover:text-yellow-400 p-1.5 rounded-lg hover:bg-white/5 transition-all cursor-pointer">
                     <Edit2 size={14} />
                   </button>
                   <button onClick={() => removeStaff(member.id, member.name)}
@@ -4436,18 +4436,18 @@ function StaffSection({ adminToken }: { adminToken: string }) {
                       )}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                          <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Full Name</label>
+                          <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Full Name</label>
                           <input value={editName} onChange={e => setEditName(e.target.value)}
                             className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-2.5 text-white outline-none text-sm" />
                         </div>
                         <div>
-                          <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Email</label>
+                          <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Email</label>
                           <input type="email" value={editEmail} onChange={e => setEditEmail(e.target.value)}
                             className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-2.5 text-white outline-none text-sm" />
                         </div>
                       </div>
                       <div>
-                        <label className="text-white/30 text-xs uppercase tracking-wider mb-3 block">Permissions / Areas</label>
+                        <label className="text-white/80 text-xs uppercase tracking-wider mb-3 block">Permissions / Areas</label>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                           {PERMISSION_OPTIONS.map(opt => {
                             const checked = editPerms.includes(opt.id);
@@ -4463,7 +4463,7 @@ function StaffSection({ adminToken }: { adminToken: string }) {
                                 </div>
                                 <div>
                                   <p className={`text-sm font-semibold ${checked ? "text-yellow-400" : "text-white/70"}`}>{opt.label}</p>
-                                  <p className="text-white/30 text-xs mt-0.5">{opt.desc}</p>
+                                  <p className="text-white/80 text-xs mt-0.5">{opt.desc}</p>
                                 </div>
                               </button>
                             );
@@ -4476,7 +4476,7 @@ function StaffSection({ adminToken }: { adminToken: string }) {
                           {savingEdit ? "Saving..." : "Save Changes"}
                         </button>
                         <button onClick={() => setEditingStaff(null)}
-                          className="text-white/40 hover:text-white/70 text-sm px-4 py-2.5 rounded-xl border border-white/10 hover:border-white/20 transition-all cursor-pointer">
+                          className="text-white/80 hover:text-white/70 text-sm px-4 py-2.5 rounded-xl border border-white/10 hover:border-white/20 transition-all cursor-pointer">
                           Cancel
                         </button>
                       </div>
@@ -4493,7 +4493,7 @@ function StaffSection({ adminToken }: { adminToken: string }) {
       <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl px-5 py-4 flex items-center justify-between">
         <div>
           <p className="text-white/60 text-sm font-semibold">Check-In Portal</p>
-          <p className="text-white/25 text-xs mt-0.5">Share this link with door staff</p>
+          <p className="text-white/80 text-xs mt-0.5">Share this link with door staff</p>
         </div>
         <a href="/checkin" target="_blank"
           className="flex items-center gap-2 text-yellow-400 text-sm border border-yellow-500/30 hover:border-yellow-500/60 px-4 py-2 rounded-xl transition-all">
@@ -4573,7 +4573,7 @@ function KnowledgeBaseSection({ adminToken }: { adminToken: string }) {
       <div className="flex items-center justify-between">
         <div>
           <p className="text-white font-bold text-lg">Knowledge Base</p>
-          <p className="text-white/30 text-sm">{articles.filter(a => a.active).length} active articles · powers AI replies & chat bot</p>
+          <p className="text-white/80 text-sm">{articles.filter(a => a.active).length} active articles · powers AI replies & chat bot</p>
         </div>
         <button onClick={() => { setShowAdd(!showAdd); setEditing(null); setForm({ title: "", content: "", category: "General" }); }}
           className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-black font-bold text-sm px-4 py-2 rounded-xl transition-all cursor-pointer">
@@ -4588,12 +4588,12 @@ function KnowledgeBaseSection({ adminToken }: { adminToken: string }) {
               <p className="font-bold text-white">{editing ? "Edit Article" : "New Article"}</p>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="sm:col-span-2">
-                  <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Title *</label>
+                  <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Title *</label>
                   <input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="Article title"
                     className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-2.5 text-white placeholder-white/25 outline-none text-sm" />
                 </div>
                 <div>
-                  <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Category</label>
+                  <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Category</label>
                   <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
                     className="w-full appearance-none bg-white/5 border border-white/15 rounded-xl px-4 py-2.5 text-white outline-none text-sm cursor-pointer">
                     {KB_CATEGORIES.map(c => <option key={c} value={c} className="bg-[#0d0500]">{c}</option>)}
@@ -4601,7 +4601,7 @@ function KnowledgeBaseSection({ adminToken }: { adminToken: string }) {
                 </div>
               </div>
               <div>
-                <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Content *</label>
+                <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Content *</label>
                 <textarea value={form.content} onChange={e => setForm(f => ({ ...f, content: e.target.value }))} rows={4}
                   placeholder="Write the article content. This is what the AI uses to answer questions."
                   className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-3 text-white placeholder-white/25 outline-none text-sm resize-none" />
@@ -4612,7 +4612,7 @@ function KnowledgeBaseSection({ adminToken }: { adminToken: string }) {
                   {saving ? "Saving..." : editing ? "Save Changes" : "Add Article"}
                 </button>
                 <button onClick={() => { setShowAdd(false); setEditing(null); }}
-                  className="text-white/40 hover:text-white/70 text-sm px-4 py-2.5 rounded-xl border border-white/10 transition-all cursor-pointer">Cancel</button>
+                  className="text-white/80 hover:text-white/70 text-sm px-4 py-2.5 rounded-xl border border-white/10 transition-all cursor-pointer">Cancel</button>
               </div>
             </div>
           </motion.div>
@@ -4620,27 +4620,27 @@ function KnowledgeBaseSection({ adminToken }: { adminToken: string }) {
       </AnimatePresence>
 
       {loading ? (
-        <div className="text-center py-8 text-white/25 text-sm">Loading...</div>
+        <div className="text-center py-8 text-white/80 text-sm">Loading...</div>
       ) : (
         <div className="space-y-4">
           {Object.entries(grouped).filter(([, items]) => items.length > 0).map(([cat, items]) => (
             <div key={cat}>
-              <p className="text-white/30 text-xs uppercase tracking-wider mb-2">{cat}</p>
+              <p className="text-white/80 text-xs uppercase tracking-wider mb-2">{cat}</p>
               <div className="space-y-2">
                 {items.map(a => (
                   <div key={a.id} className={`bg-white/[0.03] border rounded-xl px-4 py-3 transition-all ${a.active ? "border-white/10" : "border-white/[0.04] opacity-50"}`}>
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
-                        <p className={`font-semibold text-sm ${a.active ? "text-white" : "text-white/40"}`}>{a.title}</p>
-                        <p className="text-white/30 text-xs mt-1 line-clamp-2">{a.content}</p>
+                        <p className={`font-semibold text-sm ${a.active ? "text-white" : "text-white/80"}`}>{a.title}</p>
+                        <p className="text-white/80 text-xs mt-1 line-clamp-2">{a.content}</p>
                       </div>
                       <div className="flex items-center gap-1.5 flex-shrink-0">
                         <button onClick={() => toggleActive(a)} title={a.active ? "Disable" : "Enable"}
-                          className={`text-xs px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${a.active ? "bg-green-500/10 border-green-500/20 text-green-400" : "bg-white/5 border-white/10 text-white/30"}`}>
+                          className={`text-xs px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${a.active ? "bg-green-500/10 border-green-500/20 text-green-400" : "bg-white/5 border-white/10 text-white/80"}`}>
                           {a.active ? "On" : "Off"}
                         </button>
-                        <button onClick={() => startEdit(a)} className="p-1.5 hover:bg-white/10 rounded-lg text-white/30 hover:text-white transition-all cursor-pointer"><Edit2 size={12} /></button>
-                        <button onClick={() => del(a.id)} className="p-1.5 hover:bg-red-500/10 rounded-lg text-white/20 hover:text-red-400 transition-all cursor-pointer"><Trash2 size={12} /></button>
+                        <button onClick={() => startEdit(a)} className="p-1.5 hover:bg-white/10 rounded-lg text-white/80 hover:text-white transition-all cursor-pointer"><Edit2 size={12} /></button>
+                        <button onClick={() => del(a.id)} className="p-1.5 hover:bg-red-500/10 rounded-lg text-white/80 hover:text-red-400 transition-all cursor-pointer"><Trash2 size={12} /></button>
                       </div>
                     </div>
                   </div>
@@ -4711,7 +4711,7 @@ function NewsletterSection({ adminToken }: { adminToken: string }) {
       <div className="flex items-start justify-between">
         <div>
           <h2 className="font-display text-white text-3xl mb-1">NEWSLETTER</h2>
-          <p className="text-white/30 text-sm">{subscribers.length} total subscriber{subscribers.length !== 1 ? "s" : ""}</p>
+          <p className="text-white/80 text-sm">{subscribers.length} total subscriber{subscribers.length !== 1 ? "s" : ""}</p>
         </div>
         <button onClick={exportCSV}
           className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/15 text-white/70 hover:text-white px-4 py-2 rounded-xl text-sm transition-all cursor-pointer">
@@ -4731,7 +4731,7 @@ function NewsletterSection({ adminToken }: { adminToken: string }) {
             <p className={`text-2xl font-bold ${cityTab === city ? "text-yellow-400" : "text-white"}`}>
               {cityCount(city)}
             </p>
-            <p className="text-white/40 text-xs mt-0.5">{city}</p>
+            <p className="text-white/80 text-xs mt-0.5">{city}</p>
           </button>
         ))}
       </div>
@@ -4743,7 +4743,7 @@ function NewsletterSection({ adminToken }: { adminToken: string }) {
             className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all cursor-pointer ${
               cityTab === city
                 ? "bg-yellow-500 text-black"
-                : "text-white/50 hover:text-white"
+                : "text-white/80 hover:text-white"
             }`}>
             {city} {city !== "All" && <span className="opacity-60 text-xs">({cityCount(city)})</span>}
           </button>
@@ -4752,7 +4752,7 @@ function NewsletterSection({ adminToken }: { adminToken: string }) {
 
       {/* Search */}
       <div className="relative">
-        <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30" />
+        <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/80" />
         <input value={search} onChange={e => setSearch(e.target.value)}
           placeholder={`Search ${cityTab === "All" ? "all subscribers" : cityTab + " subscribers"}...`}
           className="w-full bg-white/[0.04] border border-white/10 rounded-xl pl-9 pr-4 py-2.5 text-sm text-white placeholder-white/25 outline-none focus:border-yellow-500/40" />
@@ -4761,20 +4761,20 @@ function NewsletterSection({ adminToken }: { adminToken: string }) {
       {/* Table */}
       <div className="bg-white/[0.03] border border-white/10 rounded-2xl overflow-hidden">
         {loading ? (
-          <div className="flex items-center justify-center py-16 text-white/30 text-sm">Loading...</div>
+          <div className="flex items-center justify-center py-16 text-white/80 text-sm">Loading...</div>
         ) : filtered.length === 0 ? (
-          <div className="flex items-center justify-center py-16 text-white/30 text-sm">
+          <div className="flex items-center justify-center py-16 text-white/80 text-sm">
             {search ? "No matches found" : `No ${cityTab === "All" ? "" : cityTab + " "}subscribers yet`}
           </div>
         ) : (
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-white/10">
-                <th className="text-left px-5 py-3 text-white/40 font-medium">Name</th>
-                <th className="text-left px-5 py-3 text-white/40 font-medium">Email</th>
-                <th className="text-left px-5 py-3 text-white/40 font-medium hidden sm:table-cell">Phone</th>
-                <th className="text-left px-5 py-3 text-white/40 font-medium hidden md:table-cell">Cities</th>
-                <th className="text-left px-5 py-3 text-white/40 font-medium hidden lg:table-cell">Signed Up</th>
+                <th className="text-left px-5 py-3 text-white/80 font-medium">Name</th>
+                <th className="text-left px-5 py-3 text-white/80 font-medium">Email</th>
+                <th className="text-left px-5 py-3 text-white/80 font-medium hidden sm:table-cell">Phone</th>
+                <th className="text-left px-5 py-3 text-white/80 font-medium hidden md:table-cell">Cities</th>
+                <th className="text-left px-5 py-3 text-white/80 font-medium hidden lg:table-cell">Signed Up</th>
               </tr>
             </thead>
             <tbody>
@@ -4782,7 +4782,7 @@ function NewsletterSection({ adminToken }: { adminToken: string }) {
                 <tr key={s.id} className={`border-b border-white/5 hover:bg-white/[0.02] ${i === filtered.length - 1 ? "border-0" : ""}`}>
                   <td className="px-5 py-3 text-white font-medium">{s.first_name}</td>
                   <td className="px-5 py-3 text-white/60">{s.email}</td>
-                  <td className="px-5 py-3 text-white/40 hidden sm:table-cell">{s.phone || <span className="text-white/20">—</span>}</td>
+                  <td className="px-5 py-3 text-white/80 hidden sm:table-cell">{s.phone || <span className="text-white/80">—</span>}</td>
                   <td className="px-5 py-3 hidden md:table-cell">
                     {s.cities?.length
                       ? <div className="flex flex-wrap gap-1">
@@ -4790,10 +4790,10 @@ function NewsletterSection({ adminToken }: { adminToken: string }) {
                             <span key={c} className="bg-yellow-500/10 text-yellow-400 text-xs px-2 py-0.5 rounded-full">{c}</span>
                           ))}
                         </div>
-                      : <span className="text-white/20 text-xs">All Cities</span>
+                      : <span className="text-white/80 text-xs">All Cities</span>
                     }
                   </td>
-                  <td className="px-5 py-3 text-white/40 hidden lg:table-cell">{new Date(s.created_at).toLocaleDateString()}</td>
+                  <td className="px-5 py-3 text-white/80 hidden lg:table-cell">{new Date(s.created_at).toLocaleDateString()}</td>
                 </tr>
               ))}
             </tbody>
@@ -4857,20 +4857,20 @@ function LoadInEventCard({ event, adminToken }: { event: any; adminToken: string
       <div className="flex items-center justify-between mb-4">
         <div>
           <h3 className="text-white font-bold text-lg">{event.city}</h3>
-          <p className="text-white/40 text-xs">{event.date} · {event.venue}</p>
+          <p className="text-white/80 text-xs">{event.date} · {event.venue}</p>
         </div>
-        <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full border bg-white/5 text-white/40 border-white/10">{event.status}</span>
+        <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full border bg-white/5 text-white/80 border-white/10">{event.status}</span>
       </div>
 
       <div className="grid grid-cols-2 gap-3 mb-3">
         <div>
-          <label className="block text-xs text-white/40 uppercase tracking-wider mb-1">Load-In Start</label>
+          <label className="block text-xs text-white/80 uppercase tracking-wider mb-1">Load-In Start</label>
           <input value={loadInStart} onChange={e => setLoadInStart(e.target.value)}
             placeholder="e.g. 12:00 PM"
             className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-yellow-500/50" />
         </div>
         <div>
-          <label className="block text-xs text-white/40 uppercase tracking-wider mb-1">Must Be In By</label>
+          <label className="block text-xs text-white/80 uppercase tracking-wider mb-1">Must Be In By</label>
           <input value={loadInEnd} onChange={e => setLoadInEnd(e.target.value)}
             placeholder="e.g. 2:00 PM"
             className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-yellow-500/50" />
@@ -4878,14 +4878,14 @@ function LoadInEventCard({ event, adminToken }: { event: any; adminToken: string
       </div>
 
       <div className="mb-3">
-        <label className="block text-xs text-white/40 uppercase tracking-wider mb-1">Load-In Info (shown as a paragraph on the public page)</label>
+        <label className="block text-xs text-white/80 uppercase tracking-wider mb-1">Load-In Info (shown as a paragraph on the public page)</label>
         <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={4}
           placeholder="Where to park, who to check in with, booth setup rules, etc."
           className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-yellow-500/50" />
       </div>
 
       <div className="mb-3">
-        <label className="block text-xs text-white/40 uppercase tracking-wider mb-1">Venue Map</label>
+        <label className="block text-xs text-white/80 uppercase tracking-wider mb-1">Venue Map</label>
         {mapUrl && (
           <a href={mapUrl} target="_blank" rel="noopener noreferrer" className="block mb-2">
             <img src={mapUrl} alt="Venue map" className="max-h-48 rounded-lg border border-white/10" />
@@ -4900,7 +4900,7 @@ function LoadInEventCard({ event, adminToken }: { event: any; adminToken: string
       </div>
 
       <div className="mb-4">
-        <label className="block text-xs text-white/40 uppercase tracking-wider mb-1">Second Map (optional, shown below the main map)</label>
+        <label className="block text-xs text-white/80 uppercase tracking-wider mb-1">Second Map (optional, shown below the main map)</label>
         {mapUrl2 && (
           <a href={mapUrl2} target="_blank" rel="noopener noreferrer" className="block mb-2">
             <img src={mapUrl2} alt="Second venue map" className="max-h-48 rounded-lg border border-white/10" />
@@ -4945,12 +4945,12 @@ function LoadInSection({ adminToken }: { adminToken: string }) {
     <div className="space-y-6">
       <div>
         <h2 className="font-display text-white text-3xl mb-1">LOAD IN</h2>
-        <p className="text-white/30 text-sm">Set load-in windows, info, and the venue map shown on the public /loadin page for each city.</p>
+        <p className="text-white/80 text-sm">Set load-in windows, info, and the venue map shown on the public /loadin page for each city.</p>
       </div>
       {loading ? (
-        <p className="text-white/40 text-sm">Loading…</p>
+        <p className="text-white/80 text-sm">Loading…</p>
       ) : events.length === 0 ? (
-        <p className="text-white/40 text-sm">No events found.</p>
+        <p className="text-white/80 text-sm">No events found.</p>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {events.map(ev => <LoadInEventCard key={ev.id} event={ev} adminToken={adminToken} />)}
@@ -5252,7 +5252,7 @@ function VendorsSection({ adminToken }: { adminToken: string }) {
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h2 className="font-display text-white text-3xl mb-1">VENDORS</h2>
-          <p className="text-white/30 text-sm">{apps.length} application{apps.length !== 1 ? "s" : ""}</p>
+          <p className="text-white/80 text-sm">{apps.length} application{apps.length !== 1 ? "s" : ""}</p>
         </div>
         <button onClick={() => exportVendorPdf()}
           className="bg-white/5 hover:bg-white/10 border border-white/15 text-white/70 font-semibold px-4 py-2 rounded-xl text-sm transition-all cursor-pointer">
@@ -5304,7 +5304,7 @@ function VendorsSection({ adminToken }: { adminToken: string }) {
                       {years.map(y => <option key={y.year} value={y.year}>{y.year}{y.status === "completed" ? " (past)" : ""}</option>)}
                     </select>
                   ) : (
-                    <span className="text-white/30 text-xs flex-shrink-0">{year}</span>
+                    <span className="text-white/80 text-xs flex-shrink-0">{year}</span>
                   )}
                 </div>
                 <div className="flex items-center gap-2 mb-3 flex-wrap">
@@ -5321,14 +5321,14 @@ function VendorsSection({ adminToken }: { adminToken: string }) {
                   </button>
                 </div>
                 {rows.length === 0 ? (
-                  <p className="text-white/25 text-xs py-2">No paid vendors yet for {year}.</p>
+                  <p className="text-white/80 text-xs py-2">No paid vendors yet for {year}.</p>
                 ) : (
                   <div className="space-y-2">
                     {visible.map((v, i) => (
                       <div key={i} className="border-b border-white/5 pb-1.5 last:border-0 last:pb-0 flex items-center justify-between gap-2">
                         <div className="min-w-0">
                           <p className="text-white/80 text-sm font-medium truncate">{v.business_name}</p>
-                          <p className="text-white/35 text-xs truncate">{v.name}</p>
+                          <p className="text-white/80 text-xs truncate">{v.name}</p>
                         </div>
                         {v.stripe_payment_intent_id && (
                           <a href={`https://dashboard.stripe.com/payments/${v.stripe_payment_intent_id}`} target="_blank" rel="noopener noreferrer"
@@ -5342,13 +5342,13 @@ function VendorsSection({ adminToken }: { adminToken: string }) {
                   <div className="flex items-center justify-between mt-3 pt-2 border-t border-white/5">
                     <button onClick={() => setCityPage(p => ({ ...p, [city]: Math.max(0, page - 1) }))}
                       disabled={page === 0}
-                      className="text-xs text-white/40 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer">
+                      className="text-xs text-white/80 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer">
                       ← Prev
                     </button>
-                    <span className="text-[11px] text-white/30">{page + 1} / {totalPages}</span>
+                    <span className="text-[11px] text-white/80">{page + 1} / {totalPages}</span>
                     <button onClick={() => setCityPage(p => ({ ...p, [city]: Math.min(totalPages - 1, page + 1) }))}
                       disabled={page >= totalPages - 1}
-                      className="text-xs text-white/40 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer">
+                      className="text-xs text-white/80 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer">
                       Next →
                     </button>
                   </div>
@@ -5369,35 +5369,35 @@ function VendorsSection({ adminToken }: { adminToken: string }) {
               className="bg-[#0d0500] border border-white/10 rounded-2xl p-6 w-full max-w-xl max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between mb-1">
                 <h3 className="text-lg font-semibold text-white">Email Paid Vendors — {emailModalCity}</h3>
-                <button onClick={() => setEmailModalCity(null)} className="text-white/40 hover:text-white cursor-pointer"><X size={18} /></button>
+                <button onClick={() => setEmailModalCity(null)} className="text-white/80 hover:text-white cursor-pointer"><X size={18} /></button>
               </div>
-              <p className="text-white/40 text-xs mb-5">
+              <p className="text-white/80 text-xs mb-5">
                 Sends to all {emailModalCity ? allPaidCountForCity(emailModalCity) : 0} paid vendor{(emailModalCity ? allPaidCountForCity(emailModalCity) : 0) === 1 ? "" : "s"} in {emailModalCity} (all years), from vendors@mail.tequilafestusa.com. Replies land in the Vendors inbox.
               </p>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-xs text-white/40 uppercase tracking-wider mb-1">Subject</label>
+                  <label className="block text-xs text-white/80 uppercase tracking-wider mb-1">Subject</label>
                   <input value={emailSubject} onChange={e => setEmailSubject(e.target.value)}
                     className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-yellow-500/50"
                     placeholder="Event details subject line" />
                 </div>
                 <div>
-                  <label className="block text-xs text-white/40 uppercase tracking-wider mb-1">Message</label>
+                  <label className="block text-xs text-white/80 uppercase tracking-wider mb-1">Message</label>
                   <textarea value={emailBody} onChange={e => setEmailBody(e.target.value)} rows={8}
                     className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-yellow-500/50"
                     placeholder="Load-in time, venue directions, booth assignment, anything vendors need to know. Blank lines start a new paragraph." />
                 </div>
                 <div>
-                  <label className="block text-xs text-white/40 uppercase tracking-wider mb-1">Attachment (map, PDF, image — optional)</label>
+                  <label className="block text-xs text-white/80 uppercase tracking-wider mb-1">Attachment (map, PDF, image — optional)</label>
                   <input type="file" onChange={e => setEmailAttachment(e.target.files?.[0] || null)}
                     className="w-full text-sm text-white/60 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-white/10 file:text-white/70 file:text-xs file:font-semibold hover:file:bg-white/15 file:cursor-pointer cursor-pointer" />
-                  {emailAttachment && <p className="text-white/30 text-xs mt-1">{emailAttachment.name} ({(emailAttachment.size / 1024 / 1024).toFixed(2)} MB)</p>}
+                  {emailAttachment && <p className="text-white/80 text-xs mt-1">{emailAttachment.name} ({(emailAttachment.size / 1024 / 1024).toFixed(2)} MB)</p>}
                 </div>
                 {cityEmailResult && (
                   <p className={`text-sm ${cityEmailResult.startsWith("Error") ? "text-red-400" : "text-green-400"}`}>{cityEmailResult}</p>
                 )}
                 <div className="flex gap-3 pt-2">
-                  <button onClick={() => setEmailModalCity(null)} className="flex-1 py-2.5 border border-white/10 text-white/50 rounded-xl text-sm hover:text-white transition-all cursor-pointer">Cancel</button>
+                  <button onClick={() => setEmailModalCity(null)} className="flex-1 py-2.5 border border-white/10 text-white/80 rounded-xl text-sm hover:text-white transition-all cursor-pointer">Cancel</button>
                   <button onClick={sendCityEmail} disabled={sendingCityEmail || !emailSubject.trim() || !emailBody.trim()}
                     className="flex-1 py-2.5 bg-yellow-500 hover:bg-yellow-400 text-black font-semibold rounded-xl text-sm transition-all cursor-pointer disabled:opacity-40">
                     {sendingCityEmail ? "Sending…" : `Send to ${emailModalCity ? allPaidCountForCity(emailModalCity) : 0} Vendor${(emailModalCity ? allPaidCountForCity(emailModalCity) : 0) === 1 ? "" : "s"}`}
@@ -5414,7 +5414,7 @@ function VendorsSection({ adminToken }: { adminToken: string }) {
         {(["all","pending","approved","paid","rejected"] as const).map(tab => (
           <button key={tab} onClick={() => setFilter(tab)}
             className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-all cursor-pointer ${
-              filter === tab ? "bg-yellow-500 border-yellow-500 text-black" : "bg-white/[0.03] border-white/10 text-white/50 hover:text-white"
+              filter === tab ? "bg-yellow-500 border-yellow-500 text-black" : "bg-white/[0.03] border-white/10 text-white/80 hover:text-white"
             }`}>
             {tab.charAt(0).toUpperCase() + tab.slice(1)} <span className="opacity-60">({counts[tab]})</span>
           </button>
@@ -5425,9 +5425,9 @@ function VendorsSection({ adminToken }: { adminToken: string }) {
         {/* List */}
         <div className="lg:col-span-2 space-y-2">
           {loading ? (
-            <div className="text-white/30 text-sm py-8 text-center">Loading...</div>
+            <div className="text-white/80 text-sm py-8 text-center">Loading...</div>
           ) : filtered.length === 0 ? (
-            <div className="text-white/30 text-sm py-8 text-center">No {filter === "all" ? "" : filter} applications</div>
+            <div className="text-white/80 text-sm py-8 text-center">No {filter === "all" ? "" : filter} applications</div>
           ) : filtered.map(app => (
             <button key={app.id} onClick={() => { setSelected(app); setNotes(app.admin_notes || ""); }}
               className={`w-full text-left p-4 rounded-xl border transition-all cursor-pointer ${
@@ -5436,14 +5436,14 @@ function VendorsSection({ adminToken }: { adminToken: string }) {
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <p className="text-white font-semibold text-sm truncate">{app.business_name}</p>
-                  <p className="text-white/40 text-xs mt-0.5">{app.name} · {app.vendor_type}</p>
-                  <p className="text-white/30 text-xs mt-0.5">{app.cities?.join(", ")}</p>
+                  <p className="text-white/80 text-xs mt-0.5">{app.name} · {app.vendor_type}</p>
+                  <p className="text-white/80 text-xs mt-0.5">{app.cities?.join(", ")}</p>
                 </div>
                 <div className="flex flex-col items-end gap-1 flex-shrink-0">
                   <span className={`text-xs font-bold px-2 py-0.5 rounded-full border uppercase ${VENDOR_STATUS_STYLES[app.paid ? "paid" : app.status] || VENDOR_STATUS_STYLES.pending}`}>
                     {app.paid ? "Paid" : app.status}
                   </span>
-                  <span className="text-white/20 text-xs">{new Date(app.created_at).toLocaleDateString()}</span>
+                  <span className="text-white/80 text-xs">{new Date(app.created_at).toLocaleDateString()}</span>
                 </div>
               </div>
             </button>
@@ -5453,7 +5453,7 @@ function VendorsSection({ adminToken }: { adminToken: string }) {
         {/* Detail panel */}
         <div className="lg:col-span-3">
           {!selected ? (
-            <div className="bg-white/[0.02] border border-white/10 rounded-2xl p-8 text-center text-white/20 text-sm h-full flex items-center justify-center">
+            <div className="bg-white/[0.02] border border-white/10 rounded-2xl p-8 text-center text-white/80 text-sm h-full flex items-center justify-center">
               Select an application to review
             </div>
           ) : (
@@ -5462,7 +5462,7 @@ function VendorsSection({ adminToken }: { adminToken: string }) {
               <div className="flex items-start justify-between">
                 <div>
                   <h3 className="text-white font-bold text-xl">{selected.business_name}</h3>
-                  <p className="text-white/40 text-sm">{selected.vendor_type}</p>
+                  <p className="text-white/80 text-sm">{selected.vendor_type}</p>
                 </div>
                 <span className={`text-xs font-bold px-3 py-1 rounded-full border uppercase ${VENDOR_STATUS_STYLES[selected.paid ? "paid" : selected.status] || VENDOR_STATUS_STYLES.pending}`}>
                   {selected.paid ? "Paid" : selected.status}
@@ -5480,7 +5480,7 @@ function VendorsSection({ adminToken }: { adminToken: string }) {
                   ["Applied", new Date(selected.created_at).toLocaleDateString()],
                 ].map(([label, value]) => (
                   <div key={label} className="bg-white/[0.03] border border-white/8 rounded-xl px-4 py-3">
-                    <p className="text-white/35 text-xs uppercase tracking-wider mb-1">{label}</p>
+                    <p className="text-white/80 text-xs uppercase tracking-wider mb-1">{label}</p>
                     <p className="text-white/80 font-medium break-all">{value}</p>
                   </div>
                 ))}
@@ -5489,7 +5489,7 @@ function VendorsSection({ adminToken }: { adminToken: string }) {
               {/* Description */}
               {selected.description && (
                 <div className="bg-white/[0.03] border border-white/8 rounded-xl px-4 py-3">
-                  <p className="text-white/35 text-xs uppercase tracking-wider mb-1">Description</p>
+                  <p className="text-white/80 text-xs uppercase tracking-wider mb-1">Description</p>
                   <p className="text-white/70 text-sm leading-relaxed">{selected.description}</p>
                 </div>
               )}
@@ -5500,7 +5500,7 @@ function VendorsSection({ adminToken }: { adminToken: string }) {
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <p className="text-blue-400 text-xs font-bold uppercase tracking-wider">Payment Link Sent</p>
-                      <p className="text-white/40 text-xs mt-0.5">Stripe checkout link was emailed to vendor</p>
+                      <p className="text-white/80 text-xs mt-0.5">Stripe checkout link was emailed to vendor</p>
                     </div>
                     <div className="flex items-center gap-3 flex-shrink-0">
                       <button
@@ -5517,16 +5517,16 @@ function VendorsSection({ adminToken }: { adminToken: string }) {
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <span className={`text-xs font-semibold px-2 py-1 rounded-full border ${selected.approval_email_sent_at ? "bg-white/10 border-white/20 text-white/70" : "bg-white/5 border-white/10 text-white/25"}`}>
+                    <span className={`text-xs font-semibold px-2 py-1 rounded-full border ${selected.approval_email_sent_at ? "bg-white/10 border-white/20 text-white/70" : "bg-white/5 border-white/10 text-white/80"}`}>
                       Sent{selected.approval_email_sent_at ? ` · ${new Date(selected.approval_email_sent_at).toLocaleString()}` : ""}
                     </span>
-                    <span className={`text-xs font-semibold px-2 py-1 rounded-full border ${selected.approval_email_delivered_at ? "bg-green-500/15 border-green-500/25 text-green-400" : "bg-white/5 border-white/10 text-white/25"}`}>
+                    <span className={`text-xs font-semibold px-2 py-1 rounded-full border ${selected.approval_email_delivered_at ? "bg-green-500/15 border-green-500/25 text-green-400" : "bg-white/5 border-white/10 text-white/80"}`}>
                       Delivered{selected.approval_email_delivered_at ? ` · ${new Date(selected.approval_email_delivered_at).toLocaleString()}` : ""}
                     </span>
-                    <span className={`text-xs font-semibold px-2 py-1 rounded-full border ${selected.approval_email_opened_at ? "bg-yellow-500/15 border-yellow-500/25 text-yellow-400" : "bg-white/5 border-white/10 text-white/25"}`}>
+                    <span className={`text-xs font-semibold px-2 py-1 rounded-full border ${selected.approval_email_opened_at ? "bg-yellow-500/15 border-yellow-500/25 text-yellow-400" : "bg-white/5 border-white/10 text-white/80"}`}>
                       Opened{selected.approval_email_open_count ? ` · ${selected.approval_email_open_count}×` : ""}
                     </span>
-                    <span className={`text-xs font-semibold px-2 py-1 rounded-full border ${selected.approval_email_clicked_at ? "bg-blue-500/15 border-blue-500/25 text-blue-400" : "bg-white/5 border-white/10 text-white/25"}`}>
+                    <span className={`text-xs font-semibold px-2 py-1 rounded-full border ${selected.approval_email_clicked_at ? "bg-blue-500/15 border-blue-500/25 text-blue-400" : "bg-white/5 border-white/10 text-white/80"}`}>
                       Clicked{selected.approval_email_click_count ? ` · ${selected.approval_email_click_count}×` : ""}
                     </span>
                     {selected.approval_email_bounced_at && (
@@ -5539,7 +5539,7 @@ function VendorsSection({ adminToken }: { adminToken: string }) {
               ) : selected.status === "approved" ? (
                 <div className="bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">
                   <p className="text-red-400 text-xs font-bold uppercase tracking-wider">No Payment Link On File</p>
-                  <p className="text-white/40 text-xs mt-0.5">This vendor was approved but the payment link/email never went out — use Resend below.</p>
+                  <p className="text-white/80 text-xs mt-0.5">This vendor was approved but the payment link/email never went out — use Resend below.</p>
                 </div>
               ) : null}
               {resendStatus && (
@@ -5548,7 +5548,7 @@ function VendorsSection({ adminToken }: { adminToken: string }) {
 
               {/* Admin notes */}
               <div>
-                <label className="text-white/40 text-xs uppercase tracking-wider block mb-1.5">Admin Notes (included in rejection email)</label>
+                <label className="text-white/80 text-xs uppercase tracking-wider block mb-1.5">Admin Notes (included in rejection email)</label>
                 <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3}
                   className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/40 rounded-xl px-3 py-2.5 text-white text-sm outline-none resize-none placeholder-white/20"
                   placeholder="Optional notes for vendor..." />
@@ -5793,7 +5793,7 @@ function MediaPartnersSection({ adminToken, events }: { adminToken: string; even
       <div className="flex items-center justify-between">
         <div>
           <h2 className="font-display text-white text-3xl mb-1">MEDIA PARTNERS</h2>
-          <p className="text-white/30 text-sm">Radio, news, and other outlets that give away contest-winner tickets</p>
+          <p className="text-white/80 text-sm">Radio, news, and other outlets that give away contest-winner tickets</p>
         </div>
         <button onClick={() => setShowAdd(true)} className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-black text-sm font-semibold px-4 py-2 rounded-xl transition-all cursor-pointer">
           <Plus size={15} /> Add Partner
@@ -5805,22 +5805,22 @@ function MediaPartnersSection({ adminToken, events }: { adminToken: string; even
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
         <div className="lg:col-span-2 space-y-2">
           {loading ? (
-            <div className="text-white/30 text-sm py-8 text-center">Loading...</div>
+            <div className="text-white/80 text-sm py-8 text-center">Loading...</div>
           ) : partners.length === 0 ? (
-            <div className="text-white/30 text-sm py-8 text-center">No media partners yet.</div>
+            <div className="text-white/80 text-sm py-8 text-center">No media partners yet.</div>
           ) : partners.map(p => (
             <button key={p.id} onClick={() => setSelected(p)}
               className={`w-full text-left p-4 rounded-xl border transition-all cursor-pointer ${selected?.id === p.id ? "bg-yellow-500/10 border-yellow-500/30" : "bg-white/[0.03] border-white/10 hover:border-white/20"}`}>
               <p className="text-white font-semibold text-sm">{p.company_name}</p>
-              <p className="text-white/40 text-xs mt-0.5">{p.contact_name} · {p.email}</p>
-              <p className="text-white/30 text-xs mt-1">{p.media_partner_allocations?.length || 0} allocation(s)</p>
+              <p className="text-white/80 text-xs mt-0.5">{p.contact_name} · {p.email}</p>
+              <p className="text-white/80 text-xs mt-1">{p.media_partner_allocations?.length || 0} allocation(s)</p>
             </button>
           ))}
         </div>
 
         <div className="lg:col-span-3">
           {!selected ? (
-            <div className="bg-white/[0.02] border border-white/10 rounded-2xl p-8 text-center text-white/20 text-sm h-full flex items-center justify-center">
+            <div className="bg-white/[0.02] border border-white/10 rounded-2xl p-8 text-center text-white/80 text-sm h-full flex items-center justify-center">
               Select a media partner to manage their ticket allocations
             </div>
           ) : (
@@ -5828,15 +5828,15 @@ function MediaPartnersSection({ adminToken, events }: { adminToken: string; even
               <div className="flex items-start justify-between">
                 <div>
                   <h3 className="text-white font-bold text-xl">{selected.company_name}</h3>
-                  <p className="text-white/40 text-sm">{selected.contact_name} · {selected.email}</p>
+                  <p className="text-white/80 text-sm">{selected.contact_name} · {selected.email}</p>
                 </div>
-                <button onClick={() => handleDeletePartner(selected.id)} className="p-1.5 text-white/30 hover:text-red-400 transition-colors cursor-pointer"><Trash2 size={14} /></button>
+                <button onClick={() => handleDeletePartner(selected.id)} className="p-1.5 text-white/80 hover:text-red-400 transition-colors cursor-pointer"><Trash2 size={14} /></button>
               </div>
 
               <div>
-                <p className="text-white/30 text-xs uppercase tracking-wider mb-2">Ticket Allocations</p>
+                <p className="text-white/80 text-xs uppercase tracking-wider mb-2">Ticket Allocations</p>
                 {(selected.media_partner_allocations || []).length === 0 ? (
-                  <p className="text-white/20 text-sm">No allocations yet — add one below.</p>
+                  <p className="text-white/80 text-sm">No allocations yet — add one below.</p>
                 ) : (
                   <div className="space-y-2">
                     {selected.media_partner_allocations.map(a => (
@@ -5849,10 +5849,10 @@ function MediaPartnersSection({ adminToken, events }: { adminToken: string; even
                                 onChange={e => setEditingQuota(e.target.value)}
                                 onKeyDown={e => { if (e.key === "Enter") saveEditAllocation(a); if (e.key === "Escape") setEditingAllocId(null); }}
                                 className="w-24 bg-white/5 border border-yellow-500/40 rounded-lg px-2 py-1 text-white text-xs outline-none" />
-                              <span className="text-white/30 text-xs">quota · {a.issued_count} already issued</span>
+                              <span className="text-white/80 text-xs">quota · {a.issued_count} already issued</span>
                             </div>
                           ) : (
-                            <p className="text-white/40 text-xs mt-0.5">{a.issued_count} issued / {a.quota} quota ({a.quota - a.issued_count} remaining)</p>
+                            <p className="text-white/80 text-xs mt-0.5">{a.issued_count} issued / {a.quota} quota ({a.quota - a.issued_count} remaining)</p>
                           )}
                         </div>
                         <div className="flex items-center gap-1 flex-shrink-0">
@@ -5860,12 +5860,12 @@ function MediaPartnersSection({ adminToken, events }: { adminToken: string; even
                             <>
                               <button onClick={() => saveEditAllocation(a)} disabled={savingEditAlloc}
                                 className="p-1.5 text-green-400 hover:text-green-300 disabled:opacity-50 transition-colors cursor-pointer"><CheckCircle size={14} /></button>
-                              <button onClick={() => setEditingAllocId(null)} className="p-1.5 text-white/30 hover:text-white transition-colors cursor-pointer"><X size={14} /></button>
+                              <button onClick={() => setEditingAllocId(null)} className="p-1.5 text-white/80 hover:text-white transition-colors cursor-pointer"><X size={14} /></button>
                             </>
                           ) : (
                             <>
-                              <button onClick={() => startEditAllocation(a)} className="p-1.5 text-white/30 hover:text-yellow-400 transition-colors cursor-pointer"><Edit2 size={14} /></button>
-                              <button onClick={() => handleDeleteAllocation(a.id)} className="p-1.5 text-white/30 hover:text-red-400 transition-colors cursor-pointer"><Trash2 size={14} /></button>
+                              <button onClick={() => startEditAllocation(a)} className="p-1.5 text-white/80 hover:text-yellow-400 transition-colors cursor-pointer"><Edit2 size={14} /></button>
+                              <button onClick={() => handleDeleteAllocation(a.id)} className="p-1.5 text-white/80 hover:text-red-400 transition-colors cursor-pointer"><Trash2 size={14} /></button>
                             </>
                           )}
                         </div>
@@ -5876,7 +5876,7 @@ function MediaPartnersSection({ adminToken, events }: { adminToken: string; even
               </div>
 
               <form onSubmit={handleAddAllocation} className="bg-white/[0.02] border border-white/10 rounded-xl p-4 space-y-3">
-                <p className="text-white/30 text-xs uppercase tracking-wider">Add / Edit Allocations</p>
+                <p className="text-white/80 text-xs uppercase tracking-wider">Add / Edit Allocations</p>
                 {allocStatus && (
                   <p className={`text-xs ${allocStatus.startsWith("Error") ? "text-red-400" : "text-green-400"}`}>{allocStatus}</p>
                 )}
@@ -5890,11 +5890,11 @@ function MediaPartnersSection({ adminToken, events }: { adminToken: string; even
 
                 {allocEvent && (
                   <>
-                    <p className="text-white/20 text-xs">Set a quota for each ticket type this partner can give away for {allocEvent.city}. Leave blank to skip.</p>
+                    <p className="text-white/80 text-xs">Set a quota for each ticket type this partner can give away for {allocEvent.city}. Leave blank to skip.</p>
                     <div className="grid grid-cols-2 gap-3">
                       {(allocEvent.ticket_types || []).map(tt => (
                         <div key={tt.id}>
-                          <label className="text-white/40 text-xs block mb-1">{tt.name}</label>
+                          <label className="text-white/80 text-xs block mb-1">{tt.name}</label>
                           <input type="number" min={0} value={typeQuotas[tt.name] ?? ""}
                             onChange={e => setTypeQuotas(q => ({ ...q, [tt.name]: e.target.value }))}
                             placeholder="Quota"
@@ -5926,12 +5926,12 @@ function MediaPartnersSection({ adminToken, events }: { adminToken: string; even
                 className="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2.5 text-white text-sm outline-none" />
               <input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="Login email" required
                 className="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2.5 text-white text-sm outline-none" />
-              <p className="text-white/30 text-xs">A password will be generated automatically and emailed to them with their login link.</p>
+              <p className="text-white/80 text-xs">A password will be generated automatically and emailed to them with their login link.</p>
               <div className="flex gap-3 pt-2">
                 <button type="submit" disabled={saving} className="flex-1 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-60 text-black font-bold py-2.5 rounded-xl text-sm transition-all cursor-pointer">
                   {saving ? "Creating..." : "Create & Send Login"}
                 </button>
-                <button type="button" onClick={() => setShowAdd(false)} className="px-4 py-2.5 text-white/50 hover:text-white text-sm cursor-pointer">Cancel</button>
+                <button type="button" onClick={() => setShowAdd(false)} className="px-4 py-2.5 text-white/80 hover:text-white text-sm cursor-pointer">Cancel</button>
               </div>
             </form>
           </div>
@@ -5978,11 +5978,11 @@ function SocialClaimsSection({ adminToken }: { adminToken: string }) {
       <div className="space-y-8">
         {/* Pending */}
         <div>
-          <p className="text-white/50 text-xs uppercase tracking-wider mb-3">Pending Review ({pending.length})</p>
+          <p className="text-white/80 text-xs uppercase tracking-wider mb-3">Pending Review ({pending.length})</p>
           {loading ? (
             <div className="h-20 bg-white/5 rounded-2xl animate-pulse" />
           ) : pending.length === 0 ? (
-            <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-8 text-center text-white/30 text-sm">No pending claims</div>
+            <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-8 text-center text-white/80 text-sm">No pending claims</div>
           ) : (
             <div className="space-y-3">
               {pending.map(c => (
@@ -5990,12 +5990,12 @@ function SocialClaimsSection({ adminToken }: { adminToken: string }) {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-purple-500/20 border border-purple-500/30 text-purple-400 uppercase">{c.platform}</span>
-                      <span className="text-white/30 text-xs">{c.event_id}</span>
-                      <span className="text-white/20 text-xs ml-auto">{new Date(c.created_at).toLocaleDateString()}</span>
+                      <span className="text-white/80 text-xs">{c.event_id}</span>
+                      <span className="text-white/80 text-xs ml-auto">{new Date(c.created_at).toLocaleDateString()}</span>
                     </div>
                     <a href={c.post_url} target="_blank" rel="noopener noreferrer"
                       className="text-yellow-400 text-sm hover:underline break-all truncate block">{c.post_url}</a>
-                    {c.customer_email && <p className="text-white/40 text-xs mt-1">{c.customer_email}</p>}
+                    {c.customer_email && <p className="text-white/80 text-xs mt-1">{c.customer_email}</p>}
                   </div>
                   <div className="flex gap-2 flex-shrink-0">
                     <button onClick={() => act(c.id, "approve")} disabled={!!acting}
@@ -6016,15 +6016,15 @@ function SocialClaimsSection({ adminToken }: { adminToken: string }) {
         {/* Reviewed */}
         {reviewed.length > 0 && (
           <div>
-            <p className="text-white/50 text-xs uppercase tracking-wider mb-3">Reviewed ({reviewed.length})</p>
+            <p className="text-white/80 text-xs uppercase tracking-wider mb-3">Reviewed ({reviewed.length})</p>
             <div className="space-y-2">
               {reviewed.slice(0, 20).map(c => (
                 <div key={c.id} className="bg-white/[0.02] border border-white/8 rounded-xl px-4 py-3 flex items-center gap-3">
                   <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${c.status === "approved" ? "bg-green-500/15 border-green-500/30 text-green-400" : "bg-red-500/10 border-red-500/20 text-red-400"}`}>
                     {c.status}
                   </span>
-                  <span className="text-white/30 text-xs uppercase">{c.platform}</span>
-                  <a href={c.post_url} target="_blank" rel="noopener noreferrer" className="text-white/40 text-xs hover:text-yellow-400 truncate flex-1">{c.post_url}</a>
+                  <span className="text-white/80 text-xs uppercase">{c.platform}</span>
+                  <a href={c.post_url} target="_blank" rel="noopener noreferrer" className="text-white/80 text-xs hover:text-yellow-400 truncate flex-1">{c.post_url}</a>
                   {c.points_awarded > 0 && <span className="text-green-400 text-xs font-bold">+{c.points_awarded} pts</span>}
                 </div>
               ))}
@@ -6252,7 +6252,7 @@ function ToolsSection({ adminToken }: { adminToken: string }) {
     <div className="space-y-8">
       <div>
         <h2 className="font-display text-white text-3xl mb-1">TOOLS</h2>
-        <p className="text-white/30 text-sm">Admin utilities and data management</p>
+        <p className="text-white/80 text-sm">Admin utilities and data management</p>
       </div>
 
       {/* QR Code Generator */}
@@ -6261,24 +6261,24 @@ function ToolsSection({ adminToken }: { adminToken: string }) {
           <h3 className="text-white font-bold text-lg flex items-center gap-2">
             <QrCode size={18} className="text-yellow-400" /> QR Code Generator
           </h3>
-          <p className="text-white/40 text-sm mt-1">
+          <p className="text-white/80 text-sm mt-1">
             Create a custom short link (tequilafestusa.com/go/&lt;slug&gt;) with a matching QR code — great for flyers, vendor booths, and print ads. Point it anywhere and change the destination later without reprinting.
           </p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
           <div className="sm:col-span-2">
-            <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Destination URL</label>
+            <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Destination URL</label>
             <input value={destUrl} onChange={e => setDestUrl(e.target.value)} placeholder="https://tequilafestusa.com/events/cincinnati"
               className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-2.5 text-white placeholder-white/25 outline-none text-sm" />
           </div>
           <div>
-            <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Name</label>
+            <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Name</label>
             <input value={linkLabel} onChange={e => setLinkLabel(e.target.value)} placeholder="Cincinnati vendor booth flyer"
               className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-2.5 text-white placeholder-white/25 outline-none text-sm" />
           </div>
           <div>
-            <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Custom slug (optional)</label>
+            <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Custom slug (optional)</label>
             <input value={customSlug} onChange={e => setCustomSlug(e.target.value)} placeholder="cincinnati-flyer"
               className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-2.5 text-white placeholder-white/25 outline-none text-sm" />
           </div>
@@ -6292,9 +6292,9 @@ function ToolsSection({ adminToken }: { adminToken: string }) {
         </button>
 
         {linksLoading ? (
-          <p className="text-white/30 text-sm">Loading…</p>
+          <p className="text-white/80 text-sm">Loading…</p>
         ) : !links.length ? (
-          <p className="text-white/25 text-sm text-center py-6 border border-dashed border-white/10 rounded-xl">No QR links yet — create one above.</p>
+          <p className="text-white/80 text-sm text-center py-6 border border-dashed border-white/10 rounded-xl">No QR links yet — create one above.</p>
         ) : (
           <div className="space-y-3">
             {links.map(link => (
@@ -6303,7 +6303,7 @@ function ToolsSection({ adminToken }: { adminToken: string }) {
                 <div className="flex-1 min-w-0">
                   {link.label && <p className="text-white font-semibold text-sm truncate">{link.label}</p>}
                   <p className="text-yellow-400 text-xs font-mono mt-0.5">{SITE_URL.replace(/^https?:\/\//, "")}/go/{link.slug}</p>
-                  <p className="text-white/30 text-xs mt-0.5 truncate">→ {link.destination_url}</p>
+                  <p className="text-white/80 text-xs mt-0.5 truncate">→ {link.destination_url}</p>
                   <button onClick={() => openLinkStats(link)}
                     className="text-white text-[11px] mt-1 underline decoration-white/30 hover:decoration-white underline-offset-2 cursor-pointer">
                     {link.clicks} click{link.clicks !== 1 ? "s" : ""} ({link.uniqueClicks} unique) · {new Date(link.created_at).toLocaleDateString()}
@@ -6341,7 +6341,7 @@ function ToolsSection({ adminToken }: { adminToken: string }) {
               <h3 className="text-white font-bold text-lg flex items-center gap-2">
                 <Wrench size={18} className="text-yellow-400" /> Login Repair Backfill
               </h3>
-              <p className="text-white/40 text-sm mt-1">
+              <p className="text-white/80 text-sm mt-1">
                 One-time fix for accounts stuck without a working login (see the pre-checkout bug fix). A cron job runs a batch of 20 every 2 hours automatically — you don't need to do anything, but you can run one now.
               </p>
             </div>
@@ -6352,9 +6352,9 @@ function ToolsSection({ adminToken }: { adminToken: string }) {
             </button>
           </div>
           <div className="flex gap-3 text-sm">
-            <span className="text-white/50">Pending: <span className="text-white font-semibold">{repairQueue.pending}</span></span>
-            <span className="text-white/50">Repaired: <span className="text-green-400 font-semibold">{repairQueue.repaired}</span></span>
-            <span className="text-white/50">Failed: <span className="text-red-400 font-semibold">{repairQueue.failed}</span></span>
+            <span className="text-white/80">Pending: <span className="text-white font-semibold">{repairQueue.pending}</span></span>
+            <span className="text-white/80">Repaired: <span className="text-green-400 font-semibold">{repairQueue.repaired}</span></span>
+            <span className="text-white/80">Failed: <span className="text-red-400 font-semibold">{repairQueue.failed}</span></span>
           </div>
           {batchResult && <p className="text-white/60 text-xs mt-2">{batchResult}</p>}
         </div>
@@ -6367,7 +6367,7 @@ function ToolsSection({ adminToken }: { adminToken: string }) {
             <h3 className="text-white font-bold text-lg flex items-center gap-2">
               <Mail size={18} className="text-yellow-400" /> Claim Account Email Blast
             </h3>
-            <p className="text-white/40 text-sm mt-1">
+            <p className="text-white/80 text-sm mt-1">
               Email all ticket buyers who haven&apos;t created an account yet. Tells them their points are waiting and walks them through signup step-by-step.
             </p>
           </div>
@@ -6382,7 +6382,7 @@ function ToolsSection({ adminToken }: { adminToken: string }) {
         {blastResult && (
           <div className="bg-green-500/10 border border-green-500/30 rounded-xl px-4 py-3 text-sm">
             <p className="text-green-400 font-bold">✅ Blast complete</p>
-            <p className="text-white/50 mt-1">Sent: {blastResult.sent} · Failed: {blastResult.failed} · Total: {blastResult.total}</p>
+            <p className="text-white/80 mt-1">Sent: {blastResult.sent} · Failed: {blastResult.failed} · Total: {blastResult.total}</p>
           </div>
         )}
         {blastError && <p className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">{blastError}</p>}
@@ -6395,7 +6395,7 @@ function ToolsSection({ adminToken }: { adminToken: string }) {
             <h3 className="text-white font-bold text-lg flex items-center gap-2">
               <RefreshCw size={18} className="text-yellow-400" /> Sync from Old Site
             </h3>
-            <p className="text-white/40 text-sm mt-1">
+            <p className="text-white/80 text-sm mt-1">
               Pull any new ticket sales from the old Replit site that aren&apos;t already in the new database.
               Safe to run anytime — duplicate orders are automatically skipped.
             </p>
@@ -6416,10 +6416,10 @@ function ToolsSection({ adminToken }: { adminToken: string }) {
                 line.startsWith("❌") ? "text-red-400" :
                 line.startsWith("⚠️") ? "text-yellow-400" :
                 line.startsWith("🆕") ? "text-blue-400" :
-                "text-white/50"
+                "text-white/80"
               }>{line}</p>
             ))}
-            {syncDone && <p className="text-white/20 mt-2 pt-2 border-t border-white/10">— sync complete —</p>}
+            {syncDone && <p className="text-white/80 mt-2 pt-2 border-t border-white/10">— sync complete —</p>}
           </div>
         )}
       </div>
@@ -6434,22 +6434,22 @@ function ToolsSection({ adminToken }: { adminToken: string }) {
               className="bg-[#0d0500] border border-white/10 rounded-2xl p-6 w-full max-w-md">
               <div className="flex items-center justify-between mb-5">
                 <h3 className="text-lg font-semibold text-white">Edit QR Code</h3>
-                <button onClick={() => setEditLink(null)} className="text-white/40 hover:text-white cursor-pointer"><X size={18} /></button>
+                <button onClick={() => setEditLink(null)} className="text-white/80 hover:text-white cursor-pointer"><X size={18} /></button>
               </div>
               <div className="space-y-4">
                 <div>
-                  <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Name</label>
+                  <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Name</label>
                   <input value={editName} onChange={e => setEditName(e.target.value)} placeholder="Cincinnati vendor booth flyer"
                     className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-2.5 text-white placeholder-white/25 outline-none text-sm" />
                 </div>
                 <div>
-                  <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Slug</label>
+                  <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Slug</label>
                   <input value={editSlug} onChange={e => setEditSlug(e.target.value)} placeholder="cincinnati-flyer"
                     className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-2.5 text-white placeholder-white/25 outline-none text-sm" />
-                  <p className="text-white/25 text-[11px] mt-1">Changing this changes the QR code image — any already-printed copies will point to the old page.</p>
+                  <p className="text-white/80 text-[11px] mt-1">Changing this changes the QR code image — any already-printed copies will point to the old page.</p>
                 </div>
                 <div>
-                  <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Destination URL</label>
+                  <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Destination URL</label>
                   <input value={editDest} onChange={e => setEditDest(e.target.value)} placeholder="https://tequilafestusa.com/events/cincinnati"
                     className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-2.5 text-white placeholder-white/25 outline-none text-sm" />
                 </div>
@@ -6476,14 +6476,14 @@ function ToolsSection({ adminToken }: { adminToken: string }) {
                 <h3 className="text-lg font-semibold text-white truncate">
                   {statsLink.label || statsLink.slug} — Click Stats
                 </h3>
-                <button onClick={() => setStatsLink(null)} className="text-white/40 hover:text-white cursor-pointer flex-shrink-0"><X size={18} /></button>
+                <button onClick={() => setStatsLink(null)} className="text-white/80 hover:text-white cursor-pointer flex-shrink-0"><X size={18} /></button>
               </div>
-              <p className="text-white/40 text-xs mb-5">/go/{statsLink.slug} · {statsLink.clicks} total click{statsLink.clicks !== 1 ? "s" : ""} · {statsUniqueTotal} unique</p>
+              <p className="text-white/80 text-xs mb-5">/go/{statsLink.slug} · {statsLink.clicks} total click{statsLink.clicks !== 1 ? "s" : ""} · {statsUniqueTotal} unique</p>
 
               {statsLoading ? (
-                <p className="text-white/30 text-sm py-6 text-center">Loading…</p>
+                <p className="text-white/80 text-sm py-6 text-center">Loading…</p>
               ) : !statsDays || statsDays.length === 0 ? (
-                <p className="text-white/25 text-sm py-6 text-center border border-dashed border-white/10 rounded-xl">
+                <p className="text-white/80 text-sm py-6 text-center border border-dashed border-white/10 rounded-xl">
                   No day-by-day data yet — daily tracking started after this feature was added, so older clicks are only reflected in the total above.
                 </p>
               ) : (
@@ -6493,7 +6493,7 @@ function ToolsSection({ adminToken }: { adminToken: string }) {
                       <span className="text-white/70 text-sm">
                         {new Date(d.date + "T00:00:00").toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
                       </span>
-                      <span className="text-yellow-400 font-bold text-sm">{d.count} click{d.count !== 1 ? "s" : ""} <span className="text-white/30 font-normal">({d.uniqueCount} unique)</span></span>
+                      <span className="text-yellow-400 font-bold text-sm">{d.count} click{d.count !== 1 ? "s" : ""} <span className="text-white/80 font-normal">({d.uniqueCount} unique)</span></span>
                     </div>
                   ))}
                 </div>
@@ -6768,7 +6768,7 @@ function AffiliatesSection({ adminToken }: { adminToken: string }) {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="font-display text-white text-3xl mb-1">AFFILIATES</h2>
-          <p className="text-white/30 text-sm">Custom QR codes/links per affiliate — clicks + sales tracked automatically, broken down by city</p>
+          <p className="text-white/80 text-sm">Custom QR codes/links per affiliate — clicks + sales tracked automatically, broken down by city</p>
         </div>
         <button onClick={() => setShowAdd(true)} className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-black text-sm font-semibold px-4 py-2 rounded-xl transition-all cursor-pointer">
           <Plus size={15} /> Add Affiliate
@@ -6793,11 +6793,11 @@ function AffiliatesSection({ adminToken }: { adminToken: string }) {
             ].map(s => (
               <div key={s.label} className="bg-white/[0.03] border border-white/10 rounded-2xl p-4 text-center">
                 <p className={`font-bold text-lg ${s.color || "text-white"}`}>{s.value}</p>
-                <p className="text-white/30 text-[11px] mt-1">{s.label}</p>
+                <p className="text-white/80 text-[11px] mt-1">{s.label}</p>
               </div>
             ))}
           </div>
-          <p className="text-white/25 text-xs -mt-3">{conversionRate.toFixed(1)}% click-to-order conversion rate across all affiliates</p>
+          <p className="text-white/80 text-xs -mt-3">{conversionRate.toFixed(1)}% click-to-order conversion rate across all affiliates</p>
 
           {/* Top affiliates leaderboard */}
           <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-5">
@@ -6811,7 +6811,7 @@ function AffiliatesSection({ adminToken }: { adminToken: string }) {
                   { id: "orders", label: "Orders" },
                 ] as const).map(opt => (
                   <button key={opt.id} onClick={() => setLeaderboardSort(opt.id)}
-                    className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-all cursor-pointer ${leaderboardSort === opt.id ? "bg-yellow-500 text-black border-yellow-500" : "bg-white/5 text-white/50 border-white/15 hover:bg-white/10"}`}>
+                    className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-all cursor-pointer ${leaderboardSort === opt.id ? "bg-yellow-500 text-black border-yellow-500" : "bg-white/5 text-white/80 border-white/15 hover:bg-white/10"}`}>
                     {opt.label}
                   </button>
                 ))}
@@ -6820,7 +6820,7 @@ function AffiliatesSection({ adminToken }: { adminToken: string }) {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-white/30 text-[11px] uppercase tracking-wider text-left">
+                  <tr className="text-white/80 text-[11px] uppercase tracking-wider text-left">
                     <th className="pb-2 pr-3">#</th>
                     <th className="pb-2 pr-3">Affiliate</th>
                     <th className="pb-2 pr-3 text-right">Clicks (Unique)</th>
@@ -6836,14 +6836,14 @@ function AffiliatesSection({ adminToken }: { adminToken: string }) {
                     return (
                       <tr key={a.id} onClick={() => setSelected(a)}
                         className="border-t border-white/5 hover:bg-white/[0.03] cursor-pointer transition-colors">
-                        <td className="py-2 pr-3 text-white/30">{i + 1}</td>
+                        <td className="py-2 pr-3 text-white/80">{i + 1}</td>
                         <td className="py-2 pr-3">
                           <span className="text-white font-medium">{a.first_name} {a.last_name || ""}</span>
                           {a.status !== "active" && <span className="ml-2 text-[10px] text-red-400">revoked</span>}
                         </td>
-                        <td className="py-2 pr-3 text-right text-white/70">{a.clicks} <span className="text-white/30">({a.uniqueClicks})</span></td>
+                        <td className="py-2 pr-3 text-right text-white/70">{a.clicks} <span className="text-white/80">({a.uniqueClicks})</span></td>
                         <td className="py-2 pr-3 text-right text-white/70">{a.orders}</td>
-                        <td className="py-2 pr-3 text-right text-white/40">{rate.toFixed(1)}%</td>
+                        <td className="py-2 pr-3 text-right text-white/80">{rate.toFixed(1)}%</td>
                         <td className="py-2 pr-3 text-right text-white/70">${a.totalSales.toFixed(2)}</td>
                         <td className="py-2 text-right text-green-400 font-semibold">${a.totalCommission.toFixed(2)}</td>
                       </tr>
@@ -6862,7 +6862,7 @@ function AffiliatesSection({ adminToken }: { adminToken: string }) {
                 {Object.entries(combinedByCity).sort((a, b) => b[1].commission - a[1].commission).map(([city, s]) => (
                   <div key={city} className="bg-white/[0.02] border border-white/5 rounded-xl p-3">
                     <p className="text-white font-semibold text-sm">{city}</p>
-                    <p className="text-white/40 text-xs mt-0.5">{s.orders} orders · {s.tickets} tickets</p>
+                    <p className="text-white/80 text-xs mt-0.5">{s.orders} orders · {s.tickets} tickets</p>
                     <p className="text-white/70 text-xs mt-1">${s.sales.toFixed(2)} sales</p>
                     <p className="text-green-400 text-xs font-semibold">${s.commission.toFixed(2)} commission</p>
                   </div>
@@ -6876,9 +6876,9 @@ function AffiliatesSection({ adminToken }: { adminToken: string }) {
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
         <div className="lg:col-span-2 space-y-2">
           {loading ? (
-            <div className="text-white/30 text-sm py-8 text-center">Loading...</div>
+            <div className="text-white/80 text-sm py-8 text-center">Loading...</div>
           ) : affiliates.length === 0 ? (
-            <div className="text-white/25 text-sm py-8 text-center border border-dashed border-white/10 rounded-xl">No affiliates yet — click Add Affiliate.</div>
+            <div className="text-white/80 text-sm py-8 text-center border border-dashed border-white/10 rounded-xl">No affiliates yet — click Add Affiliate.</div>
           ) : (
             affiliates.map(a => (
               <button key={a.id} onClick={() => setSelected(a)}
@@ -6889,8 +6889,8 @@ function AffiliatesSection({ adminToken }: { adminToken: string }) {
                     {a.status}
                   </span>
                 </div>
-                <p className="text-white/30 text-xs truncate">{a.email}</p>
-                <div className="flex items-center gap-3 mt-1.5 text-[11px] text-white/40">
+                <p className="text-white/80 text-xs truncate">{a.email}</p>
+                <div className="flex items-center gap-3 mt-1.5 text-[11px] text-white/80">
                   <span>{a.clicks} clicks ({a.uniqueClicks} unique)</span>
                   <span>{a.orders} sales</span>
                   <span className="text-green-400 font-semibold">${a.totalCommission.toFixed(2)}</span>
@@ -6902,13 +6902,13 @@ function AffiliatesSection({ adminToken }: { adminToken: string }) {
 
         <div className="lg:col-span-3 bg-white/[0.03] border border-white/10 rounded-2xl p-5">
           {!selected ? (
-            <p className="text-white/25 text-sm text-center py-12">Select an affiliate to view stats and manage payouts.</p>
+            <p className="text-white/80 text-sm text-center py-12">Select an affiliate to view stats and manage payouts.</p>
           ) : (
             <div className="space-y-5">
               <div className="flex items-start justify-between gap-2">
                 <div>
                   <h3 className="text-white font-bold text-lg">{selected.first_name} {selected.last_name || ""}</h3>
-                  <p className="text-white/40 text-sm">{selected.email}{selected.phone ? ` · ${selected.phone}` : ""}</p>
+                  <p className="text-white/80 text-sm">{selected.email}{selected.phone ? ` · ${selected.phone}` : ""}</p>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <button onClick={() => toggleStatus(selected)}
@@ -6930,9 +6930,9 @@ function AffiliatesSection({ adminToken }: { adminToken: string }) {
                     <p className="text-yellow-400 text-sm font-mono truncate">{SITE_URL.replace(/^https?:\/\//, "")}/go/{selected.slug}</p>
                     <div className="flex items-center gap-3 mt-1">
                       <button onClick={() => navigator.clipboard.writeText(`${SITE_URL}/go/${selected.slug}`)}
-                        className="text-white/40 hover:text-white text-xs cursor-pointer">Copy Link</button>
+                        className="text-white/80 hover:text-white text-xs cursor-pointer">Copy Link</button>
                       <button onClick={() => regenerateCode(selected)} disabled={regenerating}
-                        className="text-white/40 hover:text-yellow-400 text-xs cursor-pointer disabled:opacity-40">
+                        className="text-white/80 hover:text-yellow-400 text-xs cursor-pointer disabled:opacity-40">
                         {regenerating ? "Generating…" : "Regenerate Link"}
                       </button>
                     </div>
@@ -6942,7 +6942,7 @@ function AffiliatesSection({ adminToken }: { adminToken: string }) {
 
               {selected.linkId && (
                 <div>
-                  <p className="text-white/30 text-xs uppercase tracking-wider mb-1.5">Their Link Sends People To</p>
+                  <p className="text-white/80 text-xs uppercase tracking-wider mb-1.5">Their Link Sends People To</p>
                   {!editingDestination ? (
                     <div className="flex items-center justify-between gap-2 bg-white/[0.02] border border-white/10 rounded-xl px-4 py-2.5">
                       <span className="text-white/70 text-sm truncate">
@@ -6962,7 +6962,7 @@ function AffiliatesSection({ adminToken }: { adminToken: string }) {
                         className="px-3 py-2 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-40 text-black text-xs font-semibold rounded-lg cursor-pointer">
                         {destinationSaving ? "Saving…" : "Save"}
                       </button>
-                      <button onClick={() => setEditingDestination(false)} className="text-white/40 hover:text-white text-xs cursor-pointer">Cancel</button>
+                      <button onClick={() => setEditingDestination(false)} className="text-white/80 hover:text-white text-xs cursor-pointer">Cancel</button>
                     </div>
                   )}
                 </div>
@@ -6978,38 +6978,38 @@ function AffiliatesSection({ adminToken }: { adminToken: string }) {
                 ].map(s => (
                   <div key={s.label} className="bg-white/[0.02] border border-white/5 rounded-lg p-3 text-center">
                     <p className="text-white font-bold">{s.value}</p>
-                    <p className="text-white/30 text-[11px]">{s.label}</p>
+                    <p className="text-white/80 text-[11px]">{s.label}</p>
                   </div>
                 ))}
               </div>
 
               <div className="flex items-center gap-3">
-                <label className="text-white/30 text-xs uppercase tracking-wider">Commission Rate</label>
+                <label className="text-white/80 text-xs uppercase tracking-wider">Commission Rate</label>
                 <div className="flex items-center gap-1">
                   <input type="number" defaultValue={selected.commission_rate} step="0.5" min="0"
                     onBlur={e => updateCommission(selected, e.target.value)}
                     className="w-20 bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-lg px-2 py-1 text-white text-sm outline-none" />
-                  <span className="text-white/40 text-sm">%</span>
+                  <span className="text-white/80 text-sm">%</span>
                 </div>
               </div>
 
               <div className="grid grid-cols-3 gap-2">
                 <div className="bg-green-500/10 border border-green-500/25 rounded-xl p-3 text-center">
                   <p className="text-green-400 font-bold">${selected.totalCommission.toFixed(2)}</p>
-                  <p className="text-white/30 text-[11px]">Earned</p>
+                  <p className="text-white/80 text-[11px]">Earned</p>
                 </div>
                 <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 text-center">
                   <p className="text-white font-bold">${selected.totalPaid.toFixed(2)}</p>
-                  <p className="text-white/30 text-[11px]">Paid Out</p>
+                  <p className="text-white/80 text-[11px]">Paid Out</p>
                 </div>
                 <div className="bg-yellow-500/10 border border-yellow-500/25 rounded-xl p-3 text-center">
                   <p className="text-yellow-400 font-bold">${selected.balanceOwed.toFixed(2)}</p>
-                  <p className="text-white/30 text-[11px]">Owed</p>
+                  <p className="text-white/80 text-[11px]">Owed</p>
                 </div>
               </div>
 
               <div className="bg-white/[0.02] border border-white/10 rounded-xl p-3 space-y-2">
-                <p className="text-white/40 text-xs uppercase tracking-wider">Record a Payout</p>
+                <p className="text-white/80 text-xs uppercase tracking-wider">Record a Payout</p>
                 <div className="flex items-center gap-2">
                   <input value={payoutAmount} onChange={e => setPayoutAmount(e.target.value)} type="number" step="0.01" placeholder="Amount"
                     className="w-28 bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-sm text-white placeholder-white/30 outline-none" />
@@ -7024,12 +7024,12 @@ function AffiliatesSection({ adminToken }: { adminToken: string }) {
 
               {Object.keys(selected.byCity).length > 0 && (
                 <div>
-                  <p className="text-white/40 text-xs uppercase tracking-wider mb-2">Sales by City</p>
+                  <p className="text-white/80 text-xs uppercase tracking-wider mb-2">Sales by City</p>
                   <div className="space-y-1.5">
                     {Object.entries(selected.byCity).sort((a, b) => b[1].commission - a[1].commission).map(([city, s]) => (
                       <div key={city} className="flex items-center justify-between bg-white/[0.02] border border-white/5 rounded-lg px-3 py-2">
                         <span className="text-white text-sm">{city}</span>
-                        <span className="text-white/50 text-xs">{s.orders} orders · {s.tickets} tickets · ${s.sales.toFixed(2)} · <span className="text-green-400">${s.commission.toFixed(2)}</span></span>
+                        <span className="text-white/80 text-xs">{s.orders} orders · {s.tickets} tickets · ${s.sales.toFixed(2)} · <span className="text-green-400">${s.commission.toFixed(2)}</span></span>
                       </div>
                     ))}
                   </div>
@@ -7050,7 +7050,7 @@ function AffiliatesSection({ adminToken }: { adminToken: string }) {
               className="bg-[#0d0500] border border-white/10 rounded-2xl p-6 w-full max-w-md">
               <div className="flex items-center justify-between mb-5">
                 <h3 className="text-lg font-semibold text-white">Add Affiliate</h3>
-                <button onClick={() => setShowAdd(false)} className="text-white/40 hover:text-white cursor-pointer"><X size={18} /></button>
+                <button onClick={() => setShowAdd(false)} className="text-white/80 hover:text-white cursor-pointer"><X size={18} /></button>
               </div>
 
               <div className="flex items-center gap-2 mb-4">
@@ -7070,7 +7070,7 @@ function AffiliatesSection({ adminToken }: { adminToken: string }) {
 
               {pickMode === "existing" && (
                 <div className="mb-4">
-                  <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Pick a User</label>
+                  <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Pick a User</label>
                   <select value={selectedUserEmail} onChange={e => pickExistingUser(e.target.value)}
                     className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-2.5 text-white outline-none text-sm">
                     <option value="">{usersLoading ? "Loading users…" : "Select a user…"}</option>
@@ -7078,50 +7078,50 @@ function AffiliatesSection({ adminToken }: { adminToken: string }) {
                       <option key={u.email} value={u.email}>{u.name} — {u.email}</option>
                     ))}
                   </select>
-                  <p className="text-white/25 text-xs mt-1.5">Fills the fields below — this still creates a separate affiliate account/login for them.</p>
+                  <p className="text-white/80 text-xs mt-1.5">Fills the fields below — this still creates a separate affiliate account/login for them.</p>
                 </div>
               )}
 
               <form onSubmit={handleCreate} className="space-y-4">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">First Name</label>
+                    <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">First Name</label>
                     <input required value={form.firstName} onChange={e => setForm(f => ({ ...f, firstName: e.target.value }))}
                       className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-2.5 text-white outline-none text-sm" />
                   </div>
                   <div>
-                    <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Last Name</label>
+                    <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Last Name</label>
                     <input value={form.lastName} onChange={e => setForm(f => ({ ...f, lastName: e.target.value }))}
                       className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-2.5 text-white outline-none text-sm" />
                   </div>
                 </div>
                 <div>
-                  <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Email</label>
+                  <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Email</label>
                   <input required type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
                     className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-2.5 text-white outline-none text-sm" />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Phone</label>
+                    <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Phone</label>
                     <input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
                       className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-2.5 text-white outline-none text-sm" />
                   </div>
                   <div>
-                    <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Commission %</label>
+                    <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Commission %</label>
                     <input type="number" step="0.5" min="0" value={form.commissionRate} onChange={e => setForm(f => ({ ...f, commissionRate: e.target.value }))}
                       className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-2.5 text-white outline-none text-sm" />
                   </div>
                 </div>
                 <div>
-                  <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Their Link Sends People To</label>
+                  <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Their Link Sends People To</label>
                   <select value={form.destinationUrl} onChange={e => setForm(f => ({ ...f, destinationUrl: e.target.value }))}
                     className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-2.5 text-white outline-none text-sm">
                     <option value={SITE_URL}>Homepage</option>
                     {cityOptions.map(c => <option key={c.url} value={c.url}>{c.label}</option>)}
                   </select>
-                  <p className="text-white/25 text-xs mt-1">They can change this themselves later from their own dashboard.</p>
+                  <p className="text-white/80 text-xs mt-1">They can change this themselves later from their own dashboard.</p>
                 </div>
-                <p className="text-white/25 text-xs">A login + QR code/link will be emailed automatically.</p>
+                <p className="text-white/80 text-xs">A login + QR code/link will be emailed automatically.</p>
                 <button type="submit" disabled={saving}
                   className="w-full bg-yellow-500 hover:bg-yellow-400 disabled:opacity-60 text-black font-bold px-5 py-2.5 rounded-xl text-sm transition-all cursor-pointer">
                   {saving ? "Creating..." : "Create Affiliate"}
@@ -7194,7 +7194,7 @@ function AdminLogin({ onLogin }: { onLogin: (token: string) => void }) {
         <div className="rounded-3xl border border-white/10 bg-black/40 backdrop-blur-sm p-8 text-center">
           <Image src="/tequilafest_usa.png" alt="Tequila Fest USA" width={80} height={80} className="w-16 mx-auto mb-4 drop-shadow-lg" />
           <h1 className="font-display text-white text-3xl mb-1">ADMIN</h1>
-          <p className="text-white/30 text-sm mb-6">Tequila Fest USA Dashboard</p>
+          <p className="text-white/80 text-sm mb-6">Tequila Fest USA Dashboard</p>
           {error && <p className="text-red-400 text-sm mb-4 bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2">{error}</p>}
           <form onSubmit={handleSubmit} className="space-y-3">
             <input type="password" value={password} onChange={e => { setPassword(e.target.value); setError(""); }}
@@ -7280,10 +7280,10 @@ export default function AdminDashboard() {
             <Image src="/tequilafest_usa.png" alt="TF" width={32} height={32} className="w-8 h-8" />
             <div>
               <p className="font-display text-yellow-400 text-sm leading-none">TEQUILA FEST</p>
-              <p className="text-white/30 text-xs">Admin</p>
+              <p className="text-white/80 text-xs">Admin</p>
             </div>
           </div>
-          <button onClick={() => setSidebarOpen(false)} className="lg:hidden text-white/40 hover:text-white cursor-pointer">
+          <button onClick={() => setSidebarOpen(false)} className="lg:hidden text-white/80 hover:text-white cursor-pointer">
             <X size={16} />
           </button>
         </div>
@@ -7321,13 +7321,13 @@ export default function AdminDashboard() {
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top bar */}
         <div className="sticky top-0 z-30 flex items-center justify-between px-5 h-14 border-b border-white/10 bg-[#0d0500]/90 backdrop-blur-sm">
-          <button onClick={() => setSidebarOpen(true)} className="lg:hidden text-white/50 hover:text-white cursor-pointer">
+          <button onClick={() => setSidebarOpen(true)} className="lg:hidden text-white/80 hover:text-white cursor-pointer">
             <Menu size={20} />
           </button>
           <p className="font-display text-white/60 text-lg capitalize lg:hidden">{activeSection}</p>
           <div className="hidden lg:flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-            <span className="text-white/40 text-xs">
+            <span className="text-white/80 text-xs">
               {(() => {
                 const now = new Date();
                 const upcoming = EVENTS_CONFIG
@@ -7343,7 +7343,7 @@ export default function AdminDashboard() {
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-white/30 text-xs hidden sm:block">Admin</span>
+            <span className="text-white/80 text-xs hidden sm:block">Admin</span>
           </div>
         </div>
 

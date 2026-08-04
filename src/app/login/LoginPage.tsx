@@ -97,7 +97,7 @@ export default function LoginPage() {
                 />
               </Link>
               <h1 className="font-display text-white text-4xl leading-none">LOG IN</h1>
-              <p className="text-white/40 text-sm mt-2">Access your tickets & account</p>
+              <p className="text-white/80 text-sm mt-2">Access your tickets & account</p>
             </div>
 
             {/* Error */}
@@ -114,7 +114,7 @@ export default function LoginPage() {
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Email */}
               <div className="relative">
-                <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" />
+                <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/80" />
                 <input
                   type="email"
                   value={email}
@@ -127,7 +127,7 @@ export default function LoginPage() {
 
               {/* Password */}
               <div className="relative">
-                <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" />
+                <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/80" />
                 <input
                   type={showPassword ? "text" : "password"}
                   value={password}
@@ -139,7 +139,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors cursor-pointer"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-white/80 hover:text-white/60 transition-colors cursor-pointer"
                 >
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
@@ -147,7 +147,7 @@ export default function LoginPage() {
 
               {/* Forgot password */}
               <div className="text-right">
-                <Link href="/forgot-password" className="text-white/30 hover:text-yellow-400 text-xs transition-colors duration-200">
+                <Link href="/forgot-password" className="text-white/80 hover:text-yellow-400 text-xs transition-colors duration-200">
                   Forgot password?
                 </Link>
               </div>
@@ -179,12 +179,12 @@ export default function LoginPage() {
             {/* Divider */}
             <div className="flex items-center gap-3 my-6">
               <div className="flex-1 h-px bg-white/10" />
-              <span className="text-white/20 text-xs">OR</span>
+              <span className="text-white/80 text-xs">OR</span>
               <div className="flex-1 h-px bg-white/10" />
             </div>
 
             {/* Sign up link */}
-            <p className="text-center text-white/40 text-sm">
+            <p className="text-center text-white/80 text-sm">
               Don&apos;t have an account?{" "}
               <Link href="/signup" className="text-yellow-400 hover:text-yellow-300 font-semibold transition-colors duration-200">
                 Create one free
@@ -193,8 +193,8 @@ export default function LoginPage() {
           </div>
 
           {/* Back to site */}
-          <p className="text-center mt-6 text-white/20 text-xs">
-            <Link href="/" className="hover:text-white/40 transition-colors duration-200">
+          <p className="text-center mt-6 text-white/80 text-xs">
+            <Link href="/" className="hover:text-white/80 transition-colors duration-200">
               ← Back to TequilaFestUSA.com
             </Link>
           </p>

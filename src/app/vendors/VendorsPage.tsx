@@ -111,7 +111,7 @@ export default function VendorsPage() {
               <span className="text-shimmer">VENDOR</span>{" "}
               <span className="text-shimmer-blue">APPLICATION</span>
             </h1>
-            <p className="text-white/50 mt-4 max-w-2xl mx-auto text-lg">
+            <p className="text-white/80 mt-4 max-w-2xl mx-auto text-lg">
               Join the Tequila Fest USA marketplace. Put your business in front of thousands of food and spirits enthusiasts across 4 cities.
             </p>
           </motion.div>
@@ -128,7 +128,7 @@ export default function VendorsPage() {
                     {v.icon}
                   </div>
                   <h3 className="text-white font-bold text-base mb-1.5">{v.title}</h3>
-                  <p className="text-white/40 text-sm leading-relaxed">{v.desc}</p>
+                  <p className="text-white/80 text-sm leading-relaxed">{v.desc}</p>
                 </div>
               ))}
             </div>
@@ -142,7 +142,7 @@ export default function VendorsPage() {
                 <div key={i} className="bg-white/[0.03] border border-white/10 rounded-2xl p-5 text-center">
                   <MapPin size={16} className="text-yellow-400 mx-auto mb-2" />
                   <p className="text-white font-bold">{c.city}</p>
-                  <p className="text-white/40 text-xs mt-1">{c.date}</p>
+                  <p className="text-white/80 text-xs mt-1">{c.date}</p>
                   <span className="inline-block mt-2 text-xs px-2 py-0.5 rounded-full bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">
                     {c.status}
                   </span>
@@ -176,12 +176,12 @@ export default function VendorsPage() {
                 <span className="text-2xl">🏷️</span>
                 <div>
                   <p className="text-yellow-400 font-bold text-base">Vendor Fee</p>
-                  <p className="text-white/50 text-sm">Secure your spot at each festival city</p>
+                  <p className="text-white/80 text-sm">Secure your spot at each festival city</p>
                 </div>
               </div>
               <div className="text-center sm:text-right">
                 <p className="text-yellow-400 font-display text-3xl">$150</p>
-                <p className="text-white/40 text-xs uppercase tracking-wider">per city</p>
+                <p className="text-white/80 text-xs uppercase tracking-wider">per city</p>
               </div>
             </div>
           </motion.div>
@@ -192,14 +192,14 @@ export default function VendorsPage() {
             {duplicate ? (
               <div className="max-w-lg mx-auto bg-red-500/10 border border-red-500/30 rounded-3xl p-12 text-center">
                 <p className="font-display text-red-400 text-2xl mb-2">DOUBLE APPLICATION</p>
-                <p className="text-white/50">Looks like you&apos;ve already submitted an application with this email. We&apos;ve already got it on file — no need to apply again. This duplicate submission will not be saved. If you think this is a mistake, email <a href="mailto:partners@mail.tequilafestusa.com" className="text-yellow-400 underline">partners@mail.tequilafestusa.com</a>.</p>
+                <p className="text-white/80">Looks like you&apos;ve already submitted an application with this email. We&apos;ve already got it on file — no need to apply again. This duplicate submission will not be saved. If you think this is a mistake, email <a href="mailto:partners@mail.tequilafestusa.com" className="text-yellow-400 underline">partners@mail.tequilafestusa.com</a>.</p>
               </div>
             ) : submitted ? (
               <div className="max-w-lg mx-auto space-y-5">
                 <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-3xl p-12 text-center">
                   <CheckCircle size={48} className="text-yellow-400 mx-auto mb-4" />
                   <p className="font-display text-yellow-400 text-2xl mb-2">APPLICATION RECEIVED!</p>
-                  <p className="text-white/50">We&apos;ll review your application and follow up within 3–5 business days.</p>
+                  <p className="text-white/80">We&apos;ll review your application and follow up within 3–5 business days.</p>
                 </div>
 
                 <div className="bg-red-500/10 border border-red-500/30 rounded-3xl p-6 sm:p-8">
@@ -209,15 +209,15 @@ export default function VendorsPage() {
                   </p>
                   <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-2 text-sm">
                     <div className="flex items-center justify-between gap-4">
-                      <span className="text-white/40 uppercase tracking-wider text-xs">Name</span>
+                      <span className="text-white/80 uppercase tracking-wider text-xs">Name</span>
                       <span className="text-white font-semibold">Tequila Fest USA</span>
                     </div>
                     <div className="flex items-center justify-between gap-4">
-                      <span className="text-white/40 uppercase tracking-wider text-xs">Email</span>
+                      <span className="text-white/80 uppercase tracking-wider text-xs">Email</span>
                       <a href="mailto:vendors@mail.tequilafestusa.com" className="text-yellow-400 font-semibold hover:underline">vendors@mail.tequilafestusa.com</a>
                     </div>
                     <div className="flex items-center justify-between gap-4">
-                      <span className="text-white/40 uppercase tracking-wider text-xs">Phone</span>
+                      <span className="text-white/80 uppercase tracking-wider text-xs">Phone</span>
                       <a href="tel:+12164120033" className="text-white font-semibold hover:underline">216-412-0033</a>
                     </div>
                   </div>
@@ -229,30 +229,30 @@ export default function VendorsPage() {
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Your Name *</label>
+                      <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Your Name *</label>
                       <input type="text" value={form.name} onChange={set("name")} required placeholder="Your name"
                         className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-3 text-white placeholder-white/30 outline-none transition-colors text-sm" />
                     </div>
                     <div>
-                      <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Business Name *</label>
+                      <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Business Name *</label>
                       <input type="text" value={form.business} onChange={set("business")} required placeholder="Your business name"
                         className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-3 text-white placeholder-white/30 outline-none transition-colors text-sm" />
                     </div>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Email *</label>
+                      <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Email *</label>
                       <input type="email" value={form.email} onChange={set("email")} required placeholder="your@email.com"
                         className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-3 text-white placeholder-white/30 outline-none transition-colors text-sm" />
                     </div>
                     <div>
-                      <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Phone</label>
+                      <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Phone</label>
                       <input type="tel" value={form.phone} onChange={set("phone")} placeholder="(555) 000-0000"
                         className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-3 text-white placeholder-white/30 outline-none transition-colors text-sm" />
                     </div>
                   </div>
                   <div>
-                    <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Vendor Type *</label>
+                    <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Vendor Type *</label>
                     <select value={form.type} onChange={set("type")} required
                       className="w-full appearance-none bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-3 text-white outline-none transition-colors text-sm cursor-pointer">
                       <option value="" className="bg-[#0d0500]">Select type</option>
@@ -263,7 +263,7 @@ export default function VendorsPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="text-white/30 text-xs uppercase tracking-wider mb-2 block">Cities Interested In * <span className="text-white/20 normal-case tracking-normal">(select all that apply)</span></label>
+                    <label className="text-white/80 text-xs uppercase tracking-wider mb-2 block">Cities Interested In * <span className="text-white/80 normal-case tracking-normal">(select all that apply)</span></label>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                       {CITY_OPTIONS.map(city => (
                         <button
@@ -273,7 +273,7 @@ export default function VendorsPage() {
                           className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl border text-sm font-semibold transition-all duration-150 cursor-pointer ${
                             selectedCities.includes(city)
                               ? "bg-yellow-500/20 border-yellow-500/60 text-yellow-300"
-                              : "bg-white/5 border-white/15 text-white/50 hover:border-white/30 hover:text-white/80"
+                              : "bg-white/5 border-white/15 text-white/80 hover:border-white/30 hover:text-white/80"
                           }`}
                         >
                           {selectedCities.includes(city) && <span className="text-yellow-400">✓</span>}
@@ -283,13 +283,13 @@ export default function VendorsPage() {
                     </div>
                     {selectedCities.length > 0 && (
                       <div className="flex items-center justify-between mt-3 px-1">
-                        <p className="text-white/40 text-xs">{selectedCities.length} city{selectedCities.length !== 1 ? "ies" : ""} selected · $150 each</p>
+                        <p className="text-white/80 text-xs">{selectedCities.length} city{selectedCities.length !== 1 ? "ies" : ""} selected · $150 each</p>
                         <p className="text-yellow-400 font-bold text-sm">Total: ${selectedCities.length * 150}</p>
                       </div>
                     )}
                   </div>
                   <div>
-                    <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Describe Your Products / Menu *</label>
+                    <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Describe Your Products / Menu *</label>
                     <textarea value={form.description} onChange={set("description")} required rows={4}
                       placeholder="Tell us what you sell, your setup size, any power needs, and why you'd be a great fit..."
                       className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-3 text-white placeholder-white/30 outline-none transition-colors text-sm resize-none" />

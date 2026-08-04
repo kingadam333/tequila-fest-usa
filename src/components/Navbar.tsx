@@ -97,7 +97,7 @@ export default function Navbar() {
                   {user?.firstName || "Profile"}
                 </Link>
                 <button onClick={handleLogout}
-                  className="text-white/30 hover:text-white/60 text-xs transition-colors cursor-pointer">
+                  className="text-white/80 hover:text-white/60 text-xs transition-colors cursor-pointer">
                   Log Out
                 </button>
               </div>
@@ -169,7 +169,7 @@ export default function Navbar() {
                       <User size={18} /> {user?.firstName || "Profile"}
                     </Link>
                     <button onClick={() => { setMenuOpen(false); handleLogout(); }}
-                      className="block w-full text-center border border-white/20 text-white/40 font-semibold text-base px-6 py-3 rounded-full transition-all cursor-pointer">
+                      className="block w-full text-center border border-white/20 text-white/80 font-semibold text-base px-6 py-3 rounded-full transition-all cursor-pointer">
                       Log Out
                     </button>
                   </>

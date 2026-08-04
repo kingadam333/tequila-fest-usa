@@ -43,7 +43,7 @@ export default function TequilaSpotlight() {
           <h2 className="font-display text-white" style={{ fontSize: "clamp(2.5rem, 7vw, 5rem)" }}>
             50+ <span className="text-shimmer">TEQUILAS</span>
           </h2>
-          <p className="text-white/50 mt-4 max-w-xl mx-auto">
+          <p className="text-white/80 mt-4 max-w-xl mx-auto">
             From smooth blancos to complex añejos — explore the full spectrum of agave spirits from the world&apos;s finest distillers.
           </p>
           <div className="w-24 h-1 bg-yellow-500 mx-auto mt-4 rounded-full" />
@@ -101,7 +101,7 @@ export default function TequilaSpotlight() {
             >
               <div className="w-3 h-3 rounded-full mx-auto mb-3" style={{ backgroundColor: t.color }} />
               <p className="font-display text-xl text-white">{t.type}</p>
-              <p className="text-white/40 text-sm mt-1">{t.desc}</p>
+              <p className="text-white/80 text-sm mt-1">{t.desc}</p>
             </div>
           ))}
         </motion.div>

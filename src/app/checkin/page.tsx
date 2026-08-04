@@ -332,7 +332,7 @@ export default function CheckinPortal() {
           <div className="flex bg-white/[0.04] border border-white/10 rounded-xl p-1 mb-4">
             {(["staff", "admin"] as const).map(mode => (
               <button key={mode} onClick={() => { setLoginMode(mode); setTokenError(""); }}
-                className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer ${loginMode === mode ? "bg-yellow-500 text-black" : "text-white/40 hover:text-white/60"}`}>
+                className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer ${loginMode === mode ? "bg-yellow-500 text-black" : "text-white/80 hover:text-white/60"}`}>
                 {mode === "staff" ? "Staff Login" : "Admin"}
               </button>
             ))}
@@ -452,7 +452,7 @@ export default function CheckinPortal() {
               className="appearance-none bg-white/10 border border-white/20 rounded-lg pl-3 pr-8 py-1.5 text-white text-xs outline-none cursor-pointer">
               {EVENTS.map(ev => <option key={ev.slug} value={ev.slug} className="bg-[#0a0a0a]">{ev.label}</option>)}
             </select>
-            <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none" />
+            <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-white/80 pointer-events-none" />
           </div>
           <button onClick={() => { setToken(""); localStorage.removeItem("staff_token"); localStorage.removeItem("staff_permissions"); }}
             className="text-white/70 hover:text-white/60 transition-colors cursor-pointer">
@@ -589,7 +589,7 @@ export default function CheckinPortal() {
                 <div className="mx-5 mb-4 bg-white/[0.04] border border-white/10 rounded-xl p-3">
                   <p className="text-white/70 text-[10px] uppercase tracking-wider mb-2.5 flex items-center justify-between">
                     <span>All Tickets in this Order</span>
-                    <span className="text-white/50">
+                    <span className="text-white/80">
                       {orderTickets.filter(t => t.status === "used").length} / {orderTickets.length} checked in
                     </span>
                   </p>
@@ -690,7 +690,7 @@ export default function CheckinPortal() {
         {/* Empty / idle states */}
         {searchQ && !searching && results.length === 0 && !activeTicket && (
           <div className="text-center py-10">
-            <Users size={32} className="text-white/40 mx-auto mb-3" />
+            <Users size={32} className="text-white/80 mx-auto mb-3" />
             <p className="text-white/70 text-sm">No tickets found for &ldquo;{searchQ}&rdquo;</p>
             <p className="text-white/60 text-xs mt-1">Try name, email, or order number</p>
           </div>

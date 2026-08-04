@@ -28,7 +28,7 @@ export default function DashboardTab({ firstName, loyaltyPoints, ticketCount, on
         <p className="font-display text-yellow-400 text-3xl leading-none mb-1">
           WELCOME BACK{firstName ? `, ${firstName.toUpperCase()}` : ""}!
         </p>
-        <p className="text-white/50 text-sm">Your Tequila Fest USA account is all set.</p>
+        <p className="text-white/80 text-sm">Your Tequila Fest USA account is all set.</p>
       </motion.div>
 
       {/* Stats row */}
@@ -40,7 +40,7 @@ export default function DashboardTab({ firstName, loyaltyPoints, ticketCount, on
             <Ticket size={18} className="text-yellow-400" />
           </div>
           <p className="font-display text-white text-3xl">{ticketCount}</p>
-          <p className="text-white/50 text-sm">
+          <p className="text-white/80 text-sm">
             {ticketCount === 1 ? "Ticket" : "Tickets"}
           </p>
           <p className="text-yellow-400 text-xs mt-1 group-hover:translate-x-1 transition-transform">View tickets →</p>
@@ -52,7 +52,7 @@ export default function DashboardTab({ firstName, loyaltyPoints, ticketCount, on
             <Star size={18} className="text-green-400" />
           </div>
           <p className="font-display text-white text-3xl">{loyaltyPoints.toLocaleString()}</p>
-          <p className="text-white/50 text-sm">Loyalty Points</p>
+          <p className="text-white/80 text-sm">Loyalty Points</p>
           <Link href="/earn-points" className="text-green-400 text-xs mt-1 hover:text-green-300 transition-colors block">
             Earn more →
           </Link>
@@ -65,7 +65,7 @@ export default function DashboardTab({ firstName, loyaltyPoints, ticketCount, on
           className="bg-white/[0.03] border border-dashed border-white/15 rounded-2xl p-8 text-center">
           <p className="text-3xl mb-3">🎟️</p>
           <p className="font-display text-white text-2xl mb-2">GET YOUR TICKETS</p>
-          <p className="text-white/40 text-sm mb-5">Join us at one of our 4 cities in 2026</p>
+          <p className="text-white/80 text-sm mb-5">Join us at one of our 4 cities in 2026</p>
           <Link href="/#events"
             className="inline-flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-black font-bold px-6 py-3 rounded-full transition-all">
             Browse Events <ArrowRight size={15} />
@@ -75,7 +75,7 @@ export default function DashboardTab({ firstName, loyaltyPoints, ticketCount, on
 
       {/* Earn points quick actions */}
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-        <p className="text-white/30 text-xs font-bold tracking-[0.2em] uppercase mb-4">Earn Points</p>
+        <p className="text-white/80 text-xs font-bold tracking-[0.2em] uppercase mb-4">Earn Points</p>
         <div className="grid grid-cols-3 gap-3">
           {[
             { icon: <Camera size={16} />, label: "Upload Photo", points: "+10 pts", href: "/earn-points", color: "#00A878" },
@@ -98,7 +98,7 @@ export default function DashboardTab({ firstName, loyaltyPoints, ticketCount, on
       {/* Upcoming events */}
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
         <div className="flex items-center justify-between mb-4">
-          <p className="text-white/30 text-xs font-bold tracking-[0.2em] uppercase">Tour</p>
+          <p className="text-white/80 text-xs font-bold tracking-[0.2em] uppercase">Tour</p>
           <Link href="/#events" className="text-yellow-400 text-xs hover:text-yellow-300 transition-colors">View all →</Link>
         </div>
         <div className="space-y-2">
@@ -108,12 +108,12 @@ export default function DashboardTab({ firstName, loyaltyPoints, ticketCount, on
               <span className="text-xl">{ev.emoji}</span>
               <div className="flex-1">
                 <p className="font-display text-base" style={{ color: ev.color }}>{ev.city}</p>
-                <div className="flex items-center gap-1 text-white/30 text-xs">
+                <div className="flex items-center gap-1 text-white/80 text-xs">
                   <Calendar size={10} />
                   <span>{ev.date}</span>
                 </div>
               </div>
-              <span className="text-white/20 group-hover:text-yellow-400 transition-colors text-xs">Tickets →</span>
+              <span className="text-white/80 group-hover:text-yellow-400 transition-colors text-xs">Tickets →</span>
             </Link>
           ))}
         </div>

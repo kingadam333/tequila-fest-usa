@@ -88,7 +88,7 @@ export default function AffiliatesPage() {
               <span className="text-shimmer">AFFILIATE</span>{" "}
               <span className="text-shimmer-blue">PROGRAM</span>
             </h1>
-            <p className="text-white/50 mt-4 max-w-2xl mx-auto text-lg">
+            <p className="text-white/80 mt-4 max-w-2xl mx-auto text-lg">
               Love tequila? Love free money? Promote Tequila Fest USA and earn commission on every ticket you sell.
             </p>
           </motion.div>
@@ -105,7 +105,7 @@ export default function AffiliatesPage() {
                     {p.icon}
                   </div>
                   <h3 className="text-white font-bold text-base mb-1.5">{p.title}</h3>
-                  <p className="text-white/40 text-sm leading-relaxed">{p.desc}</p>
+                  <p className="text-white/80 text-sm leading-relaxed">{p.desc}</p>
                 </div>
               ))}
             </div>
@@ -119,7 +119,7 @@ export default function AffiliatesPage() {
                 <div key={i} className="text-center">
                   <p className="font-display text-yellow-500/30 text-5xl mb-3">{s.step}</p>
                   <h3 className="text-white font-bold mb-2">{s.title}</h3>
-                  <p className="text-white/40 text-sm">{s.desc}</p>
+                  <p className="text-white/80 text-sm">{s.desc}</p>
                 </div>
               ))}
             </div>
@@ -130,7 +130,7 @@ export default function AffiliatesPage() {
             <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-3xl p-8 text-center">
               <p className="text-yellow-400 text-sm font-bold tracking-widest uppercase mb-2">Commission Rate</p>
               <p className="font-display text-white text-6xl mb-2">10%</p>
-              <p className="text-white/50">per ticket sold through your link. No cap. No minimum sales required.</p>
+              <p className="text-white/80">per ticket sold through your link. No cap. No minimum sales required.</p>
             </div>
           </motion.div>
 
@@ -141,7 +141,7 @@ export default function AffiliatesPage() {
               <div className="max-w-lg mx-auto bg-yellow-500/10 border border-yellow-500/30 rounded-3xl p-12 text-center">
                 <CheckCircle size={48} className="text-yellow-400 mx-auto mb-4" />
                 <p className="font-display text-yellow-400 text-2xl mb-2">APPLICATION RECEIVED!</p>
-                <p className="text-white/50">We&apos;ll review your application and reach out within 48 hours.</p>
+                <p className="text-white/80">We&apos;ll review your application and reach out within 48 hours.</p>
               </div>
             ) : (
               <div className="max-w-2xl mx-auto bg-white/[0.03] border border-white/10 rounded-3xl p-8">
@@ -151,30 +151,30 @@ export default function AffiliatesPage() {
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Full Name *</label>
+                      <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Full Name *</label>
                       <input type="text" value={form.name} onChange={set("name")} required placeholder="Your name"
                         className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-3 text-white placeholder-white/30 outline-none transition-colors text-sm" />
                     </div>
                     <div>
-                      <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Email *</label>
+                      <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Email *</label>
                       <input type="email" value={form.email} onChange={set("email")} required placeholder="your@email.com"
                         className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-3 text-white placeholder-white/30 outline-none transition-colors text-sm" />
                     </div>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Phone <span className="text-white/20 normal-case">(optional)</span></label>
+                      <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Phone <span className="text-white/80 normal-case">(optional)</span></label>
                       <input type="tel" value={form.phone} onChange={set("phone")} placeholder="(555) 000-0000"
                         className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-3 text-white placeholder-white/30 outline-none transition-colors text-sm" />
                     </div>
                     <div>
-                      <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Platform / Channel *</label>
+                      <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Platform / Channel *</label>
                       <input type="text" value={form.platform} onChange={set("platform")} required placeholder="Instagram, TikTok, Blog..."
                         className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-3 text-white placeholder-white/30 outline-none transition-colors text-sm" />
                     </div>
                   </div>
                   <div>
-                    <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Audience Size</label>
+                    <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Audience Size</label>
                     <select value={form.audience} onChange={set("audience")}
                       className="w-full appearance-none bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-3 text-white outline-none transition-colors text-sm cursor-pointer">
                       <option value="" className="bg-[#0d0500]">Select range</option>
@@ -186,7 +186,7 @@ export default function AffiliatesPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Tell Us About Yourself</label>
+                    <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Tell Us About Yourself</label>
                     <textarea value={form.message} onChange={set("message")} rows={4} placeholder="How do you plan to promote Tequila Fest USA? Link to your profile or site..."
                       className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-3 text-white placeholder-white/30 outline-none transition-colors text-sm resize-none" />
                   </div>

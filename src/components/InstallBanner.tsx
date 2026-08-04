@@ -84,7 +84,7 @@ export default function InstallBanner() {
           <div className="rounded-3xl bg-[#1a0a00] border border-yellow-500/30 p-6 shadow-2xl">
             <div className="flex items-center justify-between mb-5">
               <p className="text-yellow-400 font-black text-base uppercase tracking-wider">Add to Home Screen</p>
-              <button onClick={() => setIosInstructions(false)} className="text-white/40 hover:text-white/80 cursor-pointer">
+              <button onClick={() => setIosInstructions(false)} className="text-white/80 hover:text-white/80 cursor-pointer">
                 <X size={18} />
               </button>
             </div>
@@ -166,7 +166,7 @@ export default function InstallBanner() {
                 <p className="text-white font-black text-sm leading-tight">
                   🌵 Take the Fest with you!
                 </p>
-                <p className="text-white/50 text-xs mt-0.5 leading-snug">
+                <p className="text-white/80 text-xs mt-0.5 leading-snug">
                   Install the app — tickets, lineup &amp; more
                 </p>
               </div>
@@ -188,7 +188,7 @@ export default function InstallBanner() {
               {/* Dismiss */}
               <button
                 onClick={dismiss}
-                className="flex-shrink-0 text-white/30 hover:text-white/70 transition-colors cursor-pointer"
+                className="flex-shrink-0 text-white/80 hover:text-white/70 transition-colors cursor-pointer"
               >
                 <X size={16} />
               </button>

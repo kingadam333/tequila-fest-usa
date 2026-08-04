@@ -96,7 +96,7 @@ export default function PressPage() {
               <span className="text-shimmer">PRESS</span>{" "}
               <span className="text-shimmer-blue">KIT</span>
             </h1>
-            <p className="text-white/50 mt-4 max-w-2xl mx-auto text-lg">
+            <p className="text-white/80 mt-4 max-w-2xl mx-auto text-lg">
               Media credentials, brand assets, event facts, and press contact for Tequila Fest USA 2026.
             </p>
           </motion.div>
@@ -113,7 +113,7 @@ export default function PressPage() {
                     {m.icon}
                   </div>
                   <h3 className="text-white font-bold text-base mb-1.5">{m.title}</h3>
-                  <p className="text-white/40 text-sm leading-relaxed">{m.desc}</p>
+                  <p className="text-white/80 text-sm leading-relaxed">{m.desc}</p>
                 </div>
               ))}
             </div>
@@ -123,7 +123,7 @@ export default function PressPage() {
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
             <div className="bg-white/[0.03] border border-white/10 rounded-3xl p-8">
               <h2 className="font-display text-white text-2xl mb-2">BRAND ASSETS</h2>
-              <p className="text-white/40 text-sm mb-6">Logos, event photos, and brand guidelines for editorial use.</p>
+              <p className="text-white/80 text-sm mb-6">Logos, event photos, and brand guidelines for editorial use.</p>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {["Logos (PNG / SVG)", "Event Photography", "Brand Guidelines"].map((asset, i) => (
                   <div key={i} className="flex items-center justify-between bg-white/[0.02] border border-white/[0.06] rounded-xl px-4 py-3">
@@ -135,7 +135,7 @@ export default function PressPage() {
                   </div>
                 ))}
               </div>
-              <p className="text-white/25 text-xs mt-4">Assets provided after credential request is approved.</p>
+              <p className="text-white/80 text-xs mt-4">Assets provided after credential request is approved.</p>
             </div>
           </motion.div>
 
@@ -162,7 +162,7 @@ export default function PressPage() {
                     <div key={i} className="flex items-center justify-between border-b border-white/[0.06] pb-3 last:border-0 last:pb-0">
                       <div>
                         <p className="text-white font-semibold text-sm">{ev.city}</p>
-                        <p className="text-white/30 text-xs">{ev.venue}</p>
+                        <p className="text-white/80 text-xs">{ev.venue}</p>
                       </div>
                       <p className="text-yellow-400 text-sm font-medium">{ev.date}</p>
                     </div>
@@ -179,7 +179,7 @@ export default function PressPage() {
               <p className="text-white/70 text-lg italic max-w-2xl mx-auto">
                 Tequila Fest USA brings together the finest agave spirits and the most passionate tequila community in the country — one city at a time.
               </p>
-              <p className="text-white/30 text-sm mt-4">— Tequila Fest USA Press Office</p>
+              <p className="text-white/80 text-sm mt-4">— Tequila Fest USA Press Office</p>
             </div>
           </motion.div>
 
@@ -190,7 +190,7 @@ export default function PressPage() {
               <div className="max-w-lg mx-auto bg-yellow-500/10 border border-yellow-500/30 rounded-3xl p-12 text-center">
                 <CheckCircle size={48} className="text-yellow-400 mx-auto mb-4" />
                 <p className="font-display text-yellow-400 text-2xl mb-2">REQUEST RECEIVED!</p>
-                <p className="text-white/50">Our press team will respond within 2–3 business days.</p>
+                <p className="text-white/80">Our press team will respond within 2–3 business days.</p>
               </div>
             ) : (
               <div className="max-w-2xl mx-auto bg-white/[0.03] border border-white/10 rounded-3xl p-8">
@@ -198,31 +198,31 @@ export default function PressPage() {
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Your Name *</label>
+                      <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Your Name *</label>
                       <input type="text" value={form.name} onChange={set("name")} required placeholder="Your name"
                         className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-3 text-white placeholder-white/30 outline-none transition-colors text-sm" />
                     </div>
                     <div>
-                      <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Publication / Outlet *</label>
+                      <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Publication / Outlet *</label>
                       <input type="text" value={form.outlet} onChange={set("outlet")} required placeholder="Publication or channel name"
                         className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-3 text-white placeholder-white/30 outline-none transition-colors text-sm" />
                     </div>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Email *</label>
+                      <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Email *</label>
                       <input type="email" value={form.email} onChange={set("email")} required placeholder="your@outlet.com"
                         className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-3 text-white placeholder-white/30 outline-none transition-colors text-sm" />
                     </div>
                     <div>
-                      <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Phone</label>
+                      <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Phone</label>
                       <input type="tel" value={form.phone} onChange={set("phone")} placeholder="(555) 000-0000"
                         className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-3 text-white placeholder-white/30 outline-none transition-colors text-sm" />
                     </div>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Media Type *</label>
+                      <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Media Type *</label>
                       <select value={form.type} onChange={set("type")} required
                         className="w-full appearance-none bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-3 text-white outline-none transition-colors text-sm cursor-pointer">
                         <option value="" className="bg-[#0d0500]">Select type</option>
@@ -235,7 +235,7 @@ export default function PressPage() {
                       </select>
                     </div>
                     <div>
-                      <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Event / City *</label>
+                      <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Event / City *</label>
                       <select value={form.city} onChange={set("city")} required
                         className="w-full appearance-none bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-3 text-white outline-none transition-colors text-sm cursor-pointer">
                         <option value="" className="bg-[#0d0500]">Select city</option>
@@ -248,7 +248,7 @@ export default function PressPage() {
                     </div>
                   </div>
                   <div>
-                    <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Coverage Plans / Links *</label>
+                    <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Coverage Plans / Links *</label>
                     <textarea value={form.description} onChange={set("description")} required rows={4}
                       placeholder="Describe your planned coverage, link to your publication or recent work..."
                       className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-3 text-white placeholder-white/30 outline-none transition-colors text-sm resize-none" />

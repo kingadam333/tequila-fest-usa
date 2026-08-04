@@ -53,7 +53,7 @@ export default function EmailSignup() {
           <h2 className="font-display text-white mb-4" style={{ fontSize: "clamp(2rem, 6vw, 4rem)" }}>
             DON&apos;T MISS A <span className="text-shimmer">DROP</span>
           </h2>
-          <p className="text-white/50 mb-8">
+          <p className="text-white/80 mb-8">
             Get early access to ticket sales, exclusive presales, city announcements, and festival updates.
           </p>
 
@@ -65,7 +65,7 @@ export default function EmailSignup() {
             >
               <p className="text-4xl mb-3">🥃</p>
               <p className="font-display text-yellow-400 text-2xl">YOU&apos;RE IN, {firstName.toUpperCase()}!</p>
-              <p className="text-white/50 mt-2">Check your inbox for your welcome email.</p>
+              <p className="text-white/80 mt-2">Check your inbox for your welcome email.</p>
             </motion.div>
           ) : (
             <form onSubmit={handleSubmit} className="flex flex-col gap-3">
@@ -111,7 +111,7 @@ export default function EmailSignup() {
 
               {/* City selector */}
               <div className="pt-1">
-                <p className="text-white/40 text-xs font-semibold tracking-widest uppercase mb-2.5 text-left">
+                <p className="text-white/80 text-xs font-semibold tracking-widest uppercase mb-2.5 text-left">
                   Which city are you interested in?
                 </p>
                 <div className="grid grid-cols-2 gap-2">
@@ -130,7 +130,7 @@ export default function EmailSignup() {
                     </button>
                   ))}
                 </div>
-                <p className="text-white/20 text-xs mt-2 text-left">Select all that apply — or leave blank for everything</p>
+                <p className="text-white/80 text-xs mt-2 text-left">Select all that apply — or leave blank for everything</p>
               </div>
 
               {error && (
@@ -147,7 +147,7 @@ export default function EmailSignup() {
             </form>
           )}
 
-          <p className="mt-4 text-white/20 text-xs">No spam, ever. Unsubscribe anytime. SMS opt-in is optional.</p>
+          <p className="mt-4 text-white/80 text-xs">No spam, ever. Unsubscribe anytime. SMS opt-in is optional.</p>
         </motion.div>
       </div>
     </section>

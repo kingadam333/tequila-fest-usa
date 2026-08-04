@@ -68,7 +68,7 @@ export default function Highlights() {
             >
               <div className="text-4xl mb-4">{item.icon}</div>
               <h3 className="font-display text-yellow-400 text-xl mb-2">{item.title}</h3>
-              <p className="text-white/50 text-sm leading-relaxed">{item.desc}</p>
+              <p className="text-white/80 text-sm leading-relaxed">{item.desc}</p>
             </motion.div>
           ))}
         </div>

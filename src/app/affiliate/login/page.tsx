@@ -46,12 +46,12 @@ export default function AffiliateLoginPage() {
         <form onSubmit={handleSubmit} className="bg-white/[0.03] border border-white/10 rounded-3xl p-8 space-y-4">
           {error && <div className="bg-red-900/30 border border-red-500/40 text-red-400 text-sm rounded-xl px-4 py-3">{error}</div>}
           <div>
-            <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Email</label>
+            <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Email</label>
             <input type="email" value={email} onChange={e => setEmail(e.target.value)} required
               className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-3 text-white placeholder-white/30 outline-none transition-colors text-sm" />
           </div>
           <div>
-            <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Password</label>
+            <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Password</label>
             <input type="password" value={password} onChange={e => setPassword(e.target.value)} required
               className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-3 text-white placeholder-white/30 outline-none transition-colors text-sm" />
           </div>
@@ -60,7 +60,7 @@ export default function AffiliateLoginPage() {
             {loading ? "Logging in..." : "LOG IN"}
           </button>
         </form>
-        <p className="text-center text-white/30 text-xs mt-6">
+        <p className="text-center text-white/80 text-xs mt-6">
           Not an affiliate yet? <a href="/affiliates" className="text-yellow-500 hover:text-yellow-400">Apply here</a>
         </p>
       </div>

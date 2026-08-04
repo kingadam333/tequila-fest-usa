@@ -54,7 +54,7 @@ export default function BlogListPage() {
               <span className="text-shimmer-blue">FEST</span>{" "}
               <span className="text-white">BLOG</span>
             </h1>
-            <p className="text-white/50 mt-4 max-w-xl mx-auto">
+            <p className="text-white/80 mt-4 max-w-xl mx-auto">
               Festival guides, tequila picks, venue previews, and everything agave.
             </p>
           </motion.div>
@@ -65,7 +65,7 @@ export default function BlogListPage() {
           {/* Featured posts — only shown on All tab */}
           {activeCategory === "All" && featured.length > 0 && (
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-14">
-              <p className="text-white/30 text-xs font-bold tracking-[0.3em] uppercase mb-5">Featured</p>
+              <p className="text-white/80 text-xs font-bold tracking-[0.3em] uppercase mb-5">Featured</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 {featured.map((post, i) => {
                   const color = CATEGORY_COLORS[post.category] || "#F5A623";
@@ -92,16 +92,16 @@ export default function BlogListPage() {
                         </div>
                         <div className="p-6">
                           <div className="flex items-center gap-2 mb-3">
-                            <span className="flex items-center gap-1 text-white/30 text-xs">
+                            <span className="flex items-center gap-1 text-white/80 text-xs">
                               <Clock size={11} /> {post.readTime} min read
                             </span>
                           </div>
                           <h2 className="font-display text-white text-2xl leading-tight mb-2 group-hover:text-yellow-400 transition-colors duration-200">
                             {post.title}
                           </h2>
-                          <p className="text-white/50 text-sm leading-relaxed line-clamp-2 mb-4">{post.excerpt}</p>
+                          <p className="text-white/80 text-sm leading-relaxed line-clamp-2 mb-4">{post.excerpt}</p>
                           <div className="flex items-center justify-between">
-                            <span className="text-white/25 text-xs">{formatDate(post.publishedAt)}</span>
+                            <span className="text-white/80 text-xs">{formatDate(post.publishedAt)}</span>
                             <span className="text-yellow-400 text-sm font-semibold group-hover:translate-x-1 transition-transform duration-200">
                               Read more →
                             </span>
@@ -119,7 +119,7 @@ export default function BlogListPage() {
           <div className="flex flex-wrap gap-2 mb-8">
             {CATEGORIES.map(cat => (
               <button key={cat} onClick={() => setActiveCategory(cat)}
-                className={`px-4 py-2 rounded-full text-sm font-semibold transition-all duration-200 cursor-pointer ${activeCategory === cat ? "bg-yellow-500 text-black" : "bg-white/5 border border-white/15 text-white/50 hover:text-white hover:border-white/30"}`}>
+                className={`px-4 py-2 rounded-full text-sm font-semibold transition-all duration-200 cursor-pointer ${activeCategory === cat ? "bg-yellow-500 text-black" : "bg-white/5 border border-white/15 text-white/80 hover:text-white hover:border-white/30"}`}>
                 {cat}
               </button>
             ))}
@@ -153,23 +153,23 @@ export default function BlogListPage() {
                     </div>
                     <div className="p-5 flex flex-col flex-1">
                       <div className="flex items-center gap-2 mb-2">
-                        <span className="flex items-center gap-1 text-white/25 text-xs">
+                        <span className="flex items-center gap-1 text-white/80 text-xs">
                           <Clock size={10} /> {post.readTime} min read
                         </span>
                       </div>
                       <h2 className="font-display text-white text-xl leading-tight mb-2 group-hover:text-yellow-400 transition-colors duration-200">
                         {post.title}
                       </h2>
-                      <p className="text-white/40 text-sm leading-relaxed line-clamp-2 flex-1">{post.excerpt}</p>
+                      <p className="text-white/80 text-sm leading-relaxed line-clamp-2 flex-1">{post.excerpt}</p>
                       <div className="flex items-center justify-between mt-4 pt-4 border-t border-white/[0.06]">
                         <div className="flex flex-wrap gap-1">
                           {post.tags.slice(0, 2).map(tag => (
-                            <span key={tag} className="flex items-center gap-1 text-white/20 text-xs">
+                            <span key={tag} className="flex items-center gap-1 text-white/80 text-xs">
                               <Tag size={9} />#{tag}
                             </span>
                           ))}
                         </div>
-                        <span className="text-white/25 text-xs">{formatDate(post.publishedAt)}</span>
+                        <span className="text-white/80 text-xs">{formatDate(post.publishedAt)}</span>
                       </div>
                     </div>
                   </Link>

@@ -92,10 +92,10 @@ export default function SecuritySection({ adminToken }: { adminToken: string }) 
             <ShieldCheck size={22} className="text-yellow-400" />
             Security Scanner
           </h2>
-          <p className="text-white/40 text-sm mt-1">
+          <p className="text-white/80 text-sm mt-1">
             Scans your Supabase project for security and performance issues.
             {result && (
-              <span className="ml-2 text-white/25">
+              <span className="ml-2 text-white/80">
                 Last scan: {new Date(result.scannedAt).toLocaleString()}
               </span>
             )}
@@ -152,8 +152,8 @@ export default function SecuritySection({ adminToken }: { adminToken: string }) 
       {/* No scan yet */}
       {!result && !scanning && !error && (
         <div className="flex flex-col items-center justify-center py-20 text-center">
-          <ShieldCheck size={48} className="text-white/10 mb-4" />
-          <p className="text-white/30 text-sm">Click <strong className="text-white/50">Run Scan</strong> to check your Supabase project for security and performance issues.</p>
+          <ShieldCheck size={48} className="text-white/80 mb-4" />
+          <p className="text-white/80 text-sm">Click <strong className="text-white/80">Run Scan</strong> to check your Supabase project for security and performance issues.</p>
         </div>
       )}
 
@@ -161,7 +161,7 @@ export default function SecuritySection({ adminToken }: { adminToken: string }) 
       {scanning && (
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <RefreshCw size={36} className="text-yellow-400/40 animate-spin mb-4" />
-          <p className="text-white/30 text-sm">Scanning Supabase advisors…</p>
+          <p className="text-white/80 text-sm">Scanning Supabase advisors…</p>
         </div>
       )}
 
@@ -170,7 +170,7 @@ export default function SecuritySection({ adminToken }: { adminToken: string }) 
         <div className="flex flex-col items-center justify-center py-16 text-center bg-green-500/5 border border-green-500/15 rounded-2xl">
           <ShieldCheck size={48} className="text-green-400 mb-3" />
           <p className="text-green-400 font-bold text-lg">All Clear</p>
-          <p className="text-white/40 text-sm mt-1">No actionable security or performance issues found.</p>
+          <p className="text-white/80 text-sm mt-1">No actionable security or performance issues found.</p>
         </div>
       )}
 
@@ -191,18 +191,18 @@ export default function SecuritySection({ adminToken }: { adminToken: string }) 
                     {issue.level}
                   </span>
                   {issue.categories?.map((c) => (
-                    <span key={c} className={`text-xs font-medium px-2 py-0.5 rounded-full ${CAT_STYLES[c] ?? "bg-white/5 text-white/40"}`}>
+                    <span key={c} className={`text-xs font-medium px-2 py-0.5 rounded-full ${CAT_STYLES[c] ?? "bg-white/5 text-white/80"}`}>
                       {c}
                     </span>
                   ))}
                   {(issue.metadata?.name || issue.metadata?.entity) && (
-                    <span className="text-xs text-white/30 font-mono">
+                    <span className="text-xs text-white/80 font-mono">
                       {issue.metadata.schema ? `${issue.metadata.schema}.` : ""}{issue.metadata.name ?? issue.metadata.entity}
                     </span>
                   )}
                 </div>
                 <p className="text-white font-semibold text-sm">{issue.title || issue.name}</p>
-                <p className="text-white/50 text-sm mt-1">{issue.detail || issue.description}</p>
+                <p className="text-white/80 text-sm mt-1">{issue.detail || issue.description}</p>
                 {issue.remediation && (
                   <a
                     href={issue.remediation}
@@ -259,7 +259,7 @@ function MarketingEnvCheck({ adminToken }: { adminToken: string }) {
             <ListChecks size={16} className="text-yellow-400" />
             Marketing Sync Config (Brevo / TextMagic)
           </h3>
-          <p className="text-white/40 text-xs mt-1">Confirms all 4 cities have their list-ID env vars set in Vercel. Booleans only — no secret values are ever shown.</p>
+          <p className="text-white/80 text-xs mt-1">Confirms all 4 cities have their list-ID env vars set in Vercel. Booleans only — no secret values are ever shown.</p>
         </div>
         <button
           onClick={check}

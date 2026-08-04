@@ -18,12 +18,12 @@ export default function Footer() {
               height={160}
               className="w-24 mb-2 drop-shadow-lg"
             />
-            <p className="text-white/30 text-sm">The National Tequila Festival Tour</p>
+            <p className="text-white/80 text-sm">The National Tequila Festival Tour</p>
           </div>
 
           {/* Tour stops */}
           <div>
-            <p className="text-white/20 text-xs font-bold tracking-[0.2em] uppercase mb-3">Tour</p>
+            <p className="text-white/80 text-xs font-bold tracking-[0.2em] uppercase mb-3">Tour</p>
             <ul className="space-y-1.5">
               {[
                 { city: "Cincinnati, OH", date: "Jun 12" },
@@ -31,10 +31,10 @@ export default function Footer() {
                 { city: "Columbus, OH", date: "Aug 8" },
                 { city: "Phoenix, AZ", date: "Nov 14" },
               ].map((s) => (
-                <li key={s.city} className="flex items-center gap-3 text-sm text-white/40">
+                <li key={s.city} className="flex items-center gap-3 text-sm text-white/80">
                   <span className="w-1 h-1 rounded-full bg-yellow-500/60" />
                   <span>{s.city}</span>
-                  <span className="text-white/20">·</span>
+                  <span className="text-white/80">·</span>
                   <span>{s.date}</span>
                 </li>
               ))}
@@ -43,7 +43,7 @@ export default function Footer() {
 
           {/* Links */}
           <div>
-            <p className="text-white/20 text-xs font-bold tracking-[0.2em] uppercase mb-3">Links</p>
+            <p className="text-white/80 text-xs font-bold tracking-[0.2em] uppercase mb-3">Links</p>
             <ul className="space-y-1.5">
               {[
                 { label: "Get Tickets", href: "/#events" },
@@ -51,9 +51,11 @@ export default function Footer() {
                 { label: "Contact", href: "/contact" },
                 { label: "Become an Affiliate", href: "/affiliates" },
                 { label: "Sponsor Opportunities", href: "/contact" },
+                { label: "Terms & Conditions", href: "/terms" },
+                { label: "Privacy Policy", href: "/privacy" },
               ].map((link) => (
                 <li key={link.label}>
-                  <a href={link.href} className="text-sm text-white/40 hover:text-yellow-400 transition-colors duration-200">
+                  <a href={link.href} className="text-sm text-white/80 hover:text-yellow-400 transition-colors duration-200">
                     {link.label}
                   </a>
                 </li>
@@ -63,7 +65,7 @@ export default function Footer() {
 
           {/* Social */}
           <div>
-            <p className="text-white/20 text-xs font-bold tracking-[0.2em] uppercase mb-3">Follow Us</p>
+            <p className="text-white/80 text-xs font-bold tracking-[0.2em] uppercase mb-3">Follow Us</p>
             <div className="flex gap-3">
               {[
                 { name: "Instagram", href: "https://instagram.com/tequilafestusa" },
@@ -75,7 +77,7 @@ export default function Footer() {
                   href={s.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-9 h-9 rounded-full border border-white/20 hover:border-yellow-500/60 flex items-center justify-center text-white/40 hover:text-yellow-400 transition-all duration-200 cursor-pointer text-xs font-bold"
+                  className="w-9 h-9 rounded-full border border-white/20 hover:border-yellow-500/60 flex items-center justify-center text-white/80 hover:text-yellow-400 transition-all duration-200 cursor-pointer text-xs font-bold"
                   aria-label={s.name}
                 >
                   {s.name[0]}
@@ -86,8 +88,8 @@ export default function Footer() {
         </div>
 
         <div className="border-t border-white/10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <p className="text-white/20 text-xs">© {year} Tequila Fest USA · All Rights Reserved</p>
-          <p className="text-white/15 text-xs text-center">
+          <p className="text-white/80 text-xs">© {year} Tequila Fest USA · All Rights Reserved</p>
+          <p className="text-white/80 text-xs text-center">
             Please drink responsibly. Must be 21+ to attend. Tickets sold exclusively at TequilaFestUSA.com.
           </p>
         </div>

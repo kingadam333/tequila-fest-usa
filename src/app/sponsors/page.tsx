@@ -137,7 +137,7 @@ export default function SponsorsPage() {
               <span className="text-shimmer">SPONSORSHIP</span><br />
               <span className="text-shimmer-blue">PACKAGES</span>
             </h1>
-            <p className="text-white/50 mt-4 max-w-2xl mx-auto text-lg">
+            <p className="text-white/80 mt-4 max-w-2xl mx-auto text-lg">
               Put your brand in front of thousands of tequila enthusiasts across 4 major US cities in 2026.
             </p>
           </motion.div>
@@ -151,7 +151,7 @@ export default function SponsorsPage() {
               {STATS.map((s, i) => (
                 <div key={i} className="bg-white/[0.03] border border-white/10 rounded-2xl p-6 text-center">
                   <p className="font-display text-yellow-400 text-4xl mb-1">{s.value}</p>
-                  <p className="text-white/40 text-sm">{s.label}</p>
+                  <p className="text-white/80 text-sm">{s.label}</p>
                 </div>
               ))}
             </div>
@@ -184,7 +184,7 @@ export default function SponsorsPage() {
                   </div>
                   <ul className="space-y-2 flex-1">
                     {pkg.perks.map((perk, j) => (
-                      <li key={j} className="flex items-start gap-2 text-sm text-white/50">
+                      <li key={j} className="flex items-start gap-2 text-sm text-white/80">
                         <span style={{ color: pkg.color }} className="mt-0.5 flex-shrink-0">✓</span>
                         {perk}
                       </li>
@@ -208,7 +208,7 @@ export default function SponsorsPage() {
                     {item.icon}
                   </div>
                   <h3 className="text-white font-bold mb-2">{item.title}</h3>
-                  <p className="text-white/40 text-sm leading-relaxed">{item.desc}</p>
+                  <p className="text-white/80 text-sm leading-relaxed">{item.desc}</p>
                 </div>
               ))}
             </div>
@@ -221,7 +221,7 @@ export default function SponsorsPage() {
               <div className="max-w-lg mx-auto bg-yellow-500/10 border border-yellow-500/30 rounded-3xl p-12 text-center">
                 <CheckCircle size={48} className="text-yellow-400 mx-auto mb-4" />
                 <p className="font-display text-yellow-400 text-2xl mb-2">MESSAGE RECEIVED!</p>
-                <p className="text-white/50">Our partnerships team will be in touch within 48 hours.</p>
+                <p className="text-white/80">Our partnerships team will be in touch within 48 hours.</p>
               </div>
             ) : (
               <div className="max-w-2xl mx-auto bg-white/[0.03] border border-white/10 rounded-3xl p-8">
@@ -229,30 +229,30 @@ export default function SponsorsPage() {
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Your Name *</label>
+                      <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Your Name *</label>
                       <input type="text" value={form.name} onChange={set("name")} required placeholder="Your name"
                         className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-3 text-white placeholder-white/30 outline-none transition-colors text-sm" />
                     </div>
                     <div>
-                      <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Company *</label>
+                      <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Company *</label>
                       <input type="text" value={form.company} onChange={set("company")} required placeholder="Brand / Company name"
                         className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-3 text-white placeholder-white/30 outline-none transition-colors text-sm" />
                     </div>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Email *</label>
+                      <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Email *</label>
                       <input type="email" value={form.email} onChange={set("email")} required placeholder="your@company.com"
                         className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-3 text-white placeholder-white/30 outline-none transition-colors text-sm" />
                     </div>
                     <div>
-                      <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Phone</label>
+                      <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Phone</label>
                       <input type="tel" value={form.phone} onChange={set("phone")} placeholder="(555) 000-0000"
                         className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-3 text-white placeholder-white/30 outline-none transition-colors text-sm" />
                     </div>
                   </div>
                   <div>
-                    <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Package Interest</label>
+                    <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Package Interest</label>
                     <select value={form.package} onChange={set("package")}
                       className="w-full appearance-none bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-3 text-white outline-none transition-colors text-sm cursor-pointer">
                       <option value="" className="bg-[#0d0500]">Select a tier</option>
@@ -264,7 +264,7 @@ export default function SponsorsPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Tell Us More</label>
+                    <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Tell Us More</label>
                     <textarea value={form.message} onChange={set("message")} rows={4} placeholder="Which cities? Goals for the sponsorship? Any questions?"
                       className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-3 text-white placeholder-white/30 outline-none transition-colors text-sm resize-none" />
                   </div>

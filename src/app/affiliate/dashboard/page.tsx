@@ -102,7 +102,7 @@ export default function AffiliateDashboardPage() {
   };
 
   if (loading) {
-    return <main className="min-h-screen bg-[#0d0500] flex items-center justify-center text-white/40 text-sm">Loading…</main>;
+    return <main className="min-h-screen bg-[#0d0500] flex items-center justify-center text-white/80 text-sm">Loading…</main>;
   }
   if (error || !data) {
     return <main className="min-h-screen bg-[#0d0500] flex items-center justify-center text-red-400 text-sm">{error || "Something went wrong"}</main>;
@@ -122,10 +122,10 @@ export default function AffiliateDashboardPage() {
             <Image src="/tequilafest_usa.png" alt="Tequila Fest USA" width={44} height={44} className="w-11 h-11" />
             <div>
               <p className="text-white font-bold">{data.affiliate.first_name} {data.affiliate.last_name || ""}</p>
-              <p className="text-white/30 text-xs">{data.affiliate.commission_rate}% commission</p>
+              <p className="text-white/80 text-xs">{data.affiliate.commission_rate}% commission</p>
             </div>
           </div>
-          <button onClick={logout} className="text-white/40 hover:text-white text-sm cursor-pointer">Log Out</button>
+          <button onClick={logout} className="text-white/80 hover:text-white text-sm cursor-pointer">Log Out</button>
         </div>
 
         {/* Referral link + QR */}
@@ -134,16 +134,16 @@ export default function AffiliateDashboardPage() {
             <img src={qrUrl} alt="Your QR code" width={140} height={140} className="rounded-xl border-2 border-white flex-shrink-0" />
           )}
           <div className="flex-1 min-w-0 text-center sm:text-left">
-            <p className="text-white/30 text-xs uppercase tracking-wider mb-1.5">Your Referral Link</p>
+            <p className="text-white/80 text-xs uppercase tracking-wider mb-1.5">Your Referral Link</p>
             <p className="text-yellow-400 font-mono text-lg break-all mb-3">{data.refLink}</p>
             <button onClick={copyLink}
               className="bg-yellow-500 hover:bg-yellow-400 text-black font-bold px-5 py-2 rounded-xl text-sm transition-all cursor-pointer">
               {copied ? "Copied!" : "Copy Link"}
             </button>
-            <p className="text-white/25 text-xs mt-3">Share this link or your QR code anywhere — every ticket sale through it is tracked automatically, broken down by city below.</p>
+            <p className="text-white/80 text-xs mt-3">Share this link or your QR code anywhere — every ticket sale through it is tracked automatically, broken down by city below.</p>
 
             <div className="mt-4 pt-4 border-t border-white/10">
-              <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Send People To</label>
+              <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Send People To</label>
               <div className="flex items-center gap-2">
                 <select value={destDraft} onChange={e => setDestDraft(e.target.value)}
                   className="flex-1 bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-3 py-2 text-white outline-none text-sm">
@@ -156,7 +156,7 @@ export default function AffiliateDashboardPage() {
                 </button>
               </div>
               {destStatus && <p className={`text-xs mt-1.5 ${destStatus.startsWith("Error") ? "text-red-400" : "text-green-400"}`}>{destStatus}</p>}
-              <p className="text-white/25 text-xs mt-1.5">Your link/QR code stays the same — this only changes where it sends people.</p>
+              <p className="text-white/80 text-xs mt-1.5">Your link/QR code stays the same — this only changes where it sends people.</p>
             </div>
           </div>
         </div>
@@ -172,7 +172,7 @@ export default function AffiliateDashboardPage() {
           ].map(s => (
             <div key={s.label} className="bg-white/[0.03] border border-white/10 rounded-2xl p-4 text-center">
               <p className="text-white text-2xl font-bold">{s.value}</p>
-              <p className="text-white/30 text-xs mt-1">{s.label}</p>
+              <p className="text-white/80 text-xs mt-1">{s.label}</p>
             </div>
           ))}
         </div>
@@ -180,15 +180,15 @@ export default function AffiliateDashboardPage() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-8">
           <div className="bg-green-500/10 border border-green-500/25 rounded-2xl p-5 text-center">
             <p className="text-green-400 text-2xl font-bold">${data.totalCommission.toFixed(2)}</p>
-            <p className="text-white/40 text-xs mt-1">Total Commission Earned</p>
+            <p className="text-white/80 text-xs mt-1">Total Commission Earned</p>
           </div>
           <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-5 text-center">
             <p className="text-white text-2xl font-bold">${data.totalPaid.toFixed(2)}</p>
-            <p className="text-white/40 text-xs mt-1">Paid Out</p>
+            <p className="text-white/80 text-xs mt-1">Paid Out</p>
           </div>
           <div className="bg-yellow-500/10 border border-yellow-500/25 rounded-2xl p-5 text-center">
             <p className="text-yellow-400 text-2xl font-bold">${data.balanceOwed.toFixed(2)}</p>
-            <p className="text-white/40 text-xs mt-1">Balance Owed</p>
+            <p className="text-white/80 text-xs mt-1">Balance Owed</p>
           </div>
         </div>
 
@@ -196,14 +196,14 @@ export default function AffiliateDashboardPage() {
         <div className="bg-white/[0.03] border border-white/10 rounded-3xl p-6">
           <h3 className="text-white font-bold mb-4">Sales by City</h3>
           {cities.length === 0 ? (
-            <p className="text-white/30 text-sm text-center py-6">No sales yet — share your link to start earning.</p>
+            <p className="text-white/80 text-sm text-center py-6">No sales yet — share your link to start earning.</p>
           ) : (
             <div className="space-y-2">
               {cities.map(([city, s]) => (
                 <div key={city} className="flex items-center justify-between bg-white/[0.02] border border-white/5 rounded-xl px-4 py-3">
                   <div>
                     <p className="text-white font-semibold text-sm">{city}</p>
-                    <p className="text-white/30 text-xs">{s.orders} order{s.orders !== 1 ? "s" : ""} · {s.tickets} ticket{s.tickets !== 1 ? "s" : ""}</p>
+                    <p className="text-white/80 text-xs">{s.orders} order{s.orders !== 1 ? "s" : ""} · {s.tickets} ticket{s.tickets !== 1 ? "s" : ""}</p>
                   </div>
                   <div className="text-right">
                     <p className="text-white text-sm">${s.sales.toFixed(2)} sales</p>

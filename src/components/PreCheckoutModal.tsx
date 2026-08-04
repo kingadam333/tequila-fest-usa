@@ -87,13 +87,13 @@ export default function PreCheckoutModal({
           style={{ boxShadow: `0 0 60px ${color}20` }}
         >
           <button onClick={onClose}
-            className="absolute top-4 right-4 text-white/30 hover:text-white/60 transition-colors cursor-pointer">
+            className="absolute top-4 right-4 text-white/80 hover:text-white/60 transition-colors cursor-pointer">
             <X size={18} />
           </button>
 
           {/* Header */}
           <div className="mb-6">
-            <p className="text-white/40 text-xs font-bold tracking-[0.2em] uppercase mb-1">Almost there</p>
+            <p className="text-white/80 text-xs font-bold tracking-[0.2em] uppercase mb-1">Almost there</p>
             <h2 className="font-display text-white text-3xl leading-none">YOUR INFO</h2>
             <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm font-semibold"
               style={{ background: `${color}15`, borderColor: `${color}40`, color }}>
@@ -111,7 +111,7 @@ export default function PreCheckoutModal({
             {/* Name row */}
             <div className="flex gap-3">
               <div className="relative flex-1">
-                <User size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30" />
+                <User size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/80" />
                 <input type="text" value={form.firstName} onChange={set("firstName")}
                   placeholder="First name" required autoFocus
                   className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl pl-9 pr-3 py-3 text-white placeholder-white/25 text-sm outline-none transition-colors" />
@@ -125,7 +125,7 @@ export default function PreCheckoutModal({
 
             {/* Email */}
             <div className="relative">
-              <Mail size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30" />
+              <Mail size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/80" />
               <input type="email" value={form.email} onChange={set("email")}
                 placeholder="Email address" required
                 className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl pl-9 pr-4 py-3 text-white placeholder-white/25 text-sm outline-none transition-colors" />
@@ -133,7 +133,7 @@ export default function PreCheckoutModal({
 
             {/* Phone */}
             <div className="relative">
-              <Phone size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30" />
+              <Phone size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/80" />
               <input type="tel" value={form.phone} onChange={set("phone")}
                 placeholder="Phone number (optional)"
                 className="w-full bg-white/5 border border-yellow-500/15 focus:border-yellow-500/40 rounded-xl pl-9 pr-4 py-3 text-white placeholder-white/25 text-sm outline-none transition-colors" />
@@ -157,7 +157,7 @@ export default function PreCheckoutModal({
             </button>
           </form>
 
-          <p className="text-white/20 text-xs text-center mt-4">
+          <p className="text-white/80 text-xs text-center mt-4">
             By continuing you agree to our Terms of Service. Must be 21+.
           </p>
         </motion.div>

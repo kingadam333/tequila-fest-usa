@@ -88,7 +88,7 @@ export default function ConfirmationPage() {
             </h1>
             <p className="text-white/60 text-lg mb-2">Order confirmed</p>
             {sessionId && (
-              <p className="text-white/25 text-xs font-mono mb-6">Session: {sessionId.slice(0, 24)}…</p>
+              <p className="text-white/80 text-xs font-mono mb-6">Session: {sessionId.slice(0, 24)}…</p>
             )}
           </motion.div>
 
@@ -102,13 +102,13 @@ export default function ConfirmationPage() {
             >
               <div className="flex items-center gap-3 mb-1">
                 <Ticket size={16} style={{ color: event.color }} />
-                <span className="text-white/40 text-xs uppercase tracking-wider">Your Event</span>
+                <span className="text-white/80 text-xs uppercase tracking-wider">Your Event</span>
               </div>
               <p className="font-display text-2xl mb-0.5" style={{ color: event.color }}>
                 TEQUILA FEST {event.city.toUpperCase()}
               </p>
               <p className="text-white/60 text-sm">{event.date} · {event.time}</p>
-              <p className="text-white/40 text-sm">{event.venue}, {event.venueDetail}</p>
+              <p className="text-white/80 text-sm">{event.venue}, {event.venueDetail}</p>
             </motion.div>
           )}
 
@@ -153,7 +153,7 @@ export default function ConfirmationPage() {
             </Link>
           </motion.div>
 
-          <p className="mt-6 text-white/20 text-xs">Must be 21+ · Tickets are non-transferable · No refunds</p>
+          <p className="mt-6 text-white/80 text-xs">Must be 21+ · Tickets are non-transferable · No refunds</p>
         </motion.div>
       </main>
 

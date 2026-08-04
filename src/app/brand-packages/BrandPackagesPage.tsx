@@ -108,13 +108,13 @@ function PackageCard({ pkg, index, onSelect, accent = "#F5A623" }: { pkg: Pkg; i
         <p className="text-white font-bold text-xl">{pkg.name}</p>
         <p className="font-display text-4xl text-white mt-1">
           ${pkg.pricePerCity.toLocaleString()}
-          <span className="text-white/40 text-base font-sans font-normal"> / city</span>
+          <span className="text-white/80 text-base font-sans font-normal"> / city</span>
         </p>
-        <p className="text-white/50 text-sm mt-2">{pkg.blurb}</p>
+        <p className="text-white/80 text-sm mt-2">{pkg.blurb}</p>
       </div>
 
       <div className="mt-5 pt-5 border-t border-white/10">
-        <p className="text-white/40 text-xs uppercase tracking-wider mb-3">Package Includes</p>
+        <p className="text-white/80 text-xs uppercase tracking-wider mb-3">Package Includes</p>
         <ul className="space-y-2">
           {pkg.features.map(f => (
             <li key={f} className="flex items-start gap-2 text-sm text-white/75">
@@ -126,7 +126,7 @@ function PackageCard({ pkg, index, onSelect, accent = "#F5A623" }: { pkg: Pkg; i
       </div>
 
       <div className="mt-5 pt-5 border-t border-white/10">
-        <p className="text-white/40 text-xs uppercase tracking-wider mb-3">Select Cities</p>
+        <p className="text-white/80 text-xs uppercase tracking-wider mb-3">Select Cities</p>
         <div className="space-y-1.5">
           {CITIES.map(c => {
             const isSold = sold.includes(c.id);
@@ -153,7 +153,7 @@ function PackageCard({ pkg, index, onSelect, accent = "#F5A623" }: { pkg: Pkg; i
 
       <div className="mt-5 pt-5 border-t border-white/10">
         <div className="flex items-center justify-between mb-3">
-          <p className="text-white/40 text-sm">{picked.size} {picked.size === 1 ? "city" : "cities"}</p>
+          <p className="text-white/80 text-sm">{picked.size} {picked.size === 1 ? "city" : "cities"}</p>
           <p className="font-display text-2xl" style={{ color: accent }}>${total.toLocaleString()}</p>
         </div>
         <button onClick={() => onSelect(pkg.name, [...picked], total)} disabled={picked.size === 0}
@@ -286,7 +286,7 @@ export default function BrandPackagesPage() {
         <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mt-20">
           <div className="text-center mb-10">
             <h2 className="font-display text-white text-3xl sm:text-4xl tracking-wider mb-3">WHY PARTNER WITH US?</h2>
-            <p className="text-white/50 text-sm">Join the premier tequila festival experience in the Midwest and Southwest.</p>
+            <p className="text-white/80 text-sm">Join the premier tequila festival experience in the Midwest and Southwest.</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {WHY.map((w, i) => (
@@ -304,7 +304,7 @@ export default function BrandPackagesPage() {
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-24">
           <div className="text-center mb-10">
             <h2 className="font-display text-white text-3xl sm:text-4xl tracking-wider mb-3">TEQUILA BRAND PACKAGES</h2>
-            <p className="text-white/50 text-sm max-w-2xl mx-auto">
+            <p className="text-white/80 text-sm max-w-2xl mx-auto">
               Choose your package tier based on your tequila's price point and select the cities you want to participate in.
             </p>
           </div>
@@ -319,7 +319,7 @@ export default function BrandPackagesPage() {
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-24">
           <div className="text-center mb-10">
             <h2 className="font-display text-white text-3xl sm:text-4xl tracking-wider mb-3">BECOME A PARTNER</h2>
-            <p className="text-white/50 text-sm">Exclusive sponsorship opportunities for beverage brands.</p>
+            <p className="text-white/80 text-sm">Exclusive sponsorship opportunities for beverage brands.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
             {PARTNER_PACKAGES.map((p, i) => (
@@ -332,7 +332,7 @@ export default function BrandPackagesPage() {
         <section id="inquire" className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 mt-24">
           <div className="text-center mb-10">
             <h2 className="font-display text-white text-3xl sm:text-4xl tracking-wider mb-3">GET IN TOUCH</h2>
-            <p className="text-white/50 text-sm">Tell us about your brand. We'll follow up within 1–2 business days.</p>
+            <p className="text-white/80 text-sm">Tell us about your brand. We'll follow up within 1–2 business days.</p>
           </div>
 
           <div className="bg-white/[0.03] border border-white/10 rounded-3xl p-6 sm:p-8">
@@ -345,24 +345,24 @@ export default function BrandPackagesPage() {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-white/40 text-xs uppercase tracking-wider mb-1.5">Your Name *</label>
+                    <label className="block text-white/80 text-xs uppercase tracking-wider mb-1.5">Your Name *</label>
                     <input required value={form.name} onChange={set("name")} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-yellow-500/50 placeholder-white/30" placeholder="Jane Smith" />
                   </div>
                   <div>
-                    <label className="block text-white/40 text-xs uppercase tracking-wider mb-1.5">Brand Name *</label>
+                    <label className="block text-white/80 text-xs uppercase tracking-wider mb-1.5">Brand Name *</label>
                     <input required value={form.brand} onChange={set("brand")} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-yellow-500/50 placeholder-white/30" placeholder="Casa Tequila" />
                   </div>
                   <div>
-                    <label className="block text-white/40 text-xs uppercase tracking-wider mb-1.5">Email *</label>
+                    <label className="block text-white/80 text-xs uppercase tracking-wider mb-1.5">Email *</label>
                     <input required type="email" value={form.email} onChange={set("email")} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-yellow-500/50 placeholder-white/30" placeholder="you@brand.com" />
                   </div>
                   <div>
-                    <label className="block text-white/40 text-xs uppercase tracking-wider mb-1.5">Phone</label>
+                    <label className="block text-white/80 text-xs uppercase tracking-wider mb-1.5">Phone</label>
                     <input type="tel" value={form.phone} onChange={set("phone")} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-yellow-500/50 placeholder-white/30" placeholder="(555) 000-0000" />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-white/40 text-xs uppercase tracking-wider mb-1.5">Tell us about your brand & goals *</label>
+                  <label className="block text-white/80 text-xs uppercase tracking-wider mb-1.5">Tell us about your brand & goals *</label>
                   <textarea required rows={5} value={form.message} onChange={set("message")} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-yellow-500/50 placeholder-white/30 resize-y" placeholder="Distribution, target cities, package interest, anything else…" />
                 </div>
 
@@ -379,9 +379,9 @@ export default function BrandPackagesPage() {
           </div>
 
           <div className="text-center mt-8">
-            <p className="text-white/40 text-sm">Prefer email? <a href="mailto:brands@mail.tequilafestusa.com" className="text-yellow-400 hover:text-yellow-300 underline">brands@mail.tequilafestusa.com</a></p>
+            <p className="text-white/80 text-sm">Prefer email? <a href="mailto:brands@mail.tequilafestusa.com" className="text-yellow-400 hover:text-yellow-300 underline">brands@mail.tequilafestusa.com</a></p>
             <p className="mt-4">
-              <Link href="/contact" className="text-white/40 hover:text-white text-sm transition-colors">← Back to contact</Link>
+              <Link href="/contact" className="text-white/80 hover:text-white text-sm transition-colors">← Back to contact</Link>
             </p>
           </div>
         </section>
@@ -395,38 +395,38 @@ export default function BrandPackagesPage() {
                 <div>
                   <p className="text-yellow-400 text-xs uppercase tracking-[3px] font-bold mb-1">Checkout</p>
                   <h3 className="text-white font-display text-2xl tracking-wider">{checkout.tier} BRAND PACKAGE</h3>
-                  <p className="text-white/40 text-xs mt-1">
+                  <p className="text-white/80 text-xs mt-1">
                     {checkout.cities.map(id => CITIES.find(c => c.id === id)?.label).filter(Boolean).join(", ")}
                   </p>
                 </div>
-                <button onClick={() => !coLoading && setCheckout(null)} className="text-white/40 hover:text-white text-2xl leading-none">×</button>
+                <button onClick={() => !coLoading && setCheckout(null)} className="text-white/80 hover:text-white text-2xl leading-none">×</button>
               </div>
 
               <div className="bg-white/[0.04] border border-white/10 rounded-2xl px-4 py-3 mb-5 flex items-baseline justify-between">
-                <span className="text-white/50 text-sm">Total</span>
+                <span className="text-white/80 text-sm">Total</span>
                 <span className="font-display text-3xl text-yellow-400">${checkout.total.toLocaleString()}</span>
               </div>
 
               <form onSubmit={startCheckout} className="space-y-3">
                 <div>
-                  <label className="block text-white/40 text-xs uppercase tracking-wider mb-1.5">Brand Name *</label>
+                  <label className="block text-white/80 text-xs uppercase tracking-wider mb-1.5">Brand Name *</label>
                   <input required value={coBrand} onChange={e => setCoBrand(e.target.value)} placeholder="Casa Tequila"
                     className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-yellow-500/50 placeholder-white/30" />
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-white/40 text-xs uppercase tracking-wider mb-1.5">Your Name *</label>
+                    <label className="block text-white/80 text-xs uppercase tracking-wider mb-1.5">Your Name *</label>
                     <input required value={coName} onChange={e => setCoName(e.target.value)} placeholder="Jane Smith"
                       className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-yellow-500/50 placeholder-white/30" />
                   </div>
                   <div>
-                    <label className="block text-white/40 text-xs uppercase tracking-wider mb-1.5">Phone</label>
+                    <label className="block text-white/80 text-xs uppercase tracking-wider mb-1.5">Phone</label>
                     <input type="tel" value={coPhone} onChange={e => setCoPhone(e.target.value)} placeholder="(555) 000-0000"
                       className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-yellow-500/50 placeholder-white/30" />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-white/40 text-xs uppercase tracking-wider mb-1.5">Email *</label>
+                  <label className="block text-white/80 text-xs uppercase tracking-wider mb-1.5">Email *</label>
                   <input required type="email" value={coEmail} onChange={e => setCoEmail(e.target.value)} placeholder="you@brand.com"
                     className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-yellow-500/50 placeholder-white/30" />
                 </div>
@@ -439,7 +439,7 @@ export default function BrandPackagesPage() {
                   className="w-full flex items-center justify-center gap-2 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-50 text-black font-bold tracking-widest text-sm px-6 py-3.5 rounded-xl transition-all cursor-pointer">
                   {coLoading ? "REDIRECTING…" : `PAY $${checkout.total.toLocaleString()}`}
                 </button>
-                <p className="text-white/30 text-xs text-center">You'll be redirected to Stripe to complete payment.</p>
+                <p className="text-white/80 text-xs text-center">You'll be redirected to Stripe to complete payment.</p>
               </form>
             </div>
           </div>

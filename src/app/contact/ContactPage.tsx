@@ -104,7 +104,7 @@ export default function ContactPage() {
               <span className="text-shimmer">CONTACT</span>{" "}
               <span className="text-shimmer-blue">US</span>
             </h1>
-            <p className="text-white/50 mt-4 max-w-xl mx-auto">
+            <p className="text-white/80 mt-4 max-w-xl mx-auto">
               Questions about tickets, sponsorships, vendors, or press? We&apos;d love to hear from you.
             </p>
           </motion.div>
@@ -128,7 +128,7 @@ export default function ContactPage() {
                 >
                   <p className="text-5xl mb-4">🥃</p>
                   <p className="font-display text-yellow-400 text-3xl mb-2">MESSAGE SENT!</p>
-                  <p className="text-white/50 mb-6">We&apos;ll get back to you within 1–2 business days.</p>
+                  <p className="text-white/80 mb-6">We&apos;ll get back to you within 1–2 business days.</p>
                   <button
                     onClick={() => { setSubmitted(false); setForm({ name: "", email: "", phone: "", subject: "", message: "" }); }}
                     className="text-yellow-400 border border-yellow-500/30 px-6 py-2.5 rounded-xl hover:border-yellow-500/60 transition-all duration-200 text-sm font-semibold cursor-pointer"
@@ -151,7 +151,7 @@ export default function ContactPage() {
                     {/* Name + Email */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
-                        <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Name *</label>
+                        <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Name *</label>
                         <input
                           type="text"
                           value={form.name}
@@ -162,7 +162,7 @@ export default function ContactPage() {
                         />
                       </div>
                       <div>
-                        <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Email *</label>
+                        <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Email *</label>
                         <input
                           type="email"
                           value={form.email}
@@ -177,7 +177,7 @@ export default function ContactPage() {
                     {/* Phone + Subject */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
-                        <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Phone <span className="text-white/20 normal-case">(optional)</span></label>
+                        <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Phone <span className="text-white/80 normal-case">(optional)</span></label>
                         <input
                           type="tel"
                           value={form.phone}
@@ -187,7 +187,7 @@ export default function ContactPage() {
                         />
                       </div>
                       <div>
-                        <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Subject *</label>
+                        <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Subject *</label>
                         <div className="relative">
                           <select
                             value={form.subject}
@@ -200,14 +200,14 @@ export default function ContactPage() {
                               <option key={s} value={s} className="bg-[#0d0500]">{s}</option>
                             ))}
                           </select>
-                          <ChevronDown size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" />
+                          <ChevronDown size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/80 pointer-events-none" />
                         </div>
                       </div>
                     </div>
 
                     {/* Message */}
                     <div>
-                      <label className="text-white/30 text-xs uppercase tracking-wider mb-1.5 block">Message *</label>
+                      <label className="text-white/80 text-xs uppercase tracking-wider mb-1.5 block">Message *</label>
                       <textarea
                         value={form.message}
                         onChange={set("message")}
@@ -272,10 +272,10 @@ export default function ContactPage() {
                         {link.icon}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-white/30 text-xs uppercase tracking-wider">{link.desc}</p>
+                        <p className="text-white/80 text-xs uppercase tracking-wider">{link.desc}</p>
                         <p className="text-white/80 group-hover:text-white font-medium text-sm transition-colors duration-200">{link.label}</p>
                       </div>
-                      <span className="text-white/20 group-hover:text-yellow-400 transition-colors duration-200 flex-shrink-0">→</span>
+                      <span className="text-white/80 group-hover:text-yellow-400 transition-colors duration-200 flex-shrink-0">→</span>
                     </Link>
                   ))}
                 </div>
@@ -295,7 +295,7 @@ export default function ContactPage() {
                         {card.icon}
                       </div>
                       <div>
-                        <p className="text-white/30 text-xs uppercase tracking-wider">{card.label}</p>
+                        <p className="text-white/80 text-xs uppercase tracking-wider">{card.label}</p>
                         <p className="text-white/80 group-hover:text-white font-medium text-sm transition-colors duration-200">{card.value}</p>
                       </div>
                     </a>
@@ -305,7 +305,7 @@ export default function ContactPage() {
 
               {/* Response time */}
               <div className="bg-white/[0.03] border border-white/10 rounded-2xl px-5 py-4">
-                <p className="text-white/30 text-xs uppercase tracking-wider mb-2">Response Time</p>
+                <p className="text-white/80 text-xs uppercase tracking-wider mb-2">Response Time</p>
                 <p className="text-white/70 text-sm">We typically respond within <span className="text-yellow-400 font-semibold">1–2 business days</span>. For urgent ticket issues, email is fastest.</p>
               </div>
             </motion.div>

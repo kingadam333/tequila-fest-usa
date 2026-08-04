@@ -145,7 +145,7 @@ export default function EarnPointsPage() {
               <span className="text-shimmer">EARN</span>{" "}
               <span className="text-white">POINTS</span>
             </h1>
-            <p className="text-white/50 max-w-xl mx-auto">
+            <p className="text-white/80 max-w-xl mx-auto">
               Share your Tequila Fest experience and earn points redeemable for gear, VIP upgrades, and free tickets.
             </p>
           </motion.div>
@@ -155,7 +155,7 @@ export default function EarnPointsPage() {
 
           {/* How to earn */}
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="mb-12">
-            <p className="text-white/30 text-xs font-bold tracking-[0.3em] uppercase mb-4">How to Earn</p>
+            <p className="text-white/80 text-xs font-bold tracking-[0.3em] uppercase mb-4">How to Earn</p>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {POINT_ACTIONS.map(action => (
                 <div key={action.label} className="bg-white/[0.03] border border-white/10 rounded-2xl p-4 text-center">
@@ -166,7 +166,7 @@ export default function EarnPointsPage() {
                   <p className="font-display text-white text-lg leading-none">{action.label}</p>
                   <p className="font-display mt-1 mb-1" style={{ fontSize: "2rem", color: action.color }}>{action.points}</p>
                   <p className="text-yellow-500/60 text-xs font-bold uppercase tracking-wider mb-1">pts</p>
-                  <p className="text-white/30 text-xs">{action.desc}</p>
+                  <p className="text-white/80 text-xs">{action.desc}</p>
                 </div>
               ))}
             </div>
@@ -176,7 +176,7 @@ export default function EarnPointsPage() {
           <div className="flex gap-1 bg-white/[0.03] border border-white/10 rounded-2xl p-1 mb-8 w-fit">
             {([["upload", "Upload Media"], ["social", "Social Share"]] as const).map(([id, label]) => (
               <button key={id} onClick={() => setActiveTab(id)}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all cursor-pointer ${activeTab === id ? "bg-yellow-500 text-black" : "text-white/40 hover:text-white"}`}>
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all cursor-pointer ${activeTab === id ? "bg-yellow-500 text-black" : "text-white/80 hover:text-white"}`}>
                 {id === "upload" ? <Upload size={15} /> : <Share2 size={15} />}
                 {label}
               </button>
@@ -209,7 +209,7 @@ export default function EarnPointsPage() {
                       <div className="flex gap-2 mb-5">
                         {(["photo", "video"] as const).map(type => (
                           <button key={type} onClick={() => { setMediaType(type); setFileData(null); setPreview(null); setFileName(""); }}
-                            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all cursor-pointer capitalize ${mediaType === type ? "bg-yellow-500 text-black" : "bg-white/5 border border-white/15 text-white/50 hover:text-white"}`}>
+                            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all cursor-pointer capitalize ${mediaType === type ? "bg-yellow-500 text-black" : "bg-white/5 border border-white/15 text-white/80 hover:text-white"}`}>
                             {type === "photo" ? <Camera size={15} /> : <Video size={15} />}
                             {type} <span className="text-xs opacity-70">({type === "photo" ? "+10" : "+20"} pts)</span>
                           </button>
@@ -232,13 +232,13 @@ export default function EarnPointsPage() {
                               className="absolute top-2 right-2 bg-black/60 rounded-full p-1 text-white/60 hover:text-white cursor-pointer">
                               <X size={14} />
                             </button>
-                            <p className="text-white/50 text-xs mt-2 truncate">{fileName}</p>
+                            <p className="text-white/80 text-xs mt-2 truncate">{fileName}</p>
                           </div>
                         ) : (
                           <>
-                            <Upload size={32} className="mx-auto mb-3 text-white/20" />
-                            <p className="text-white/50 text-sm">Click to select a {mediaType}</p>
-                            <p className="text-white/20 text-xs mt-1">JPG, PNG, MP4, MOV · Max 50MB</p>
+                            <Upload size={32} className="mx-auto mb-3 text-white/80" />
+                            <p className="text-white/80 text-sm">Click to select a {mediaType}</p>
+                            <p className="text-white/80 text-xs mt-1">JPG, PNG, MP4, MOV · Max 50MB</p>
                           </>
                         )}
                         <input ref={fileInputRef} type="file" className="hidden"
@@ -259,7 +259,7 @@ export default function EarnPointsPage() {
                           className={`w-5 h-5 rounded-md border flex-shrink-0 mt-0.5 flex items-center justify-center transition-all ${termsAccepted ? "bg-yellow-500 border-yellow-500" : "border-white/30"}`}>
                           {termsAccepted && <Check size={12} className="text-black" />}
                         </div>
-                        <span className="text-white/40 text-xs leading-relaxed">
+                        <span className="text-white/80 text-xs leading-relaxed">
                           I confirm I took this content at a Tequila Fest USA event and grant permission for it to be used in marketing materials.
                         </span>
                       </label>
@@ -283,7 +283,7 @@ export default function EarnPointsPage() {
 
                       {/* Points preview */}
                       <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-5 text-center">
-                        <p className="text-white/30 text-xs uppercase tracking-wider mb-1">You&apos;ll earn</p>
+                        <p className="text-white/80 text-xs uppercase tracking-wider mb-1">You&apos;ll earn</p>
                         <p className="font-display text-yellow-400" style={{ fontSize: "4rem" }}>
                           {mediaType === "photo" ? 10 : 20}
                         </p>
@@ -320,7 +320,7 @@ export default function EarnPointsPage() {
                     <p className="text-5xl mb-4">📱</p>
                     <p className="font-display text-purple-400 text-3xl mb-2">SUBMITTED!</p>
                     <p className="text-white/60 mb-2">Thanks for sharing! Your claim is under review.</p>
-                    <p className="text-white/30 text-sm mb-6">50 points will be awarded after verification (usually within 24 hours).</p>
+                    <p className="text-white/80 text-sm mb-6">50 points will be awarded after verification (usually within 24 hours).</p>
                     <button onClick={() => setSocialResult(null)}
                       className="bg-yellow-500 hover:bg-yellow-400 text-black font-bold px-6 py-3 rounded-xl transition-all cursor-pointer">
                       Submit Another
@@ -343,11 +343,11 @@ export default function EarnPointsPage() {
                     <form onSubmit={handleSocialClaim} className="bg-white/[0.03] border border-white/10 rounded-2xl p-6 space-y-4">
                       {/* Platform */}
                       <div>
-                        <label className="text-white/40 text-xs uppercase tracking-wider block mb-2">Platform</label>
+                        <label className="text-white/80 text-xs uppercase tracking-wider block mb-2">Platform</label>
                         <div className="flex gap-2">
                           {SOCIAL_PLATFORMS.map(p => (
                             <button key={p.id} type="button" onClick={() => setSocialPlatform(p.id)}
-                              className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all cursor-pointer ${socialPlatform === p.id ? "bg-yellow-500 text-black" : "bg-white/5 border border-white/15 text-white/50 hover:text-white"}`}>
+                              className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all cursor-pointer ${socialPlatform === p.id ? "bg-yellow-500 text-black" : "bg-white/5 border border-white/15 text-white/80 hover:text-white"}`}>
                               {p.label}
                             </button>
                           ))}
@@ -356,7 +356,7 @@ export default function EarnPointsPage() {
 
                       {/* Event */}
                       <div>
-                        <label className="text-white/40 text-xs uppercase tracking-wider block mb-2">Event</label>
+                        <label className="text-white/80 text-xs uppercase tracking-wider block mb-2">Event</label>
                         <select value={socialEvent} onChange={e => setSocialEvent(e.target.value)} required
                           className="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-3 text-white text-sm outline-none cursor-pointer appearance-none">
                           <option value="" disabled className="bg-[#0d0500]">Select event</option>
@@ -366,7 +366,7 @@ export default function EarnPointsPage() {
 
                       {/* Post URL */}
                       <div>
-                        <label className="text-white/40 text-xs uppercase tracking-wider block mb-2">Post URL</label>
+                        <label className="text-white/80 text-xs uppercase tracking-wider block mb-2">Post URL</label>
                         <input type="url" value={socialUrl} onChange={e => setSocialUrl(e.target.value)}
                           placeholder="https://instagram.com/p/..." required
                           className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-3 text-white placeholder-white/30 text-sm outline-none" />
@@ -388,7 +388,7 @@ export default function EarnPointsPage() {
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="mt-16">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <p className="text-white/30 text-xs font-bold tracking-[0.3em] uppercase mb-1">Top Fans</p>
+                <p className="text-white/80 text-xs font-bold tracking-[0.3em] uppercase mb-1">Top Fans</p>
                 <h2 className="font-display text-white text-3xl flex items-center gap-3">
                   <Trophy size={28} className="text-yellow-400" /> LEADERBOARD
                 </h2>
@@ -399,7 +399,7 @@ export default function EarnPointsPage() {
             </div>
             {leaderboard.length === 0 ? (
               <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-10 text-center">
-                <p className="text-white/30 text-sm">Be the first on the leaderboard — buy a ticket and earn points!</p>
+                <p className="text-white/80 text-sm">Be the first on the leaderboard — buy a ticket and earn points!</p>
               </div>
             ) : (
               <div className="space-y-2">
@@ -416,7 +416,7 @@ export default function EarnPointsPage() {
                           : "bg-white/[0.02] border-white/8"
                       }`}>
                       <span className="w-8 text-center font-display text-xl flex-shrink-0">
-                        {medals[i] || <span className="text-white/30 text-sm font-bold">#{entry.rank}</span>}
+                        {medals[i] || <span className="text-white/80 text-sm font-bold">#{entry.rank}</span>}
                       </span>
                       <span className={`flex-1 font-semibold ${isTop3 ? "text-white" : "text-white/70"}`}>
                         {entry.name}
@@ -424,7 +424,7 @@ export default function EarnPointsPage() {
                       <span className="font-display text-xl" style={{ color: isTop3 ? "#F5A623" : "rgba(255,255,255,0.4)" }}>
                         {entry.points.toLocaleString()}
                       </span>
-                      <span className="text-white/30 text-xs">pts</span>
+                      <span className="text-white/80 text-xs">pts</span>
                     </motion.div>
                   );
                 })}
@@ -436,7 +436,7 @@ export default function EarnPointsPage() {
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="mt-16">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <p className="text-white/30 text-xs font-bold tracking-[0.3em] uppercase mb-1">Redeem Your Points</p>
+                <p className="text-white/80 text-xs font-bold tracking-[0.3em] uppercase mb-1">Redeem Your Points</p>
                 <h2 className="font-display text-white text-3xl">REWARDS</h2>
               </div>
               <Link href="/account" className="text-yellow-400 text-sm hover:text-yellow-300 transition-colors font-semibold">
@@ -454,7 +454,7 @@ export default function EarnPointsPage() {
                   <p className="text-3xl mb-3">{reward.emoji}</p>
                   <p className="text-white font-semibold text-sm">{reward.name}</p>
                   <p className="font-display text-yellow-400 text-xl mt-1">{reward.points.toLocaleString()}</p>
-                  <p className="text-white/30 text-xs">points</p>
+                  <p className="text-white/80 text-xs">points</p>
                 </div>
               ))}
             </div>

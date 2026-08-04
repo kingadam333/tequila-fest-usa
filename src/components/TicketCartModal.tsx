@@ -175,7 +175,7 @@ export default function TicketCartModal({
           {/* Header */}
           <div className="flex items-center justify-between p-5 border-b border-white/10 flex-shrink-0">
             <div>
-              <p className="text-white/40 text-xs font-bold tracking-[0.2em] uppercase">
+              <p className="text-white/80 text-xs font-bold tracking-[0.2em] uppercase">
                 {step === "cart" ? "Select Tickets" : "Your Info"}
               </p>
               <h2 className="font-display text-white text-2xl leading-none">
@@ -184,11 +184,11 @@ export default function TicketCartModal({
             </div>
             <div className="flex items-center gap-3">
               {step === "info" && (
-                <button onClick={() => setStep("cart")} className="text-white/40 hover:text-white/60 text-sm transition-colors cursor-pointer">
+                <button onClick={() => setStep("cart")} className="text-white/80 hover:text-white/60 text-sm transition-colors cursor-pointer">
                   ← Back
                 </button>
               )}
-              <button onClick={onClose} className="text-white/30 hover:text-white/60 transition-colors cursor-pointer">
+              <button onClick={onClose} className="text-white/80 hover:text-white/60 transition-colors cursor-pointer">
                 <X size={18} />
               </button>
             </div>
@@ -212,11 +212,11 @@ export default function TicketCartModal({
                         <div className="flex items-center gap-2 flex-wrap">
                           <p className="text-white font-bold text-sm">{tt.label}</p>
                           {isSoldOut && <span className="text-red-400 text-xs font-bold bg-red-500/15 px-2 py-0.5 rounded-full">Sold Out</span>}
-                          {!isSoldOut && tt.note && <span className="text-white/30 text-xs">{tt.note}</span>}
+                          {!isSoldOut && tt.note && <span className="text-white/80 text-xs">{tt.note}</span>}
                         </div>
                         <p className="font-display mt-0.5" style={{ fontSize: "1.5rem", color: qty > 0 ? eventColor : "white" }}>
                           ${tt.price}
-                          <span className="text-white/30 text-xs font-sans ml-1">per person</span>
+                          <span className="text-white/80 text-xs font-sans ml-1">per person</span>
                         </p>
                       </div>
                       {!isUnavailable ? (
@@ -233,7 +233,7 @@ export default function TicketCartModal({
                           </button>
                         </div>
                       ) : (
-                        <span className="text-white/25 text-xs flex-shrink-0">
+                        <span className="text-white/80 text-xs flex-shrink-0">
                           {isSoldOut ? "Sold Out" : "Coming Soon"}
                         </span>
                       )}
@@ -254,9 +254,9 @@ export default function TicketCartModal({
                   <div className="space-y-3">
                     <div className="flex items-center justify-between gap-3 bg-white/5 border border-white/15 rounded-xl px-4 py-3">
                       <div className="min-w-0">
-                        <p className="text-white/40 text-xs">Checking out as</p>
+                        <p className="text-white/80 text-xs">Checking out as</p>
                         <p className="text-white font-semibold text-sm truncate">{form.firstName} {form.lastName}</p>
-                        <p className="text-white/50 text-sm truncate">{form.email}</p>
+                        <p className="text-white/80 text-sm truncate">{form.email}</p>
                       </div>
                       <button type="button" onClick={() => setEditingInfo(true)}
                         className="text-yellow-500/70 hover:text-yellow-400 text-xs font-semibold flex-shrink-0 cursor-pointer">
@@ -275,7 +275,7 @@ export default function TicketCartModal({
                   <form id="checkout-form" onSubmit={handleCheckout} className="space-y-3">
                     <div className="flex gap-3">
                       <div className="relative flex-1">
-                        <User size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30" />
+                        <User size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/80" />
                         <input type="text" value={form.firstName} onChange={set("firstName")}
                           placeholder="First name" required autoFocus
                           className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl pl-9 pr-3 py-3 text-white placeholder-white/25 text-sm outline-none" />
@@ -287,13 +287,13 @@ export default function TicketCartModal({
                       </div>
                     </div>
                     <div className="relative">
-                      <Mail size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30" />
+                      <Mail size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/80" />
                       <input type="email" value={form.email} onChange={set("email")}
                         placeholder="Email address" required
                         className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl pl-9 pr-4 py-3 text-white placeholder-white/25 text-sm outline-none" />
                     </div>
                     <div className="relative">
-                      <Phone size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30" />
+                      <Phone size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/80" />
                       <input type="tel" value={form.phone} onChange={set("phone")}
                         placeholder="Phone number (optional)"
                         className="w-full bg-white/5 border border-yellow-500/15 focus:border-yellow-500/40 rounded-xl pl-9 pr-4 py-3 text-white placeholder-white/25 text-sm outline-none" />
@@ -306,7 +306,10 @@ export default function TicketCartModal({
                     />
                   </form>
                 )}
-                <p className="text-white/20 text-xs text-center mt-3">By continuing you agree to our Terms of Service. Must be 21+.</p>
+                <p className="text-white/80 text-xs text-center mt-3">
+                  By continuing you agree to our{" "}
+                  <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-yellow-400 hover:text-yellow-300 underline">Terms of Service</a>. Must be 21+. All sales final — no refunds.
+                </p>
               </div>
             )}
           </div>
@@ -328,14 +331,14 @@ export default function TicketCartModal({
             {fees && (
               <div className="space-y-1.5 mb-3 pb-3 border-b border-white/10">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-white/50">Tickets ({totalTickets})</span>
+                  <span className="text-white/80">Tickets ({totalTickets})</span>
                   <span className="text-white/70">${fees.subtotal.toFixed(2)}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-white/50">Service Fee</span>
+                    <span className="text-white/80">Service Fee</span>
                     <div className="group relative">
-                      <span className="text-white/20 text-xs cursor-help border border-white/15 rounded-full w-4 h-4 inline-flex items-center justify-center">?</span>
+                      <span className="text-white/80 text-xs cursor-help border border-white/15 rounded-full w-4 h-4 inline-flex items-center justify-center">?</span>
                       <div className="absolute bottom-6 left-0 w-52 bg-black/90 border border-white/15 rounded-xl p-3 text-xs text-white/60 hidden group-hover:block z-10 pointer-events-none">
                         <p className="mb-1">Platform fee: ${fees.platformFee.toFixed(2)} (${fees.platformFee / totalTickets}/ticket)</p>
                         <p>Processing: ${fees.stripeFee.toFixed(2)} (2.9% + $0.30)</p>
@@ -348,13 +351,13 @@ export default function TicketCartModal({
             )}
 
             <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2 text-white/40 text-sm">
+              <div className="flex items-center gap-2 text-white/80 text-sm">
                 <ShoppingCart size={14} />
                 <span>{totalTickets} ticket{totalTickets !== 1 ? "s" : ""}</span>
               </div>
               <div className="text-right">
                 <p className="font-display text-white text-2xl">${fees ? fees.total.toFixed(2) : "0.00"}</p>
-                <p className="text-white/20 text-xs">total incl. fees</p>
+                <p className="text-white/80 text-xs">total incl. fees</p>
               </div>
             </div>
 

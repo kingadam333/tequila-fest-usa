@@ -108,7 +108,7 @@ export default function Hero() {
             >
               <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: stop.color }} />
               <span className="text-white font-semibold text-sm">{stop.city}</span>
-              <span className="text-white/40 text-xs">{stop.date}</span>
+              <span className="text-white/80 text-xs">{stop.date}</span>
             </div>
           ))}
         </motion.div>
@@ -141,7 +141,7 @@ export default function Hero() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1.1 }}
-          className="mt-6 text-white/30 text-sm tracking-wider"
+          className="mt-6 text-white/80 text-sm tracking-wider"
         >
           Must be 21+ to attend · Tickets sold exclusively at TequilaFestUSA.com
         </motion.p>
@@ -154,7 +154,7 @@ export default function Hero() {
         transition={{ delay: 1.4 }}
         className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-2"
       >
-        <span className="text-white/30 text-xs tracking-widest uppercase">Scroll</span>
+        <span className="text-white/80 text-xs tracking-widest uppercase">Scroll</span>
         <div className="w-px h-8 bg-gradient-to-b from-white/30 to-transparent animate-float" />
       </motion.div>
 
