@@ -10,9 +10,9 @@ const SECTIONS: { title: string; body: React.ReactNode }[] = [
     body: (
       <>
         <p>
-          These Terms &amp; Conditions (&quot;Terms&quot;) govern your purchase and use of tickets, and your attendance
+          These Terms & Conditions (&quot;Terms&quot;) govern your purchase and use of tickets, and your attendance
           at, any Tequila Fest USA event, and your use of tequilafestusa.com (the &quot;Site&quot;), operated by
-          Taste Festivals &amp; Events LLC (&quot;Tequila Fest USA,&quot; &quot;we,&quot; &quot;us,&quot; or &quot;our&quot;).
+          Taste Festivals & Events LLC (&quot;Tequila Fest USA,&quot; &quot;we,&quot; &quot;us,&quot; or &quot;our&quot;).
         </p>
         <p>
           By purchasing a ticket, registering as a vendor, sponsor, or affiliate, or otherwise using the Site, you
@@ -22,7 +22,7 @@ const SECTIONS: { title: string; body: React.ReactNode }[] = [
     ),
   },
   {
-    title: "2. Age Requirement &amp; ID",
+    title: "2. Age Requirement & ID",
     body: (
       <>
         <p>
@@ -58,6 +58,13 @@ const SECTIONS: { title: string; body: React.ReactNode }[] = [
           scalpers) are not guaranteed to be valid and Tequila Fest USA is not responsible for counterfeit,
           duplicated, or fraudulently obtained tickets.
         </p>
+        <p>
+          It is your responsibility to select the correct city and event date before completing checkout. We do not
+          issue refunds, exchanges, or credit toward a different event if you purchase a ticket for the wrong city,
+          date, or event — including if you meant to buy a ticket for a different Tequila Fest USA event happening
+          in another city or on another day. Please double-check the event details shown on the checkout page
+          before paying.
+        </p>
       </>
     ),
   },
@@ -78,7 +85,7 @@ const SECTIONS: { title: string; body: React.ReactNode }[] = [
     ),
   },
   {
-    title: "5. Rain or Shine — Event Changes, Postponement &amp; Cancellation",
+    title: "5. Rain or Shine — Event Changes, Postponement & Cancellation",
     body: (
       <>
         <p>
@@ -102,7 +109,7 @@ const SECTIONS: { title: string; body: React.ReactNode }[] = [
     ),
   },
   {
-    title: "6. Entry, Conduct &amp; Right to Refuse",
+    title: "6. Entry, Conduct & Right to Refuse",
     body: (
       <>
         <p>
@@ -134,7 +141,7 @@ const SECTIONS: { title: string; body: React.ReactNode }[] = [
     ),
   },
   {
-    title: "8. Photo, Video &amp; Media Release",
+    title: "8. Photo, Video & Media Release",
     body: (
       <p>
         Tequila Fest USA and its authorized photographers/videographers may capture photo and video at our events
@@ -145,7 +152,7 @@ const SECTIONS: { title: string; body: React.ReactNode }[] = [
     ),
   },
   {
-    title: "9. Vendors, Sponsors &amp; the Affiliate Program",
+    title: "9. Vendors, Sponsors & the Affiliate Program",
     body: (
       <>
         <p>
@@ -163,11 +170,11 @@ const SECTIONS: { title: string; body: React.ReactNode }[] = [
     ),
   },
   {
-    title: "10. Website Use &amp; Intellectual Property",
+    title: "10. Website Use & Intellectual Property",
     body: (
       <p>
         All content on the Site — including the Tequila Fest USA name, logo, graphics, and event branding — is the
-        property of Taste Festivals &amp; Events LLC or its licensors and may not be copied, reproduced, or used
+        property of Taste Festivals & Events LLC or its licensors and may not be copied, reproduced, or used
         without written permission. You agree not to use the Site for any unlawful purpose or to attempt to
         interfere with its normal operation.
       </p>
@@ -226,7 +233,7 @@ export default function TermsPage() {
       <main className="min-h-screen bg-[#0d0500] pb-24">
         <div className="max-w-3xl mx-auto px-4 pt-32 sm:pt-36">
           <p className="text-yellow-500 text-xs font-bold tracking-[0.3em] uppercase mb-3">Legal</p>
-          <h1 className="font-display text-white text-4xl sm:text-5xl mb-2">Terms &amp; Conditions</h1>
+          <h1 className="font-display text-white text-4xl sm:text-5xl mb-2">Terms & Conditions</h1>
           <p className="text-white/80 text-sm mb-12">Last updated: {LAST_UPDATED}</p>
 
           <div className="space-y-10">

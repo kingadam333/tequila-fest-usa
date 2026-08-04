@@ -9,7 +9,7 @@ const SECTIONS: { title: string; body: React.ReactNode }[] = [
     title: "1. Overview",
     body: (
       <p>
-        This Privacy Policy explains how Taste Festivals &amp; Events LLC, operating as Tequila Fest USA
+        This Privacy Policy explains how Taste Festivals & Events LLC, operating as Tequila Fest USA
         (&quot;we,&quot; &quot;us,&quot; or &quot;our&quot;), collects, uses, and protects information when you visit
         tequilafestusa.com, purchase a ticket, apply as a vendor/sponsor/affiliate, or otherwise interact with us.
         By using our Site, you agree to the collection and use of information as described here.
@@ -37,7 +37,7 @@ const SECTIONS: { title: string; body: React.ReactNode }[] = [
     ),
   },
   {
-    title: "3. Cookies &amp; Tracking Technologies",
+    title: "3. Cookies & Tracking Technologies",
     body: (
       <>
         <p>
@@ -101,7 +101,7 @@ const SECTIONS: { title: string; body: React.ReactNode }[] = [
     ),
   },
   {
-    title: "6. Email &amp; SMS Marketing Consent",
+    title: "6. Email & SMS Marketing Consent",
     body: (
       <p>
         If you provide your email or phone number at checkout or through a sign-up form, you may receive marketing
@@ -123,7 +123,7 @@ const SECTIONS: { title: string; body: React.ReactNode }[] = [
     ),
   },
   {
-    title: "8. Your Rights &amp; Choices",
+    title: "8. Your Rights & Choices",
     body: (
       <>
         <p>You can:</p>
@@ -202,7 +202,7 @@ export default function PrivacyPage() {
             <p className="text-white/80 text-xs">
               See also our{" "}
               <a href="/terms" className="text-yellow-400 hover:text-yellow-300">
-                Terms &amp; Conditions
+                Terms & Conditions
               </a>
               .
             </p>
