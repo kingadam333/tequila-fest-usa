@@ -18,22 +18,36 @@ export async function POST(req: NextRequest) {
   const db = supabaseAdmin as any;
   const requestedCities: string[] = Array.isArray(cities) ? cities : cities ? [cities] : [];
 
-  // Scrub duplicate submissions by email — but scoped to city, not just
-  // email. A rejected prior application never blocks reapplying. A vendor
-  // who already has a pending/approved application for Cleveland must still
-  // be able to apply for Columbus, or for Cleveland again next year once
-  // the old application's city no longer overlaps a current event — only
-  // block when every city being requested here is already covered by an
-  // existing non-rejected application.
+  // Scrub duplicate submissions by email — scoped to city AND season, not
+  // just email+city. A rejected prior application never blocks reapplying.
+  // vendor_applications has no direct event/year link (same city name is
+  // reused every year — see the year-rollover pattern in CLAUDE.md), so an
+  // application only counts as "covering" a city for THIS season: it must
+  // have been submitted on or after the current live event for that city
+  // was created. A vendor approved for Cleveland 2026 must be able to apply
+  // again once Cleveland 2027 exists, even though "Cleveland" is still on
+  // their old application.
+  const { data: currentEvents } = await db
+    .from("events")
+    .select("city, created_at")
+    .not("status", "in", '("draft","cancelled","completed")');
+  const seasonStartByCity = new Map<string, string>();
+  for (const e of currentEvents || []) seasonStartByCity.set(e.city, e.created_at);
+
   const { data: existingApps } = await db
     .from("vendor_applications")
-    .select("id, status, cities")
+    .select("id, status, cities, created_at")
     .eq("email", email.trim().toLowerCase())
     .neq("status", "rejected");
 
   const alreadyCoveredCities = new Set<string>();
   for (const app of existingApps || []) {
-    for (const c of app.cities || []) alreadyCoveredCities.add(c);
+    for (const c of app.cities || []) {
+      const seasonStart = seasonStartByCity.get(c);
+      // No current event for that city at all (shouldn't normally happen) —
+      // safest to still treat it as covered rather than let it slip through.
+      if (!seasonStart || app.created_at >= seasonStart) alreadyCoveredCities.add(c);
+    }
   }
   const newCities = requestedCities.filter(c => !alreadyCoveredCities.has(c));
 
