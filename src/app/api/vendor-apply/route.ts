@@ -16,21 +16,30 @@ export async function POST(req: NextRequest) {
   if (!captchaOk) return NextResponse.json({ error: "CAPTCHA verification failed" }, { status: 400 });
 
   const db = supabaseAdmin as any;
+  const requestedCities: string[] = Array.isArray(cities) ? cities : cities ? [cities] : [];
 
-  // Scrub duplicate submissions by email — a rejected prior application
-  // doesn't block reapplying, but a pending/approved one does. Don't create
-  // a second row; just let the applicant know they've already applied.
-  const { data: existing } = await db
+  // Scrub duplicate submissions by email — but scoped to city, not just
+  // email. A rejected prior application never blocks reapplying. A vendor
+  // who already has a pending/approved application for Cleveland must still
+  // be able to apply for Columbus, or for Cleveland again next year once
+  // the old application's city no longer overlaps a current event — only
+  // block when every city being requested here is already covered by an
+  // existing non-rejected application.
+  const { data: existingApps } = await db
     .from("vendor_applications")
-    .select("id, status")
+    .select("id, status, cities")
     .eq("email", email.trim().toLowerCase())
-    .neq("status", "rejected")
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .neq("status", "rejected");
 
-  if (existing) {
-    return NextResponse.json({ duplicate: true, existingStatus: existing.status }, { status: 409 });
+  const alreadyCoveredCities = new Set<string>();
+  for (const app of existingApps || []) {
+    for (const c of app.cities || []) alreadyCoveredCities.add(c);
+  }
+  const newCities = requestedCities.filter(c => !alreadyCoveredCities.has(c));
+
+  if (requestedCities.length > 0 && newCities.length === 0) {
+    const conflictingApp = (existingApps || []).find((app: any) => (app.cities || []).some((c: string) => requestedCities.includes(c)));
+    return NextResponse.json({ duplicate: true, existingStatus: conflictingApp?.status || existingApps?.[0]?.status }, { status: 409 });
   }
 
   const { data, error } = await db.from("vendor_applications").insert({
