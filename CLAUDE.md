@@ -339,7 +339,7 @@ Finds ticket purchases where a Stripe Checkout Session was started but never com
 
 ## Tracking — Meta Pixel / Conversions API, GTM, GA4, Roku (rebuilt this session — read before touching any of this)
 
-**Current architecture: Google Tag Manager (`GTM-P3Q33V72`) owns Meta Pixel, Meta Conversions API, GA4, Google Ads conversions, and Roku. The app contains no direct Meta Pixel or CAPI code — but it DOES contain a hardcoded Google Ads gtag (see below).**
+**Current architecture: Google Tag Manager (`GTM-P3Q33V72`) owns Meta Pixel, Meta Conversions API, GA4, Google Ads (config + conversions + Enhanced Conversions), Roku, and MNTN. The app contains zero tracking code beyond the GTM snippet itself.**
 
 **There is also a server-side GTM container** running on Google Cloud Run (`server-side-tagging-h5okyxcuca-uc.a.run.app`). GA4 and Meta CAPI both route through it via a Facebook Conversions API Gateway setup (the `FB_CONVERSIONS_API-1559821735737152-Web-Tag-*` tags). **Do not modify those three tags** — Meta match quality and CAPI are working correctly through them.
 
@@ -402,6 +402,21 @@ Roku accepts **only three** `custom_data` keys — `value`, `currency`, **`order
 
 **Known unfixed Roku bug:** their GTM template truncates `value` to an integer client-side (`189.50` → `189`), so revenue under-reports by up to $0.99/order. Roku support confirmed the platform supports floats and that this is their template's fault. Reported; no fix as of Aug 2026.
 
+### MNTN — two Community Gallery templates, advertiser ID 70795
+
+Added Aug 6 2026. `MNTN Tracking Pixel` (template `cvt_NNZK7`) and `MNTN Conversion Pixel` (template `cvt_NMJHF`) were imported from the GTM Community Template Gallery — no API path exists to import gallery templates, that step is UI-only (Templates → Tag Templates → Search Gallery).
+
+| Tag | Fires on | Params |
+|---|---|---|
+| `MNTN Tracking Pixel` | All Pages | `advertisertId` = `70795` *(sic — MNTN's own template typo, not ours)* |
+| `MNTN Conversion Pixel - Purchase` | `CE - purchase` | `advertiserId` = `70795` *(spelled correctly here — the two templates are inconsistent with each other)*, `conversionOrderId` = `{{DLV - transaction_id}}`, `conversionOrderAmount` = `{{DLV - value}}`, `conversionType` = `Purchase` |
+
+Reuses the existing `DLV - transaction_id` / `DLV - value` variables — no new variables needed. Unlike Roku, MNTN's template preserves decimals correctly (`189.50` transmits as `189.5`, not truncated).
+
+⚠️ **The conversion beacon fires asynchronously with a real delay** — MNTN's tracker does server-side GA4 client-ID enrichment (visible in the `/st` and `/gs` calls) before the `/spx?conv=1` conversion beacon dispatches. Checking network calls immediately after a `dataLayer.push()` will show **zero** conversion beacons even though the tag is correctly configured and will fire moments later. Wait 2-3 seconds before concluding it didn't fire — a false "not working" read wasted real debugging time here before the beacon was found on a delayed check.
+
+Verified independently via MNTN's own dashboard pixel-verification tool: tracking pixels detected across the site, conversion pixel detected on the purchase page, GA4 IDs found, "fully optimized."
+
 ### How to verify any of this (don't guess — measure)
 
 Load the live site in a browser, push a test event, and read the outbound network calls:
@@ -422,8 +437,12 @@ Then check: Google Ads → `googleadservices.com/pagead/conversion/18196896859/`
 2. Check `window.dataLayer` shape in a live browser session against what the relevant GTM tag's variables expect — a silent shape mismatch (flat vs. nested, wrong key names) is the most common failure mode and won't throw any error anywhere.
 3. Meta's Events Manager → Test Events tab (with a `test_event_code`) gives real-time feedback per event including populated/missing parameters — much faster than waiting on the Overview tab's 24–48h rolling match-quality score.
 
-### GTM MCP / Stape connector — known gotcha
-A GTM MCP connector (`gtm-mcp.stape.ai`) was tried once for direct container inspection but never got fully registered as a proper Claude Code MCP server. A **standalone `npx -y mcp-remote https://gtm-mcp.stape.ai/mcp` process** was instead left running persistently in the background (spawned from the Claude desktop app, not this CLI), which kept retrying its Google OAuth login indefinitely and popping a new browser tab on every retry — for days, until noticed and killed (`ps aux | grep mcp-remote`, then `kill`). **If this recurs:** kill the stray process, and check the Claude desktop app's own Settings → Connectors for a lingering "gtm"/Stape entry that could relaunch it on app restart. The simpler, proven-working alternative for inspecting the GTM container is asking the human to export it as JSON from tagmanager.google.com → Admin → Export Container and pasting it directly — no MCP/OAuth needed.
+### GTM MCP — now working (superseded the Stape attempt below)
+As of Aug 6 2026, `gtm-mcp-server` (Stape's hosted server, connected via `mcp-remote` in `~/.claude.json`) gives full read/write GTM access — this is what built everything documented above via the API, not the GTM UI. Full setup, access-scope gotchas, and working agreement are in `~/.claude/CLAUDE.md` (user-level, spans all GTM accounts, not just this project). Key things from there worth repeating here: account-level Admin is not sufficient, each container needs explicit **Publish** permission or writes 404; a published workspace locks and needs a fresh workspace to continue editing; `createVersion`/`publish` responses are too large for tool output but the call still succeeds — grep the saved file for `containerVersionId`.
+
+The Community Template Gallery (MNTN, and any future third-party pixel) has **no API import path** — that step is UI-only, everything else can be done via the API once the template exists in the container.
+
+*Historical, no longer relevant:* an earlier attempt at `gtm-mcp.stape.ai` was never properly registered and was instead run as a stray background `mcp-remote` process from the Claude desktop app that looped retrying OAuth for days before being killed. If a similar stray process ever reappears, check `ps aux | grep mcp-remote` and the desktop app's Settings → Connectors.
 
 ---
 
@@ -561,7 +580,7 @@ TEXTMAGIC_LIST_ID_PHOENIX=...
 
 ### High Priority
 - [x] **Google Ads showing zero conversions** — FIXED Aug 6 2026. Root cause was a URL-based page-load conversion that never matched. Replaced with an event-based conversion firing off `purchase`; verified live end-to-end. See the "Google Ads conversions" subsection under Tracking. **Watch:** the `Purchase (GTM)` action stays "Inactive" until its first real ad-attributed conversion lands.
-- [ ] **MNTN / Mountain.com** — no pixel installed anywhere. Not urgent (no active MNTN spend as of Aug 2026), but must be built before launching there.
+- [x] **MNTN / Mountain.com** — pixel installed Aug 6 2026, verified working (both client-side and via MNTN's own dashboard verification tool). See the "MNTN" subsection under Tracking.
 - [x] **`robots.txt` and `sitemap.xml`** — added Aug 6 2026 (`src/app/robots.ts`, `src/app/sitemap.ts`). Sitemap pulls upcoming events live from Supabase and revalidates hourly, so admin changes appear without a redeploy; blog posts come from the static `POSTS` array. **`robots.ts` disallows the three post-payment confirmation pages** — that's not just SEO, those pages fire purchase conversions and a crawler reaching them would inject phantom purchases into Google Ads/Meta/Roku. Google's Tag Coverage may take a while to stop monitoring the ~89 dead Replit/Shopify-era URLs it already knows about.
 - [ ] **Coupon/promo codes** at checkout — `coupons` table exists in DB, UI and API not built
 - [ ] **Supabase RLS security audit** — Row Level Security policies need review on all tables
