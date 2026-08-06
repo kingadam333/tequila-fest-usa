@@ -339,7 +339,11 @@ Finds ticket purchases where a Stripe Checkout Session was started but never com
 
 ## Tracking — Meta Pixel / Conversions API, GTM, GA4, Roku (rebuilt this session — read before touching any of this)
 
-**Current architecture: Google Tag Manager (`GTM-P3Q33V72`) is the single source of truth for Meta Pixel, Meta Conversions API, GA4, and Roku. The app itself contains no direct Meta Pixel or CAPI code.**
+**Current architecture: Google Tag Manager (`GTM-P3Q33V72`) owns Meta Pixel, Meta Conversions API, GA4, Google Ads conversions, and Roku. The app contains no direct Meta Pixel or CAPI code — but it DOES contain a hardcoded Google Ads gtag (see below).**
+
+**There is also a server-side GTM container** running on Google Cloud Run (`server-side-tagging-h5okyxcuca-uc.a.run.app`). GA4 and Meta CAPI both route through it via a Facebook Conversions API Gateway setup (the `FB_CONVERSIONS_API-1559821735737152-Web-Tag-*` tags). **Do not modify those three tags** — Meta match quality and CAPI are working correctly through them.
+
+**`src/components/GoogleAdsTag.tsx` hardcodes `gtag('config', 'AW-18196896859')`** directly in `layout.tsx`. This is intentional and load-bearing (it sets the `_gcl_au` conversion-linker cookie). **Never add a Google Tag / Google Ads *configuration* tag inside GTM** — that would double-fire every page view. GTM will show a "No Google tag found in this container" warning on the conversion tag; that warning is expected and must be ignored.
 
 This is a deliberate rebuild — an earlier version of this app had its **own** direct Meta Pixel (`MetaPixelHead.tsx`/`MetaPixel.tsx`) and server-side Conversions API code (`src/lib/metaCapi.ts`) running **alongside** GTM's own pre-built, official Meta Pixel + Conversions API Gateway integration (which was already installed in the container and nobody had noticed). Result: 2–3 duplicate, non-deduplicated PageView/Purchase/InitiateCheckout signals reaching Meta simultaneously, and Meta's Events Manager reporting low match quality because the app's own `dataLayer.push()` calls used a flat, top-level shape that GTM's tags didn't read from (they expect a nested `eventModel.*` shape). **All of that direct code was deleted** (`MetaPixelHead.tsx`, `MetaPixel.tsx`, `src/lib/metaCapi.ts`, and every call site) in favor of feeding GTM's existing tags correctly.
 
@@ -351,6 +355,63 @@ This is a deliberate rebuild — an earlier version of this app had its **own** 
   - **The nested `eventModel` wrapper is required** — GTM's Data Layer Variables read `eventModel.value`, `eventModel.user_data`, etc. A flat top-level push (the old shape) produces `undefined` values in Meta's tags even though the event technically fires.
 - Advanced Matching (`user_data.email_address`/`phone_number`) is **plain-text**, not pre-hashed — GTM's own Meta Pixel template hashes it client-side via `fbq('init', pixelId, cidParams)`. Don't hash before pushing.
 - **`META_CAPI_ACCESS_TOKEN`** Vercel env var is now unused (the direct CAPI code that read it was deleted) — safe to remove, low priority.
+
+### Google Ads conversions — rebuilt Aug 6 2026 (was recording ZERO for ~2 months)
+
+**Symptom:** PMAX campaigns spending daily with `0.00` conversions since the conversion action was created 5/29/2026.
+
+**Root cause:** the only conversion action was a **URL-based "page load"** conversion (rule: URL starts with `tequilafestusa.com/ticket-confirmation`), created from the Google tag data source. It never matched, and even if it had, a page-load conversion **cannot pass a dynamic value** — every ticket sale would have reported as the `$1` fallback. Google's Tag Coverage report listed `tequilafestusa.com/ticket-confirmation` as "no data in 30+ days" while real traffic lands on the **`www.`** host.
+
+**Fix — event-based conversion driven off the existing `purchase` dataLayer event:**
+
+| Item | Value |
+|---|---|
+| Conversion action | `Purchase (GTM)` — Primary, category Purchase, count **Every**, 90-day click window |
+| Conversion ID | `18196896859` |
+| Conversion Label | `D-E3CKTr69wcENu4-uRD` |
+| GTM tag | `Google Ads - Purchase Conversion` (Google Ads Conversion Tracking) |
+| Trigger | `CE - purchase` (Custom Event, `purchase`) |
+| Value / Txn / Currency | `{{DLV - value}}` / `{{DLV - transaction_id}}` / `{{DLV - currency}}` |
+
+The **old URL-based "Purchase" action was demoted to Secondary** so sales don't double-count. Don't re-promote it.
+
+**This one tag covers all three revenue pages** — `/ticket-confirmation`, `/brand-packages/success`, and `/vendor-payment-success` — because all three render `PurchaseDataLayerPush`. Previously only ticket confirmations were tracked at all.
+
+**Enhanced Conversions is NOT wired.** The GTM Google Ads Conversion Tracking template only exposes the user-provided-data field when the container owns the Google tag — ours lives in app code. A `UPD - Purchase` variable exists but is unreferenced. Revisit if match rates matter.
+
+### Roku — two tags + a relay event (this is subtle, read before touching)
+
+Roku (`Event Group ID: PaccQMJgpRpT`, endpoint `tags.w55c.net/ust`) needs **two** tags:
+
+| Tag | Event Type | Trigger |
+|---|---|---|
+| `Roku Pixel - Page View` | Page View | **All Pages** |
+| `Roku Pixel - Purchase` | Purchases | `CE - roku_purchase` |
+
+**Why the Page View tag is mandatory:** the Roku template creates `window.rkp` itself and loads its tracker async from `cdn.ravm.tv`. The **first** Roku event on a page always fires before the tracker is ready and **silently loses all metadata**. Firing a Page View tag on All Pages warms the tracker so the later purchase event transmits intact. Without it, purchases send `event_name: PURCHASE` with **no `custom_data` at all**.
+
+**Why a separate relay event:** Roku's template auto-reads the GA4 `items` array and rejects it. A Custom HTML tag `Roku - Relay Purchase` fires on `CE - purchase` and re-pushes a sanitized `roku_purchase` event. It must:
+- **null out items** — `eventModel: { items: null }`. An empty array `[]` does NOT work: GTM merges dataLayer pushes recursively, so `[]` has no indices to overwrite and the original numeric items survive.
+- **poll for `window.rkp`** before pushing, rather than using a fixed delay.
+
+Roku accepts **only three** `custom_data` keys — `value`, `currency`, **`order_id`**. `transaction_id`, `quantity`, `item_name`, `item_city` are all rejected as *"Unexpected key"*, and a rejected key holding a **number** makes Roku drop the entire `custom_data` object.
+
+**Known unfixed Roku bug:** their GTM template truncates `value` to an integer client-side (`189.50` → `189`), so revenue under-reports by up to $0.99/order. Roku support confirmed the platform supports floats and that this is their template's fault. Reported; no fix as of Aug 2026.
+
+### How to verify any of this (don't guess — measure)
+
+Load the live site in a browser, push a test event, and read the outbound network calls:
+
+```js
+window.dataLayer.push({ event: "purchase", eventModel: {
+  transaction_id: "TEST-" + Date.now(), value: 189.50, currency: "USD",
+  items: [{ item_id: "VIP", item_name: "VIP", item_city: "Columbus", quantity: 2, price: 94.75 }],
+  user_data: { email_address: "t@example.com", phone_number: "+15135550199" } } });
+```
+
+Then check: Google Ads → `googleadservices.com/pagead/conversion/18196896859/` (expect `label`, `value`, `oid`); Meta → `facebook.com/tr/?ev=Purchase`; Roku → XHR body to `tags.w55c.net/ust` (expect populated `custom_data`, `errors: null`).
+
+⚠️ **`gtm.js` is browser-cached (~15 min).** After publishing, force a refresh with `fetch(gtmUrl, {cache:'reload'})` before testing, or you'll be measuring the old container and chasing ghosts.
 
 ### If Google Ads/Meta conversions ever show zero or look wrong again
 1. Check the GTM container directly (export via tagmanager.google.com → Admin → Export Container, or use a properly-registered GTM MCP connector — see the Stape/GTM MCP note below) for what conversion/tracking tags actually exist and what triggers them. **Do not assume a tag exists just because a Google Ads/Meta campaign is "running"** — a campaign can run indefinitely with zero tracking installed.
@@ -495,7 +556,9 @@ TEXTMAGIC_LIST_ID_PHOENIX=...
 ## What Still Needs to Be Done
 
 ### High Priority
-- [ ] **Google Ads showing zero conversions** — campaign is running, app has zero Google Ads code (confirmed via grep — any tracking here lives entirely in GTM, not the app), GTM MCP connector was flaky/never fully diagnosed this. Next step: export the GTM container JSON directly and check for an actual Google Ads Conversion Tracking tag + trigger; a running campaign with zero conversions almost always means either no conversion tag was ever installed, or a Google Ads "conversion action" exists in the Ads UI but was never linked to anything that fires it. See Tracking section's troubleshooting checklist.
+- [x] **Google Ads showing zero conversions** — FIXED Aug 6 2026. Root cause was a URL-based page-load conversion that never matched. Replaced with an event-based conversion firing off `purchase`; verified live end-to-end. See the "Google Ads conversions" subsection under Tracking. **Watch:** the `Purchase (GTM)` action stays "Inactive" until its first real ad-attributed conversion lands.
+- [ ] **MNTN / Mountain.com** — no pixel installed anywhere. Not urgent (no active MNTN spend as of Aug 2026), but must be built before launching there.
+- [ ] **`robots.txt` and `sitemap.xml` both 404** — the Next.js rebuild never added them. Google's Tag Coverage is consequently monitoring ~89 mostly-dead URLs from the old Replit/Shopify site (`spock.replit.dev`, `/tc-events/tequila-fest-cincinnati-2018/`, a Shopify web-pixel path). Add `app/robots.ts` + `app/sitemap.ts`.
 - [ ] **Coupon/promo codes** at checkout — `coupons` table exists in DB, UI and API not built
 - [ ] **Supabase RLS security audit** — Row Level Security policies need review on all tables
 
@@ -605,7 +668,7 @@ Original Replit project archived at: `/Users/adambossin/Sites/tequila-fest-usa-o
 
 17. **Vendor payments and ticket payments share one Stripe webhook** (`src/app/api/webhooks/stripe/route.ts`) — routed by `session.metadata.type` (`"vendor"` → `handleVendorPaid`, `"brand_package"` → `handleBrandPackagePaid`, unset → `handleCheckoutComplete` for tickets). Any new payment type must set a distinct `metadata.type` or it will silently fall through to the ticket handler and create a phantom ticket order — this exact bug hit three real vendors historically.
 
-18. **The app has zero direct Meta Pixel/CAPI or Google Ads code** — all conversion tracking (Meta, GA4, Roku, and any future Google Ads conversion tag) lives entirely inside Google Tag Manager (`GTM-P3Q33V72`). The app's only responsibility is pushing correctly-shaped events to `window.dataLayer` (see full Tracking section). Don't add a direct Pixel/gtag/CAPI integration without first checking whether GTM already handles it — that exact duplication caused a real incident this session (see Tracking section).
+18. **The app has zero direct Meta Pixel/CAPI code, but it DOES have a hardcoded Google Ads gtag** — `src/components/GoogleAdsTag.tsx` renders `gtag('config', 'AW-18196896859')` in `layout.tsx`. That is intentional and load-bearing (sets the `_gcl_au` conversion-linker cookie); **never add a Google Ads config tag inside GTM too**, or every page view double-fires. All *conversion* tracking (Meta, GA4, Google Ads, Roku) lives in GTM (`GTM-P3Q33V72`) plus a server-side container on Cloud Run. The app's only job is pushing correctly-shaped `eventModel` events to `window.dataLayer`. Don't add a direct Pixel/CAPI integration without checking whether GTM already handles it — that duplication caused a real incident (see Tracking section).
 
 19. **Any new admin aggregate/reporting query must**: (a) use `fetchAllRows()` if it could plausibly return >1000 rows, (b) join via Postgres embedded-resource syntax rather than building ID lists client-side, and (c) filter `ticket_orders.status = 'paid' AND source != 'media_comp'` unless there's a specific reason not to (check-in stats). Test any change to `/api/admin/stats` or `/api/admin/events` against both "All Cities" and a specific city filter — a past bug only manifested in one of the two paths.
 
