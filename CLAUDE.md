@@ -562,7 +562,7 @@ TEXTMAGIC_LIST_ID_PHOENIX=...
 ### High Priority
 - [x] **Google Ads showing zero conversions** — FIXED Aug 6 2026. Root cause was a URL-based page-load conversion that never matched. Replaced with an event-based conversion firing off `purchase`; verified live end-to-end. See the "Google Ads conversions" subsection under Tracking. **Watch:** the `Purchase (GTM)` action stays "Inactive" until its first real ad-attributed conversion lands.
 - [ ] **MNTN / Mountain.com** — no pixel installed anywhere. Not urgent (no active MNTN spend as of Aug 2026), but must be built before launching there.
-- [ ] **`robots.txt` and `sitemap.xml` both 404** — the Next.js rebuild never added them. Google's Tag Coverage is consequently monitoring ~89 mostly-dead URLs from the old Replit/Shopify site (`spock.replit.dev`, `/tc-events/tequila-fest-cincinnati-2018/`, a Shopify web-pixel path). Add `app/robots.ts` + `app/sitemap.ts`.
+- [x] **`robots.txt` and `sitemap.xml`** — added Aug 6 2026 (`src/app/robots.ts`, `src/app/sitemap.ts`). Sitemap pulls upcoming events live from Supabase and revalidates hourly, so admin changes appear without a redeploy; blog posts come from the static `POSTS` array. **`robots.ts` disallows the three post-payment confirmation pages** — that's not just SEO, those pages fire purchase conversions and a crawler reaching them would inject phantom purchases into Google Ads/Meta/Roku. Google's Tag Coverage may take a while to stop monitoring the ~89 dead Replit/Shopify-era URLs it already knows about.
 - [ ] **Coupon/promo codes** at checkout — `coupons` table exists in DB, UI and API not built
 - [ ] **Supabase RLS security audit** — Row Level Security policies need review on all tables
 
