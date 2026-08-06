@@ -377,7 +377,11 @@ The **old URL-based "Purchase" action was demoted to Secondary** so sales don't 
 
 **This one tag covers all three revenue pages** — `/ticket-confirmation`, `/brand-packages/success`, and `/vendor-payment-success` — because all three render `PurchaseDataLayerPush`. Previously only ticket confirmations were tracked at all.
 
-**Enhanced Conversions is NOT wired.** The GTM Google Ads Conversion Tracking template only exposes the user-provided-data field when the container owns the Google tag — ours lives in app code. A `UPD - Purchase` variable exists but is unreferenced. Revisit if match rates matter.
+**Enhanced Conversions IS wired** (Aug 6 2026, container version 20). It is configured on the **Google tag**, not the conversion tag — `Google Tag AW-18196896859` has `configSettingsTable` → `user_data` = `{{UPD - Purchase}}`, and the Ads conversion tag inherits it ("This tag will use the configuration of Google tag Tequila Fest USA"). `UPD - Purchase` is an `awec` variable in MANUAL mode reading `DLV - email` / `DLV - phone`.
+
+**Verifying Enhanced Conversions:** Google does **not** put hashed PII in the query string (Meta does — don't confuse the two when grepping traffic). The client-side signal is `ec_mode` in the conversion beacon: `a` = automatic page-scraping, `m` = manual user-provided data. It should read **`m`**. Real confirmation only comes from Google Ads → the conversion action's Enhanced conversions diagnostics after 24–48h.
+
+⚠️ Enhanced Conversions must ALSO be switched on in the Google Ads UI (Goals → Conversions → `Purchase (GTM)` → Enhanced conversions → accept the customer-data terms, method = Google Tag Manager). Without that, Google ignores the data GTM sends.
 
 ### Roku — two tags + a relay event (this is subtle, read before touching)
 
