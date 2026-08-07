@@ -83,7 +83,7 @@ export const EVENTS: EventData[] = [
     time: "3:00 PM – 9:00 PM",
     venue: "Gravity / Greater Columbus Convention Center",
     venueDetail: "Downtown Columbus",
-    venueAddress: "400 N High St, Columbus, OH 43215",
+    venueAddress: "480 W Broad St, Columbus, OH 43215",
     price: 55,
     gaTicket: { price: 5, limited: true, qty: 100 },
     freeParking: false,
