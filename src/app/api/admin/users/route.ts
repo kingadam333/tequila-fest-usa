@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyAdminToken, unauthorizedResponse } from "@/lib/adminAuth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { resend, FROM_SUPPORT } from "@/lib/resend";
+import { wrapEmailHtml } from "@/lib/emailLayout";
 
 export async function GET(req: NextRequest) {
   if (!verifyAdminToken(req)) return unauthorizedResponse();
@@ -145,12 +146,11 @@ export async function POST(req: NextRequest) {
         from: FROM_SUPPORT,
         to: email,
         subject: "Your Tequila Fest USA account",
-        html: `<!DOCTYPE html><html><body style="background:#0d0500;font-family:Arial,sans-serif;color:#fff8f0;padding:40px 20px">
-<div style="max-width:560px;margin:0 auto">
+        html: wrapEmailHtml(`
   <p style="font-size:26px;font-weight:900;letter-spacing:4px;color:#F5A623;margin:0 0 24px">TEQUILA FEST USA</p>
-  <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:28px">
+  <div style="background:#1a1108;border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:28px">
     <p style="font-size:17px;font-weight:700;margin:0 0 8px">Hi ${firstName || "there"}!</p>
-    <p style="color:rgba(255,248,240,0.6);font-size:15px;line-height:1.6;margin:0 0 20px">
+    <p style="color:rgba(255,248,240,0.75);font-size:15px;line-height:1.6;margin:0 0 20px">
       Your Tequila Fest USA account has been created. Click below to set your password and access your tickets.
     </p>
     <div style="text-align:center">
@@ -159,8 +159,7 @@ export async function POST(req: NextRequest) {
         ACCESS MY ACCOUNT
       </a>
     </div>
-  </div>
-</div></body></html>`,
+  </div>`),
       });
     } catch (err) {
       console.error("Welcome email failed:", err);

@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { resend, FROM_EMAIL, generatePassword } from "@/lib/resend";
 import { generateShortCode } from "@/lib/shortCode";
 import { getUniqueClickCounts } from "@/lib/uniqueClicks";
+import { wrapEmailHtml } from "@/lib/emailLayout";
 import bcrypt from "bcryptjs";
 
 // Every affiliate + their live-computed performance, never trusting the
@@ -150,24 +151,22 @@ export async function POST(req: NextRequest) {
       from: FROM_EMAIL,
       to: cleanEmail,
       subject: "Your Tequila Fest USA Affiliate Account",
-      html: `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#0d0500;font-family:Arial,sans-serif;color:#fff8f0">
-<div style="max-width:560px;margin:0 auto;padding:40px 24px">
+      html: wrapEmailHtml(`
   <p style="font-size:11px;font-weight:900;letter-spacing:6px;color:#F5A623;margin:0 0 28px">TEQUILA FEST USA</p>
-  <div style="background:rgba(245,166,35,0.08);border:1px solid rgba(245,166,35,0.2);border-radius:16px;padding:28px;margin-bottom:24px">
+  <div style="background:#241503;border:1px solid rgba(245,166,35,0.2);border-radius:16px;padding:28px;margin-bottom:24px">
     <p style="font-size:22px;font-weight:900;color:#F5A623;margin:0 0 12px">Welcome to the Affiliate Program!</p>
-    <p style="color:rgba(255,248,240,0.65);line-height:1.6;margin:0 0 20px">
+    <p style="color:rgba(255,248,240,0.85);line-height:1.6;margin:0 0 20px">
       Hi ${firstName.trim()}, you're set up to earn ${commissionRate ?? 10}% commission on every ticket sale you refer.
     </p>
     <table style="width:100%;font-size:14px;margin-bottom:20px">
-      <tr><td style="color:rgba(255,248,240,0.4);padding:4px 0;width:35%">Login URL</td><td style="color:#fff8f0">${loginUrl}</td></tr>
-      <tr><td style="color:rgba(255,248,240,0.4);padding:4px 0">Email</td><td style="color:#fff8f0">${cleanEmail}</td></tr>
-      <tr><td style="color:rgba(255,248,240,0.4);padding:4px 0">Password</td><td style="color:#fff8f0;font-family:monospace">${password}</td></tr>
-      <tr><td style="color:rgba(255,248,240,0.4);padding:4px 0">Your Link</td><td style="color:#F5A623">${refLink}</td></tr>
+      <tr><td style="color:rgba(255,248,240,0.6);padding:4px 0;width:35%">Login URL</td><td style="color:#fff8f0">${loginUrl}</td></tr>
+      <tr><td style="color:rgba(255,248,240,0.6);padding:4px 0">Email</td><td style="color:#fff8f0">${cleanEmail}</td></tr>
+      <tr><td style="color:rgba(255,248,240,0.6);padding:4px 0">Password</td><td style="color:#fff8f0;font-family:monospace">${password}</td></tr>
+      <tr><td style="color:rgba(255,248,240,0.6);padding:4px 0">Your Link</td><td style="color:#F5A623">${refLink}</td></tr>
     </table>
     <p style="text-align:center;margin:0 0 8px"><img src="${qrUrl}" width="180" height="180" alt="Your QR code" style="border-radius:8px;border:2px solid #fff" /></p>
-    <p style="color:rgba(255,248,240,0.4);font-size:12px;text-align:center;margin:0">Share your link or QR code anywhere — every ticket sale through it is tracked automatically.</p>
-  </div>
-</div></body></html>`,
+    <p style="color:rgba(255,248,240,0.6);font-size:12px;text-align:center;margin:0">Share your link or QR code anywhere — every ticket sale through it is tracked automatically.</p>
+  </div>`),
     });
   } catch (err) {
     console.error("Failed to send affiliate welcome email:", err);

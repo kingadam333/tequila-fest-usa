@@ -1,6 +1,7 @@
 import { normalizeTicketType } from "@/lib/normalizeTicketType";
 import { fetchAllRows } from "@/lib/fetchAllRows";
 import { resend, FROM_EMAIL } from "@/lib/resend";
+import { wrapEmailHtml } from "@/lib/emailLayout";
 
 export const REFERRAL_MILESTONE = 5;
 
@@ -109,18 +110,16 @@ export async function checkAndAwardReferralMilestone(db: any, referralCode: stri
         from: FROM_EMAIL,
         to: customer.email,
         subject: `🎉 You just earned a FREE VIP upgrade — Tequila Fest ${event.city}`,
-        html: `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#0d0500;font-family:Arial,sans-serif;color:#fff8f0">
-<div style="max-width:560px;margin:0 auto;padding:40px 24px">
+        html: wrapEmailHtml(`
   <p style="font-size:11px;font-weight:900;letter-spacing:6px;color:#F5A623;margin:0 0 28px">TEQUILA FEST USA</p>
-  <div style="background:rgba(245,166,35,0.08);border:1px solid rgba(245,166,35,0.2);border-radius:16px;padding:28px">
+  <div style="background:#241503;border:1px solid rgba(245,166,35,0.2);border-radius:16px;padding:28px">
     <p style="font-size:22px;font-weight:900;color:#F5A623;margin:0 0 12px">You earned a free VIP upgrade! 🥃</p>
-    <p style="color:rgba(255,248,240,0.7);line-height:1.6;margin:0">
+    <p style="color:rgba(255,248,240,0.85);line-height:1.6;margin:0">
       ${customer.first_name || "Hey"}, ${REFERRAL_MILESTONE} of your friends just bought tickets to Tequila Fest
       ${event.city} through your referral link — as a thank you, one of your tickets has been upgraded to
       <strong>VIP Experience</strong>, completely free. Check your account for your updated ticket.
     </p>
-  </div>
-</div></body></html>`,
+  </div>`),
       }).catch(() => {});
     }
   } catch {

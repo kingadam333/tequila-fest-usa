@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { resend, FROM_SUPPORT, FROM_VENDORS } from "@/lib/resend";
 import { verifyTurnstile } from "@/lib/turnstile";
+import { wrapEmailHtml } from "@/lib/emailLayout";
 
 export async function POST(req: NextRequest) {
   const { name, business, email, phone, type, cities, description, captchaToken } = await req.json();
@@ -77,26 +78,24 @@ export async function POST(req: NextRequest) {
     from: FROM_VENDORS,
     to: email.trim(),
     subject: "Vendor Application Received — Tequila Fest USA",
-    html: `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#0d0500;font-family:Arial,sans-serif;color:#fff8f0">
-<div style="max-width:560px;margin:0 auto;padding:40px 24px">
+    html: wrapEmailHtml(`
   <p style="font-size:11px;font-weight:900;letter-spacing:6px;color:#F5A623;margin:0 0 28px">TEQUILA FEST USA</p>
-  <div style="background:rgba(245,166,35,0.08);border:1px solid rgba(245,166,35,0.2);border-radius:16px;padding:28px;margin-bottom:20px">
+  <div style="background:#241503;border:1px solid rgba(245,166,35,0.2);border-radius:16px;padding:28px;margin-bottom:20px">
     <p style="font-size:22px;font-weight:900;color:#F5A623;margin:0 0 8px">Application Received! 🎉</p>
-    <p style="color:rgba(255,248,240,0.65);margin:0;line-height:1.6">
+    <p style="color:rgba(255,248,240,0.85);margin:0;line-height:1.6">
       Hi ${name.trim()}, we've received your vendor application for <strong>${business.trim()}</strong>.
       Our team will review it and get back to you within 3–5 business days.
     </p>
   </div>
-  <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:20px;margin-bottom:20px">
+  <div style="background:#1a1108;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:20px;margin-bottom:20px">
     <p style="font-size:11px;font-weight:700;letter-spacing:3px;color:#F5A623;margin:0 0 12px">YOUR APPLICATION</p>
     <table style="width:100%;font-size:14px">
-      <tr><td style="color:rgba(255,248,240,0.4);padding:4px 0">Business</td><td style="color:#fff8f0;font-weight:600">${business.trim()}</td></tr>
-      <tr><td style="color:rgba(255,248,240,0.4);padding:4px 0">Type</td><td style="color:#fff8f0">${type}</td></tr>
-      <tr><td style="color:rgba(255,248,240,0.4);padding:4px 0">Cities</td><td style="color:#fff8f0">${Array.isArray(cities) ? cities.join(", ") : cities || "TBD"}</td></tr>
+      <tr><td style="color:rgba(255,248,240,0.6);padding:4px 0">Business</td><td style="color:#fff8f0;font-weight:600">${business.trim()}</td></tr>
+      <tr><td style="color:rgba(255,248,240,0.6);padding:4px 0">Type</td><td style="color:#fff8f0">${type}</td></tr>
+      <tr><td style="color:rgba(255,248,240,0.6);padding:4px 0">Cities</td><td style="color:#fff8f0">${Array.isArray(cities) ? cities.join(", ") : cities || "TBD"}</td></tr>
     </table>
   </div>
-  <p style="color:rgba(255,248,240,0.3);font-size:12px;margin:0">Questions? Email <a href="mailto:vendors@mail.tequilafestusa.com" style="color:#F5A623">vendors@mail.tequilafestusa.com</a></p>
-</div></body></html>`,
+  <p style="color:rgba(255,248,240,0.5);font-size:12px;margin:0">Questions? Email <a href="mailto:vendors@mail.tequilafestusa.com" style="color:#F5A623">vendors@mail.tequilafestusa.com</a></p>`),
   }).catch(() => {});
 
   // Notify admin

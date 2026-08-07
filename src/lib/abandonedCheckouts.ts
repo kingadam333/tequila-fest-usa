@@ -2,6 +2,7 @@ import { stripe } from "@/lib/stripe";
 import { supabaseAdmin } from "@/lib/supabase";
 import { resend, FROM_EMAIL } from "@/lib/resend";
 import { getEvent } from "@/lib/events";
+import { wrapEmailHtml } from "@/lib/emailLayout";
 
 export interface AbandonedRecipient {
   email: string;
@@ -69,23 +70,21 @@ export async function getAbandonedCheckoutGroups(): Promise<AbandonedGroup[]> {
 }
 
 function recoveryEmailHtml(firstName: string, city: string, buyUrl: string): string {
-  return `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#0d0500;font-family:Arial,sans-serif;color:#fff8f0">
-<div style="max-width:560px;margin:0 auto;padding:40px 24px">
+  return wrapEmailHtml(`
   <p style="font-size:11px;font-weight:900;letter-spacing:6px;color:#F5A623;margin:0 0 28px">TEQUILA FEST USA</p>
-  <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:28px">
+  <div style="background:#1a1108;border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:28px">
     <p style="font-size:20px;font-weight:900;color:#F5A623;margin:0 0 12px">Your order wasn't completed</p>
-    <p style="color:rgba(255,248,240,0.7);font-size:15px;line-height:1.7;margin:0 0 8px">
+    <p style="color:rgba(255,248,240,0.85);font-size:15px;line-height:1.7;margin:0 0 8px">
       Hi ${firstName}, looks like you started grabbing tickets to Tequila Fest ${city} but didn't finish checkout.
     </p>
-    <p style="color:rgba(255,248,240,0.7);font-size:15px;line-height:1.7;margin:0 0 20px">
+    <p style="color:rgba(255,248,240,0.85);font-size:15px;line-height:1.7;margin:0 0 20px">
       <strong>You were not charged.</strong> If you still want in, tickets are going fast — grab yours below.
     </p>
     <div style="text-align:center">
       <a href="${buyUrl}" style="display:inline-block;background:#F5A623;color:#0d0500;font-weight:900;font-size:14px;letter-spacing:1px;text-transform:uppercase;text-decoration:none;padding:14px 36px;border-radius:50px">Buy Tickets</a>
     </div>
   </div>
-  <p style="color:rgba(255,248,240,0.25);font-size:12px;text-align:center;margin-top:24px">Questions? Email <a href="mailto:help@mail.tequilafestusa.com" style="color:#F5A623">help@mail.tequilafestusa.com</a></p>
-</div></body></html>`;
+  <p style="color:rgba(255,248,240,0.4);font-size:12px;text-align:center;margin-top:24px">Questions? Email <a href="mailto:help@mail.tequilafestusa.com" style="color:#F5A623">help@mail.tequilafestusa.com</a></p>`);
 }
 
 export async function sendAbandonedCheckoutRecovery(eventSlug?: string): Promise<{ sent: number; failed: number; total: number; groups: number }> {

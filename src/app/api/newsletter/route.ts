@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { resend, FROM_SUPPORT } from "@/lib/resend";
+import { wrapEmailHtml } from "@/lib/emailLayout";
 
 const BREVO_LIST_IDS: Record<string, number> = {
   Cincinnati: 29,
@@ -91,24 +92,19 @@ export async function POST(req: NextRequest) {
     from: FROM_SUPPORT,
     to: cleanEmail,
     subject: "You're on the list 🥃 — Tequila Fest USA",
-    html: `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#0d0500;font-family:Arial,sans-serif;color:#fff8f0">
-  <div style="max-width:560px;margin:0 auto;padding:40px 24px">
-
+    html: wrapEmailHtml(`
     <p style="font-size:11px;font-weight:900;letter-spacing:6px;color:#F5A623;margin:0 0 32px">TEQUILA FEST USA</p>
 
-    <div style="background:linear-gradient(135deg,rgba(245,166,35,0.15),rgba(245,166,35,0.05));border:1px solid rgba(245,166,35,0.25);border-radius:20px;padding:36px;margin-bottom:24px;text-align:center">
+    <div style="background:#241503;border:1px solid rgba(245,166,35,0.25);border-radius:20px;padding:36px;margin-bottom:24px;text-align:center">
       <p style="font-size:48px;margin:0 0 12px">🥃</p>
       <h1 style="font-size:28px;font-weight:900;letter-spacing:3px;color:#F5A623;margin:0 0 8px">YOU'RE IN, ${firstName.trim().toUpperCase()}!</h1>
-      <p style="color:rgba(255,248,240,0.65);font-size:15px;margin:0;line-height:1.6">
+      <p style="color:rgba(255,248,240,0.85);font-size:15px;margin:0;line-height:1.6">
         Welcome to the inner circle. You'll be first to know about<br>
         ticket drops, exclusive presales, and festival updates.
       </p>
     </div>
 
-    <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:24px;margin-bottom:24px">
+    <div style="background:#1a1108;border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:24px;margin-bottom:24px">
       <p style="font-size:11px;font-weight:700;letter-spacing:4px;color:#F5A623;margin:0 0 16px">
         ${cleanCities.length > 0 ? "YOUR CITIES" : "2026 TOUR CITIES"}
       </p>
@@ -117,7 +113,7 @@ export async function POST(req: NextRequest) {
         <tr>
           <td style="padding:8px 0;${i < cityRows.length - 1 ? "border-bottom:1px solid rgba(255,255,255,0.07)" : ""}">
             <span style="color:#fff8f0;font-weight:600">${r.city}</span>
-            <span style="float:right;color:rgba(255,248,240,0.4);font-size:13px">${r.date}</span>
+            <span style="float:right;color:rgba(255,248,240,0.6);font-size:13px">${r.date}</span>
           </td>
         </tr>`).join("")}
       </table>
@@ -130,13 +126,10 @@ export async function POST(req: NextRequest) {
       </a>
     </div>
 
-    <p style="color:rgba(255,248,240,0.2);font-size:12px;text-align:center;margin:0;line-height:1.8">
+    <p style="color:rgba(255,248,240,0.4);font-size:12px;text-align:center;margin:0;line-height:1.8">
       You signed up at tequilafestusa.com &nbsp;·&nbsp; No spam, ever &nbsp;·&nbsp;
-      <a href="https://tequilafestusa.com/unsubscribe?email=${encodeURIComponent(cleanEmail)}" style="color:rgba(255,248,240,0.3)">Unsubscribe</a>
-    </p>
-  </div>
-</body>
-</html>`,
+      <a href="https://tequilafestusa.com/unsubscribe?email=${encodeURIComponent(cleanEmail)}" style="color:rgba(255,248,240,0.5)">Unsubscribe</a>
+    </p>`),
   }).catch((err: any) => console.error("Welcome email error:", err));
 
   return NextResponse.json({ success: true });

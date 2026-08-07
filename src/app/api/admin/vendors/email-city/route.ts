@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyAdminToken, unauthorizedResponse } from "@/lib/adminAuth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { resend, FROM_VENDORS } from "@/lib/resend";
+import { wrapEmailHtml } from "@/lib/emailLayout";
 
 export const config = { api: { bodyParser: false } };
 
@@ -46,17 +47,15 @@ export async function POST(req: NextRequest) {
     .map(para => `<p style="color:rgba(255,248,240,0.75);font-size:15px;line-height:1.7;margin:0 0 16px">${para.replace(/\n/g, "<br>")}</p>`)
     .join("");
 
-  const buildHtml = (firstName: string) => `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#0d0500;font-family:Arial,sans-serif;color:#fff8f0">
-<div style="max-width:560px;margin:0 auto;padding:40px 24px">
+  const buildHtml = (firstName: string) => wrapEmailHtml(`
   <p style="font-size:11px;font-weight:900;letter-spacing:6px;color:#F5A623;margin:0 0 28px">TEQUILA FEST USA — ${city.toUpperCase()}</p>
-  <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:28px">
+  <div style="background:#1a1108;border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:28px">
     <p style="color:rgba(255,248,240,0.9);font-size:15px;margin:0 0 16px">Hi ${firstName},</p>
     ${bodyHtml}
   </div>
-  <p style="color:rgba(255,248,240,0.25);font-size:12px;text-align:center;margin-top:24px">
+  <p style="color:rgba(255,248,240,0.4);font-size:12px;text-align:center;margin-top:24px">
     Questions? Reply to this email or contact <a href="mailto:vendors@mail.tequilafestusa.com" style="color:#F5A623">vendors@mail.tequilafestusa.com</a>
-  </p>
-</div></body></html>`;
+  </p>`);
 
   const failed: { email: string; error: string }[] = [];
   let sent = 0;

@@ -2,6 +2,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { resend, FROM_EMAIL, FROM_SUPPORT, passwordResetHtml, qrTicketHtml, generatePassword } from "@/lib/resend";
 import { getEvent } from "@/lib/events";
 import { TICKET_LABELS } from "@/lib/stripe";
+import { wrapEmailHtml } from "@/lib/emailLayout";
 import crypto from "crypto";
 
 // Shared by the public /api/auth/forgot-password route AND the AI inbox
@@ -290,22 +291,20 @@ export async function repairCustomerLogin(email: string): Promise<
       from: FROM_SUPPORT,
       to: account.email,
       subject: "Your Tequila Fest USA account is ready",
-      html: `<!DOCTYPE html><html><body style="background:#0d0500;font-family:Arial,sans-serif;color:#fff8f0;padding:40px 20px">
-<div style="max-width:560px;margin:0 auto">
+      html: wrapEmailHtml(`
   <p style="font-size:26px;font-weight:900;letter-spacing:4px;color:#F5A623;margin:0 0 24px">TEQUILA FEST USA</p>
-  <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:28px">
+  <div style="background:#1a1108;border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:28px">
     <p style="font-size:17px;font-weight:700;margin:0 0 8px">Hi ${account.first_name || "there"},</p>
-    <p style="color:rgba(255,248,240,0.6);font-size:15px;line-height:1.6;margin:0 0 20px">
+    <p style="color:rgba(255,248,240,0.75);font-size:15px;line-height:1.6;margin:0 0 20px">
       We found and fixed an issue with your account login. Here's a fresh temporary password — please change it after logging in.
     </p>
     <table cellpadding="0" cellspacing="0" border="0" style="background:rgba(0,0,0,0.3);border-radius:10px;padding:12px 16px;width:100%">
-      <tr><td><p style="margin:0;color:rgba(255,248,240,0.4);font-size:11px;text-transform:uppercase;letter-spacing:1px">Temporary Password</p><p style="margin:4px 0 0;color:#F5A623;font-family:monospace;font-size:18px;font-weight:900;letter-spacing:2px">${tempPassword}</p></td></tr>
+      <tr><td><p style="margin:0;color:rgba(255,248,240,0.6);font-size:11px;text-transform:uppercase;letter-spacing:1px">Temporary Password</p><p style="margin:4px 0 0;color:#F5A623;font-family:monospace;font-size:18px;font-weight:900;letter-spacing:2px">${tempPassword}</p></td></tr>
     </table>
     <div style="text-align:center;margin-top:20px">
       <a href="${appUrl}/login" style="display:inline-block;background:#F5A623;color:#000;font-weight:700;font-size:15px;padding:14px 32px;border-radius:10px;text-decoration:none">LOG IN NOW</a>
     </div>
-  </div>
-</div></body></html>`,
+  </div>`),
     });
   } catch (err) {
     console.error("repairCustomerLogin welcome email failed:", err);

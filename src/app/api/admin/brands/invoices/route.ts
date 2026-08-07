@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyAdminToken, unauthorizedResponse } from "@/lib/adminAuth";
 import { supabaseAdmin } from "@/lib/supabase";
 import Stripe from "stripe";
+import { wrapEmailHtml } from "@/lib/emailLayout";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 const db = () => supabaseAdmin as any;
@@ -171,8 +172,7 @@ function buildInvoiceEmailHtml({ contact_name, invoice_number, event_name, line_
       <td style="padding:10px 0;border-bottom:1px solid #2a1a00;color:${amountColor};text-align:right;font-weight:bold">${amountText}</td>
     </tr>`;
   }).join("");
-  return `<!DOCTYPE html><html><body style="background:#0d0500;font-family:sans-serif;color:#fff8f0;margin:0;padding:0">
-  <div style="max-width:600px;margin:0 auto;padding:40px 20px">
+  return wrapEmailHtml(`
     <h1 style="color:#f5a623;font-size:28px;margin:0 0 4px">TEQUILA FEST USA</h1>
     <p style="color:#fff8f0;opacity:0.5;margin:0 0 32px">Brand Invoice</p>
     <h2 style="color:#fff;margin:0 0 8px">Invoice #${invoice_number}</h2>
@@ -197,6 +197,5 @@ function buildInvoiceEmailHtml({ contact_name, invoice_number, event_name, line_
       <p style="color:#4ade80;font-weight:bold;margin:0">No payment due — this invoice is fully comped.</p>
     </div>`}
     ${otherWaysToPay}
-    <p style="color:#fff8f0;opacity:0.4;font-size:12px;text-align:center;margin-top:32px">Tequila Fest USA · brands@mail.tequilafestusa.com</p>
-  </div></body></html>`;
+    <p style="color:#fff8f0;opacity:0.6;font-size:12px;text-align:center;margin-top:32px">Tequila Fest USA · brands@mail.tequilafestusa.com</p>`, { maxWidth: 600 });
 }

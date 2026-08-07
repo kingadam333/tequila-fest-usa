@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyAdminToken, unauthorizedResponse } from "@/lib/adminAuth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { resend, FROM_VENDORS } from "@/lib/resend";
+import { wrapEmailHtml } from "@/lib/emailLayout";
 import Stripe from "stripe";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
@@ -93,31 +94,30 @@ export async function sendVendorApprovalEmail(db: any, app: any) {
     to: app.email,
     subject: `You're Approved! Complete Your Vendor Registration — Tequila Fest USA`,
     tags: [{ name: "category", value: "vendor_approval" }, { name: "vendor_application_id", value: app.id }],
-    html: `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#0d0500;font-family:Arial,sans-serif;color:#fff8f0">
-<div style="max-width:560px;margin:0 auto;padding:40px 24px">
+    html: wrapEmailHtml(`
   <p style="font-size:11px;font-weight:900;letter-spacing:6px;color:#F5A623;margin:0 0 28px">TEQUILA FEST USA</p>
 
-  <div style="background:linear-gradient(135deg,rgba(245,166,35,0.15),rgba(245,166,35,0.05));border:1px solid rgba(245,166,35,0.3);border-radius:20px;padding:32px;margin-bottom:24px;text-align:center">
+  <div style="background:#241503;border:1px solid rgba(245,166,35,0.3);border-radius:20px;padding:32px;margin-bottom:24px;text-align:center">
     <p style="font-size:40px;margin:0 0 12px">🎉</p>
     <h1 style="font-size:26px;font-weight:900;color:#F5A623;letter-spacing:2px;margin:0 0 8px">YOU'RE APPROVED!</h1>
-    <p style="color:rgba(255,248,240,0.7);font-size:15px;margin:0;line-height:1.6">
+    <p style="color:rgba(255,248,240,0.85);font-size:15px;margin:0;line-height:1.6">
       Congratulations, <strong>${app.name}</strong>! <strong>${app.business_name}</strong> has been approved as a vendor for Tequila Fest USA.
     </p>
   </div>
 
-  <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:22px;margin-bottom:24px">
+  <div style="background:#1a1108;border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:22px;margin-bottom:24px">
     <p style="font-size:11px;font-weight:700;letter-spacing:3px;color:#F5A623;margin:0 0 14px">YOUR DETAILS</p>
     <table style="width:100%;font-size:14px;border-collapse:collapse">
-      <tr><td style="color:rgba(255,248,240,0.45);padding:5px 0;width:40%">Business</td><td style="color:#fff8f0;font-weight:600">${app.business_name}</td></tr>
-      <tr><td style="color:rgba(255,248,240,0.45);padding:5px 0">Type</td><td style="color:#fff8f0">${app.vendor_type}</td></tr>
-      <tr><td style="color:rgba(255,248,240,0.45);padding:5px 0">Cities</td><td style="color:#fff8f0">${app.cities?.join(", ") || "TBD"}</td></tr>
-      <tr><td style="color:rgba(255,248,240,0.45);padding:5px 0">Vendor Fee</td><td style="color:#F5A623;font-weight:700">$${amount} (${cityCount} city × $150)</td></tr>
+      <tr><td style="color:rgba(255,248,240,0.6);padding:5px 0;width:40%">Business</td><td style="color:#fff8f0;font-weight:600">${app.business_name}</td></tr>
+      <tr><td style="color:rgba(255,248,240,0.6);padding:5px 0">Type</td><td style="color:#fff8f0">${app.vendor_type}</td></tr>
+      <tr><td style="color:rgba(255,248,240,0.6);padding:5px 0">Cities</td><td style="color:#fff8f0">${app.cities?.join(", ") || "TBD"}</td></tr>
+      <tr><td style="color:rgba(255,248,240,0.6);padding:5px 0">Vendor Fee</td><td style="color:#F5A623;font-weight:700">$${amount} (${cityCount} city × $150)</td></tr>
     </table>
   </div>
 
-  <div style="background:rgba(245,166,35,0.06);border:1px solid rgba(245,166,35,0.2);border-radius:14px;padding:22px;margin-bottom:24px">
+  <div style="background:rgba(245,166,35,0.1);border:1px solid rgba(245,166,35,0.2);border-radius:14px;padding:22px;margin-bottom:24px">
     <p style="font-weight:700;color:#fff8f0;margin:0 0 8px">Next Step: Complete Your Payment</p>
-    <p style="color:rgba(255,248,240,0.55);font-size:14px;margin:0 0 18px;line-height:1.6">
+    <p style="color:rgba(255,248,240,0.7);font-size:14px;margin:0 0 18px;line-height:1.6">
       To secure your spot, please complete your vendor fee payment using the button below.
     </p>
     <div style="text-align:center">
@@ -128,10 +128,9 @@ export async function sendVendorApprovalEmail(db: any, app: any) {
     </div>
   </div>
 
-  <p style="color:rgba(255,248,240,0.3);font-size:12px;text-align:center;line-height:1.8">
+  <p style="color:rgba(255,248,240,0.5);font-size:12px;text-align:center;line-height:1.8">
     Questions? Reply to this email or contact <a href="mailto:vendors@mail.tequilafestusa.com" style="color:#F5A623">vendors@mail.tequilafestusa.com</a>
-  </p>
-</div></body></html>`,
+  </p>`),
   });
 
   await db.from("vendor_applications").update({
@@ -184,24 +183,22 @@ export async function PATCH(req: NextRequest) {
       from: FROM_VENDORS,
       to: app.email,
       subject: `Vendor Application Update — Tequila Fest USA`,
-      html: `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#0d0500;font-family:Arial,sans-serif;color:#fff8f0">
-<div style="max-width:560px;margin:0 auto;padding:40px 24px">
+      html: wrapEmailHtml(`
   <p style="font-size:11px;font-weight:900;letter-spacing:6px;color:#F5A623;margin:0 0 28px">TEQUILA FEST USA</p>
-  <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:28px">
+  <div style="background:#1a1108;border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:28px">
     <p style="font-size:18px;font-weight:700;color:#fff8f0;margin:0 0 12px">Application Update</p>
-    <p style="color:rgba(255,248,240,0.6);line-height:1.7;margin:0 0 12px">
+    <p style="color:rgba(255,248,240,0.75);line-height:1.7;margin:0 0 12px">
       Hi ${app.name}, thank you for your interest in vending at Tequila Fest USA.
       After review, we are unable to approve <strong>${app.business_name}</strong> for this cycle.
     </p>
-    ${admin_notes ? `<p style="color:rgba(255,248,240,0.5);font-size:14px;margin:0 0 12px">Note: ${admin_notes}</p>` : ""}
-    <p style="color:rgba(255,248,240,0.4);font-size:14px;margin:0">
+    ${admin_notes ? `<p style="color:rgba(255,248,240,0.6);font-size:14px;margin:0 0 12px">Note: ${admin_notes}</p>` : ""}
+    <p style="color:rgba(255,248,240,0.5);font-size:14px;margin:0">
       We encourage you to apply again for future events. Thank you for your understanding.
     </p>
   </div>
-  <p style="color:rgba(255,248,240,0.25);font-size:12px;text-align:center;margin-top:24px">
+  <p style="color:rgba(255,248,240,0.4);font-size:12px;text-align:center;margin-top:24px">
     <a href="mailto:vendors@mail.tequilafestusa.com" style="color:#F5A623">vendors@mail.tequilafestusa.com</a>
-  </p>
-</div></body></html>`,
+  </p>`),
     }).catch(() => {});
   }
 
