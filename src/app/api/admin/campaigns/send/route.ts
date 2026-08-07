@@ -20,7 +20,7 @@ async function sendWithConcurrency<T>(items: T[], limit: number, fn: (item: T) =
 
 export async function POST(req: NextRequest) {
   if (!verifyAdminToken(req)) return unauthorizedResponse();
-  const { audience, cities, subject, body } = await req.json();
+  const { audience, cities, subject, body, testEmail } = await req.json();
 
   if (!["vendors", "tickets"].includes(audience) || !Array.isArray(cities) || !cities.length) {
     return NextResponse.json({ error: "audience (vendors|tickets) and at least one city are required" }, { status: 400 });
@@ -29,7 +29,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "subject and body are required" }, { status: 400 });
   }
 
-  const recipients = await resolveAudience(audience, cities);
+  // Test mode — send only to this one address (e.g. yourself, for review)
+  // instead of the real resolved audience. Uses the same template/subject
+  // so what you see is exactly what recipients would get.
+  const recipients = testEmail?.trim()
+    ? [{ email: testEmail.trim(), name: "there" }]
+    : await resolveAudience(audience, cities);
   if (!recipients.length) {
     return NextResponse.json({ error: `No ${audience === "vendors" ? "vendors" : "ticket holders"} found for ${cities.join(", ")}` }, { status: 400 });
   }

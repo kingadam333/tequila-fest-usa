@@ -2345,6 +2345,27 @@ function ContactSection({ adminToken }: { adminToken: string }) {
   const [campaignCounting, setCampaignCounting] = useState(false);
   const [campaignSending, setCampaignSending] = useState(false);
   const [campaignResult, setCampaignResult] = useState("");
+  const [campaignTestEmail, setCampaignTestEmail] = useState("");
+  const [campaignTestSending, setCampaignTestSending] = useState(false);
+  const [campaignTestResult, setCampaignTestResult] = useState("");
+
+  const sendCampaignTest = async () => {
+    if (!campaignTestEmail.trim() || !campaignSubject.trim() || !campaignBody.trim() || !campaignCities.length) return;
+    setCampaignTestSending(true);
+    setCampaignTestResult("");
+    try {
+      const res = await fetch("/api/admin/campaigns/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-token": adminToken },
+        body: JSON.stringify({ audience: campaignAudience, cities: campaignCities, subject: campaignSubject, body: campaignBody, testEmail: campaignTestEmail }),
+      });
+      const data = await res.json();
+      setCampaignTestResult(res.ok ? `Sent to ${campaignTestEmail}` : `Error: ${data.error || "failed"}`);
+    } catch (e: any) {
+      setCampaignTestResult(`Error: ${e?.message || "failed"}`);
+    }
+    setCampaignTestSending(false);
+  };
 
   const toggleCampaignCity = (city: string) => {
     setCampaignCount(null);
@@ -2735,6 +2756,18 @@ function ContactSection({ adminToken }: { adminToken: string }) {
               <textarea value={campaignBody} onChange={e => setCampaignBody(e.target.value)} rows={6}
                 placeholder="Write your message…"
                 className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-2.5 text-white placeholder-white/25 outline-none text-sm resize-none" />
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap bg-white/[0.02] border border-white/10 rounded-xl p-3">
+              <input value={campaignTestEmail} onChange={e => setCampaignTestEmail(e.target.value)} type="email" placeholder="your@email.com — send yourself a test first"
+                className="flex-1 min-w-[200px] bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-lg px-3 py-2 text-white placeholder-white/25 outline-none text-sm" />
+              <button onClick={sendCampaignTest} disabled={!campaignTestEmail.trim() || !campaignCities.length || !campaignSubject.trim() || !campaignBody.trim() || campaignTestSending}
+                className="bg-white/5 hover:bg-white/10 border border-white/15 disabled:opacity-50 text-white/70 font-semibold px-4 py-2 rounded-lg text-sm transition-all cursor-pointer whitespace-nowrap">
+                {campaignTestSending ? "Sending…" : "Send Test to Me"}
+              </button>
+              {campaignTestResult && (
+                <p className={`w-full text-xs ${campaignTestResult.startsWith("Error") ? "text-red-400" : "text-green-400"}`}>{campaignTestResult}</p>
+              )}
             </div>
 
             <div className="flex items-center gap-3 flex-wrap">
