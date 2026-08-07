@@ -476,7 +476,7 @@ function ReferTab({ orders, userName }: { orders: RealOrder[]; userName: string 
   );
 
   const [selectedSlug, setSelectedSlug] = useState(userEvents[0]?.slug || "");
-  const [refData, setRefData] = useState<{ code: string; referralUrl: string; stats: { totalReferrals: number; pendingReferrals: number; pointsEarned: number; raffleEntries: number }; event: { city: string; date: string } | null } | null>(null);
+  const [refData, setRefData] = useState<{ code: string; referralUrl: string; stats: { totalReferrals: number; pendingReferrals: number; pointsEarned: number; raffleEntries: number }; milestone: number; rewardStatus: string | null; event: { city: string; date: string } | null } | null>(null);
   const [qrDataUrl, setQrDataUrl] = useState("");
   const [inviteEmails, setInviteEmails] = useState("");
   const [sending, setSending] = useState(false);
@@ -541,19 +541,46 @@ function ReferTab({ orders, userName }: { orders: RealOrder[]; userName: string 
     <div className="space-y-8">
       <div>
         <h2 className="font-display text-white text-3xl mb-1">REFER A FRIEND</h2>
-        <p className="text-white/80 text-sm">Earn 5 points + 1 raffle entry for every friend who buys a ticket. Win a VIP upgrade!</p>
+        <p className="text-white/80 text-sm">Earn points and raffle entries for every friend who buys a ticket — refer {refData?.milestone || 5} and get a free VIP upgrade!</p>
       </div>
 
-      {/* Raffle banner */}
-      <div className="rounded-2xl p-5 border border-yellow-500/30" style={{ background: "linear-gradient(135deg, rgba(123,47,190,0.3), rgba(200,16,46,0.2))" }}>
-        <div className="flex items-start gap-4">
-          <Trophy size={28} className="text-yellow-400 flex-shrink-0 mt-0.5" />
-          <div>
-            <p className="font-display text-yellow-400 text-xl tracking-wide">VIP UPGRADE RAFFLE</p>
-            <p className="text-white/70 text-sm mt-1 leading-relaxed">Every referral = 5 points + 1 raffle entry. The more friends you bring, the more chances to win a free VIP upgrade for your next Tequila Fest!</p>
+      {/* Milestone banner */}
+      {refData && (
+        <div className="rounded-2xl p-5 border border-yellow-500/30" style={{ background: "linear-gradient(135deg, rgba(123,47,190,0.3), rgba(200,16,46,0.2))" }}>
+          <div className="flex items-start gap-4">
+            <Trophy size={28} className="text-yellow-400 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              {refData.rewardStatus === "fulfilled" ? (
+                <>
+                  <p className="font-display text-yellow-400 text-xl tracking-wide">🎉 VIP UPGRADE EARNED!</p>
+                  <p className="text-white/70 text-sm mt-1 leading-relaxed">
+                    You referred {refData.milestone}+ friends — one of your tickets for this event has been upgraded to VIP, free. Check your Tickets tab.
+                  </p>
+                </>
+              ) : refData.rewardStatus === "capacity_blocked" || refData.rewardStatus === "no_ticket" ? (
+                <>
+                  <p className="font-display text-yellow-400 text-xl tracking-wide">You hit {refData.milestone} referrals! 🎉</p>
+                  <p className="text-white/70 text-sm mt-1 leading-relaxed">
+                    Your free VIP upgrade is being sorted out by our team — we&apos;ll email you shortly.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="font-display text-yellow-400 text-xl tracking-wide">FREE VIP UPGRADE</p>
+                  <p className="text-white/70 text-sm mt-1 leading-relaxed mb-3">
+                    Refer {refData.milestone} friends who buy tickets and one of your own tickets gets upgraded to
+                    VIP Experience — completely free. Every referral also earns you points and a raffle entry.
+                  </p>
+                  <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden">
+                    <div className="h-full bg-yellow-500 transition-all" style={{ width: `${Math.min(refData.stats.totalReferrals / refData.milestone, 1) * 100}%` }} />
+                  </div>
+                  <p className="text-white/50 text-xs mt-1.5">{refData.stats.totalReferrals} of {refData.milestone} referrals — {Math.max(refData.milestone - refData.stats.totalReferrals, 0)} more to go!</p>
+                </>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Stats */}
       {refData && (

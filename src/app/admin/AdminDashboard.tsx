@@ -7135,6 +7135,222 @@ function AffiliatesSection({ adminToken }: { adminToken: string }) {
   );
 }
 
+// ─── Referrals Section ──────────────────────────────────────────────────────
+interface ReferralRow {
+  customerId: string;
+  name: string;
+  email: string;
+  eventSlug: string;
+  code: string;
+  sent: number;
+  converted: number;
+  pending: number;
+  progress: number;
+  milestone: number;
+  rewardStatus: string | null;
+  rewardFulfilledAt: string | null;
+  rewardId: string | null;
+}
+
+const REWARD_STATUS_STYLE: Record<string, string> = {
+  fulfilled: "bg-green-500/15 text-green-400 border-green-500/30",
+  capacity_blocked: "bg-red-500/15 text-red-400 border-red-500/30",
+  no_ticket: "bg-red-500/15 text-red-400 border-red-500/30",
+  pending: "bg-yellow-500/15 text-yellow-400 border-yellow-500/30",
+};
+
+function ReferralsSection({ adminToken }: { adminToken: string }) {
+  const headers = { "x-admin-token": adminToken };
+  const [rows, setRows] = useState<ReferralRow[]>([]);
+  const [totals, setTotals] = useState({ referrers: 0, sent: 0, converted: 0, rewardsFulfilled: 0, rewardsNeedingAttention: 0 });
+  const [loading, setLoading] = useState(true);
+
+  const [resolving, setResolving] = useState<ReferralRow | null>(null);
+  const [resolveTickets, setResolveTickets] = useState<{ id: string; ticket_type: string; holder_name: string }[]>([]);
+  const [resolveTicketsLoading, setResolveTicketsLoading] = useState(false);
+  const [resolveSaving, setResolveSaving] = useState(false);
+
+  const fetchReferrals = useCallback(async () => {
+    setLoading(true);
+    const res = await fetch("/api/admin/referrals", { headers });
+    if (res.ok) {
+      const data = await res.json();
+      setRows(data.rows || []);
+      setTotals(data.totals);
+    }
+    setLoading(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adminToken]);
+
+  useEffect(() => { fetchReferrals(); }, [fetchReferrals]);
+
+  const openResolve = async (row: ReferralRow) => {
+    setResolving(row);
+    setResolveTickets([]);
+    setResolveTicketsLoading(true);
+    const res = await fetch(`/api/admin/referrals/${row.rewardId}/fulfill`, { headers });
+    if (res.ok) setResolveTickets((await res.json()).tickets || []);
+    setResolveTicketsLoading(false);
+  };
+
+  const resolveWithTicket = async (ticketInstanceId: string) => {
+    if (!resolving) return;
+    setResolveSaving(true);
+    try {
+      const res = await fetch(`/api/admin/referrals/${resolving.rewardId}/fulfill`, {
+        method: "POST",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify({ ticketInstanceId }),
+      });
+      if (res.ok) {
+        setResolving(null);
+        fetchReferrals();
+      } else {
+        const data = await res.json();
+        alert(`Error: ${data.error || "failed to upgrade"}`);
+      }
+    } catch (e: any) {
+      alert(`Error: ${e?.message || "failed to upgrade"}`);
+    }
+    setResolveSaving(false);
+  };
+
+  const needsAttention = rows.filter(r => r.rewardStatus === "capacity_blocked" || r.rewardStatus === "no_ticket");
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="font-display text-white text-3xl mb-1">REFERRALS</h2>
+        <p className="text-white/30 text-sm">Refer-a-friend rewards program — {REFERRAL_MILESTONE_LABEL} friends buying through a customer&apos;s link earns them a free VIP upgrade.</p>
+      </div>
+
+      {!loading && (
+        <>
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+            {[
+              { label: "Referrers", value: totals.referrers },
+              { label: "Invites Sent", value: totals.sent },
+              { label: "Converted", value: totals.converted, color: "text-green-400" },
+              { label: "VIP Upgrades Given", value: totals.rewardsFulfilled, color: "text-yellow-400" },
+              { label: "Needs Attention", value: totals.rewardsNeedingAttention, color: totals.rewardsNeedingAttention > 0 ? "text-red-400" : "text-white" },
+            ].map(s => (
+              <div key={s.label} className="bg-white/[0.03] border border-white/10 rounded-2xl p-4 text-center">
+                <p className={`font-bold text-lg ${s.color || "text-white"}`}>{s.value}</p>
+                <p className="text-white/30 text-[11px] mt-1">{s.label}</p>
+              </div>
+            ))}
+          </div>
+
+          {needsAttention.length > 0 && (
+            <div className="bg-red-500/5 border border-red-500/20 rounded-2xl p-5">
+              <h3 className="text-red-400 font-bold text-sm mb-3">⚠ Needs Attention — {needsAttention.length} Reward{needsAttention.length !== 1 ? "s" : ""}</h3>
+              <div className="space-y-2">
+                {needsAttention.map(r => (
+                  <div key={r.rewardId} className="flex items-center justify-between bg-white/[0.02] border border-white/10 rounded-xl px-4 py-3">
+                    <div>
+                      <p className="text-white font-semibold text-sm">{r.name} <span className="text-white/30 font-normal">— {r.eventSlug}</span></p>
+                      <p className="text-white/40 text-xs">{r.converted} referrals converted · {r.rewardStatus === "capacity_blocked" ? "VIP is sold out" : "no eligible ticket found"}</p>
+                    </div>
+                    <button onClick={() => openResolve(r)}
+                      className="text-xs font-semibold px-3 py-1.5 rounded-full bg-yellow-500/10 text-yellow-400 border border-yellow-500/25 hover:bg-yellow-500/20 transition-all cursor-pointer">
+                      Resolve
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-5">
+            <h3 className="text-white font-bold text-sm mb-3">All Referrers</h3>
+            {rows.length === 0 ? (
+              <p className="text-white/25 text-sm text-center py-8">No referral activity yet.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-white/30 text-[11px] uppercase tracking-wider text-left">
+                      <th className="pb-2 pr-3">Referrer</th>
+                      <th className="pb-2 pr-3">Event</th>
+                      <th className="pb-2 pr-3 text-right">Sent</th>
+                      <th className="pb-2 pr-3 text-right">Converted</th>
+                      <th className="pb-2 pr-3">Progress</th>
+                      <th className="pb-2">Reward</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map(r => (
+                      <tr key={`${r.customerId}-${r.eventSlug}`} className="border-t border-white/5">
+                        <td className="py-2 pr-3">
+                          <span className="text-white font-medium">{r.name}</span>
+                          <p className="text-white/30 text-xs">{r.email}</p>
+                        </td>
+                        <td className="py-2 pr-3 text-white/70 capitalize">{r.eventSlug}</td>
+                        <td className="py-2 pr-3 text-right text-white/70">{r.sent}</td>
+                        <td className="py-2 pr-3 text-right text-white/70">{r.converted}</td>
+                        <td className="py-2 pr-3">
+                          <div className="w-24 h-1.5 rounded-full bg-white/10 overflow-hidden">
+                            <div className="h-full bg-yellow-500" style={{ width: `${(r.progress / r.milestone) * 100}%` }} />
+                          </div>
+                          <span className="text-white/30 text-[11px]">{r.progress}/{r.milestone}</span>
+                        </td>
+                        <td className="py-2">
+                          {r.rewardStatus ? (
+                            <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${REWARD_STATUS_STYLE[r.rewardStatus] || "bg-white/5 text-white/50 border-white/15"}`}>
+                              {r.rewardStatus.replace("_", " ")}
+                            </span>
+                          ) : (
+                            <span className="text-white/20 text-xs">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* Resolve modal */}
+      <AnimatePresence>
+        {resolving && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+            onClick={e => { if (e.target === e.currentTarget) setResolving(null); }}>
+            <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }}
+              className="bg-[#0d0500] border border-white/10 rounded-2xl p-6 w-full max-w-md">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-white">Resolve Reward — {resolving.name}</h3>
+                <button onClick={() => setResolving(null)} className="text-white/40 hover:text-white cursor-pointer"><X size={18} /></button>
+              </div>
+              <p className="text-white/40 text-xs mb-4">Pick which of their {resolving.eventSlug} tickets to upgrade to VIP.</p>
+              {resolveTicketsLoading ? (
+                <p className="text-white/30 text-sm">Loading…</p>
+              ) : resolveTickets.length === 0 ? (
+                <p className="text-white/25 text-sm">No paid tickets found for this customer/event.</p>
+              ) : (
+                <div className="space-y-2">
+                  {resolveTickets.map(t => (
+                    <button key={t.id} onClick={() => resolveWithTicket(t.id)} disabled={resolveSaving}
+                      className="w-full flex items-center justify-between bg-white/[0.02] hover:bg-white/[0.06] border border-white/10 rounded-xl px-4 py-3 text-left transition-all cursor-pointer disabled:opacity-50">
+                      <span className="text-white text-sm">{t.holder_name || "Ticket"} — {t.ticket_type}</span>
+                      <span className="text-yellow-400 text-xs font-semibold">Upgrade →</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+const REFERRAL_MILESTONE_LABEL = 5;
+
 // ─── Nav config ───────────────────────────────────────────────────────────────
 const NAV_ITEMS = [
   { id: "overview",   label: "Overview",    icon: <LayoutDashboard size={17} /> },
@@ -7153,6 +7369,7 @@ const NAV_ITEMS = [
   { id: "loadin",     label: "Load In",     icon: <MapPin size={17} /> },
   { id: "media",      label: "Media Partners", icon: <Gift size={17} /> },
   { id: "affiliates", label: "Affiliates",  icon: <Link2 size={17} /> },
+  { id: "referrals",  label: "Referrals",   icon: <Gift size={17} /> },
   { id: "newsletter", label: "Newsletter",  icon: <Mail size={17} /> },
   { id: "tools",      label: "Tools",       icon: <RefreshCw size={17} /> },
   { id: "blog",       label: "Blog",        icon: <FileText size={17} /> },
@@ -7264,6 +7481,7 @@ export default function AdminDashboard() {
     loadin:     <LoadInSection adminToken={adminToken} />,
     media:      <MediaPartnersSection adminToken={adminToken} events={events} />,
     affiliates: <AffiliatesSection adminToken={adminToken} />,
+    referrals:  <ReferralsSection adminToken={adminToken} />,
     newsletter: <NewsletterSection adminToken={adminToken} />,
     tools:     <ToolsSection adminToken={adminToken} />,
     blog:      <BlogAdminSection />,

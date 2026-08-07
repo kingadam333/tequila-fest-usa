@@ -4,6 +4,7 @@ import { resend, FROM_EMAIL, FROM_VENDORS, qrTicketHtml } from "@/lib/resend";
 import { getEvent } from "@/lib/events";
 import { syncTicketBuyerToMarketingLists } from "@/lib/marketingSync";
 import { ensureCustomerLogin } from "@/lib/accountActions";
+import { checkAndAwardReferralMilestone } from "@/lib/referralRewards";
 import { TICKET_LABELS } from "@/lib/stripe";
 import type Stripe from "stripe";
 import crypto from "crypto";
@@ -278,6 +279,13 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
               });
 
               console.log(`🎯 Referral awarded: ${POINTS} pts to ${refCodeRow.customer_id} for code ${refCode}`);
+
+              // 5 converted referrals for this event -> free VIP upgrade on
+              // one of the referrer's own tickets. Never trusts a stored
+              // counter — recomputes live from `referrals` each time.
+              await checkAndAwardReferralMilestone(db, refCode, eventSlug || "", refCodeRow.customer_id).catch(err =>
+                console.error("Referral milestone award error:", err)
+              );
             }
           } catch (refErr) {
             console.error("Referral award error:", refErr);

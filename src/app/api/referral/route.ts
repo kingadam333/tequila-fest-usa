@@ -3,6 +3,7 @@ import { createServerClient } from "@supabase/ssr";
 import { supabaseAdmin } from "@/lib/supabase";
 import { resend, FROM_EMAIL } from "@/lib/resend";
 import { getEvent } from "@/lib/events";
+import { REFERRAL_MILESTONE } from "@/lib/referralRewards";
 
 function generateCode(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -74,6 +75,14 @@ export async function GET(req: NextRequest) {
   const event = getEvent(eventSlug);
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.tequilafestusa.com";
 
+  const { data: reward } = await db
+    .from("referral_rewards")
+    .select("status")
+    .eq("customer_id", account.id)
+    .eq("event_slug", eventSlug)
+    .eq("milestone", REFERRAL_MILESTONE)
+    .maybeSingle();
+
   return NextResponse.json({
     code: refCode.code,
     referralUrl: `${appUrl}/events/${eventSlug}?ref=${refCode.code}`,
@@ -83,6 +92,8 @@ export async function GET(req: NextRequest) {
       pointsEarned: totalPoints,
       raffleEntries: totalEntries,
     },
+    milestone: REFERRAL_MILESTONE,
+    rewardStatus: reward?.status || null,
     event: event ? { city: event.city, date: event.date } : null,
     loyaltyPoints: account.loyalty_points || 0,
   });
