@@ -417,6 +417,9 @@ Reuses the existing `DLV - transaction_id` / `DLV - value` variables — no new 
 
 Verified independently via MNTN's own dashboard pixel-verification tool: tracking pixels detected across the site, conversion pixel detected on the purchase page, GA4 IDs found, "fully optimized."
 
+### Container cleanup (Aug 6 2026)
+Deleted two dead leftovers from the Roku debugging process, both confirmed unreferenced before removal: trigger `Roku` (id 21, orphaned once the relay tag moved to firing on `CE - roku_purchase` instead) and variable `CJS - value string` (id 35, a string-cast dead end from before the real fix — warming the tracker + nulling `items` — was found). Published as container version 22. If you're reading old session notes that mention either of these, they no longer exist.
+
 ### How to verify any of this (don't guess — measure)
 
 Load the live site in a browser, push a test event, and read the outbound network calls:
@@ -542,10 +545,15 @@ TEXTMAGIC_LIST_ID_PHOENIX=...
 ### PWA
 - [x] Installable, manifest + icons + install banner
 
-### Tracking — GTM as sole source of truth (rebuilt this session)
+### Tracking — GTM as sole source of truth (rebuilt across two sessions)
 - [x] Deleted the app's own direct Meta Pixel/CAPI code (`MetaPixelHead.tsx`, `MetaPixel.tsx`, `src/lib/metaCapi.ts`) in favor of GTM's pre-existing, official Meta Pixel + Conversions API Gateway integration
 - [x] Reshaped `dataLayer.push()` calls to the nested `eventModel.*` structure GTM's tags actually read (was flat/incomplete before, causing low Meta match-quality scores)
-- [x] See full "Tracking" section above for the complete architecture and a Google Ads zero-conversions troubleshooting checklist (open item — see Still Needs to Be Done)
+- [x] **Aug 6 2026 — Google Ads was recording zero conversions for ~2 months.** Root cause: a URL-based page-load conversion that never matched real traffic, and couldn't have passed real dollar values even if it had. Replaced with an event-based conversion firing off `purchase`, verified live with real values/order-IDs/dedup across all three revenue pages. Confirmed flipped from "Inactive" to "Recording" within 24h of publishing.
+- [x] **Aug 6 2026 — Google Ads Enhanced Conversions wired.** Consolidated the app's hardcoded Google Ads gtag into GTM (deleted `GoogleAdsTag.tsx`) so the container owns the Google tag, which unlocked the user-provided-data field the conversion tag alone doesn't expose.
+- [x] **Aug 6 2026 — Roku was firing purchases with zero metadata.** Root cause was a load-order race (Roku's tracker isn't ready on the first event of a page) plus their template silently dropping `custom_data` when the GA4 `items` array carries numeric values. Fixed with a dedicated Page View pixel (warms the tracker) and a relay tag that republishes a sanitized event with `items` explicitly nulled. Roku's template still truncates decimals — reported to Roku, unresolved on their end.
+- [x] **Aug 6 2026 — MNTN pixel installed from scratch.** No tracking existed previously. Both Tracking and Conversion pixels added via GTM's Community Template Gallery, verified two ways (live network capture + MNTN's own dashboard verification tool).
+- [x] **Aug 6 2026 — `gtm-mcp-server` MCP connection established with full read/write access**, used to build/verify/publish everything above directly via the GTM API rather than the UI. See the GTM MCP subsection under Tracking and `~/.claude/CLAUDE.md` for the working setup.
+- [x] See full "Tracking" section above for the complete architecture, including per-platform gotchas worth reading before touching any of this again.
 
 ### Vendor Flow — Payment Pipeline Rebuilt + Admin Tooling
 - [x] Fixed the vendor payment pipeline being completely broken (wrong session type, missing metadata, missing success page, wrong email) — see git history for the original incident writeup if needed
@@ -696,3 +704,7 @@ Original Replit project archived at: `/Users/adambossin/Sites/tequila-fest-usa-o
 19. **Any new admin aggregate/reporting query must**: (a) use `fetchAllRows()` if it could plausibly return >1000 rows, (b) join via Postgres embedded-resource syntax rather than building ID lists client-side, and (c) filter `ticket_orders.status = 'paid' AND source != 'media_comp'` unless there's a specific reason not to (check-in stats). Test any change to `/api/admin/stats` or `/api/admin/events` against both "All Cities" and a specific city filter — a past bug only manifested in one of the two paths.
 
 20. **When an "outdated demo/dev-only" comment exists in shipped code, don't trust that it's actually inert** — the My Tickets fake check-in button was commented `Dev/demo only — remove in prod` and still ran real (if client-side-only) logic that confused a paying customer. If you see this pattern elsewhere, verify what the code actually does before assuming the comment means it's harmless.
+
+21. **MNTN is now tracking too, not just Meta/GA4/Google Ads/Roku** — two GTM tags (Tracking Pixel + Conversion Pixel), advertiser ID `70795`. See the "MNTN" subsection under Tracking before assuming it doesn't exist.
+
+22. **Don't declare a GTM tag broken from an immediate zero-network-calls check** — both Roku and MNTN looked non-functional on the first live test this session and both turned out to be correctly configured; the beacons just hadn't dispatched yet (Roku needs its tracker warmed by a prior page-view event, MNTN's conversion pixel waits on async server-side GA4 enrichment before firing). Wait a few seconds and recheck before concluding a tag isn't firing, and read the compiled `gtm.js` bytecode directly if network capture stays empty — that's what actually resolved both false alarms.
