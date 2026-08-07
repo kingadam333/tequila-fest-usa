@@ -7221,7 +7221,7 @@ function ReferralsSection({ adminToken }: { adminToken: string }) {
     <div className="space-y-6">
       <div>
         <h2 className="font-display text-white text-3xl mb-1">REFERRALS</h2>
-        <p className="text-white/30 text-sm">Refer-a-friend rewards program — {REFERRAL_MILESTONE_LABEL} friends buying through a customer&apos;s link earns them a free VIP upgrade.</p>
+        <p className="text-white/80 text-sm">Refer-a-friend rewards program — {REFERRAL_MILESTONE_LABEL} friends buying through a customer&apos;s link earns them a free VIP upgrade.</p>
       </div>
 
       {!loading && (
@@ -7236,7 +7236,7 @@ function ReferralsSection({ adminToken }: { adminToken: string }) {
             ].map(s => (
               <div key={s.label} className="bg-white/[0.03] border border-white/10 rounded-2xl p-4 text-center">
                 <p className={`font-bold text-lg ${s.color || "text-white"}`}>{s.value}</p>
-                <p className="text-white/30 text-[11px] mt-1">{s.label}</p>
+                <p className="text-white/80 text-[11px] mt-1">{s.label}</p>
               </div>
             ))}
           </div>
@@ -7248,8 +7248,8 @@ function ReferralsSection({ adminToken }: { adminToken: string }) {
                 {needsAttention.map(r => (
                   <div key={r.rewardId} className="flex items-center justify-between bg-white/[0.02] border border-white/10 rounded-xl px-4 py-3">
                     <div>
-                      <p className="text-white font-semibold text-sm">{r.name} <span className="text-white/30 font-normal">— {r.eventSlug}</span></p>
-                      <p className="text-white/40 text-xs">{r.converted} referrals converted · {r.rewardStatus === "capacity_blocked" ? "VIP is sold out" : "no eligible ticket found"}</p>
+                      <p className="text-white font-semibold text-sm">{r.name} <span className="text-white/80 font-normal">— {r.eventSlug}</span></p>
+                      <p className="text-white/80 text-xs">{r.converted} referrals converted · {r.rewardStatus === "capacity_blocked" ? "VIP is sold out" : "no eligible ticket found"}</p>
                     </div>
                     <button onClick={() => openResolve(r)}
                       className="text-xs font-semibold px-3 py-1.5 rounded-full bg-yellow-500/10 text-yellow-400 border border-yellow-500/25 hover:bg-yellow-500/20 transition-all cursor-pointer">
@@ -7264,12 +7264,12 @@ function ReferralsSection({ adminToken }: { adminToken: string }) {
           <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-5">
             <h3 className="text-white font-bold text-sm mb-3">All Referrers</h3>
             {rows.length === 0 ? (
-              <p className="text-white/25 text-sm text-center py-8">No referral activity yet.</p>
+              <p className="text-white/80 text-sm text-center py-8">No referral activity yet.</p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="text-white/30 text-[11px] uppercase tracking-wider text-left">
+                    <tr className="text-white/80 text-[11px] uppercase tracking-wider text-left">
                       <th className="pb-2 pr-3">Referrer</th>
                       <th className="pb-2 pr-3">Event</th>
                       <th className="pb-2 pr-3 text-right">Sent</th>
@@ -7283,7 +7283,7 @@ function ReferralsSection({ adminToken }: { adminToken: string }) {
                       <tr key={`${r.customerId}-${r.eventSlug}`} className="border-t border-white/5">
                         <td className="py-2 pr-3">
                           <span className="text-white font-medium">{r.name}</span>
-                          <p className="text-white/30 text-xs">{r.email}</p>
+                          <p className="text-white/80 text-xs">{r.email}</p>
                         </td>
                         <td className="py-2 pr-3 text-white/70 capitalize">{r.eventSlug}</td>
                         <td className="py-2 pr-3 text-right text-white/70">{r.sent}</td>
@@ -7292,15 +7292,15 @@ function ReferralsSection({ adminToken }: { adminToken: string }) {
                           <div className="w-24 h-1.5 rounded-full bg-white/10 overflow-hidden">
                             <div className="h-full bg-yellow-500" style={{ width: `${(r.progress / r.milestone) * 100}%` }} />
                           </div>
-                          <span className="text-white/30 text-[11px]">{r.progress}/{r.milestone}</span>
+                          <span className="text-white/80 text-[11px]">{r.progress}/{r.milestone}</span>
                         </td>
                         <td className="py-2">
                           {r.rewardStatus ? (
-                            <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${REWARD_STATUS_STYLE[r.rewardStatus] || "bg-white/5 text-white/50 border-white/15"}`}>
+                            <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${REWARD_STATUS_STYLE[r.rewardStatus] || "bg-white/5 text-white/80 border-white/15"}`}>
                               {r.rewardStatus.replace("_", " ")}
                             </span>
                           ) : (
-                            <span className="text-white/20 text-xs">—</span>
+                            <span className="text-white/80 text-xs">—</span>
                           )}
                         </td>
                       </tr>
@@ -7323,13 +7323,13 @@ function ReferralsSection({ adminToken }: { adminToken: string }) {
               className="bg-[#0d0500] border border-white/10 rounded-2xl p-6 w-full max-w-md">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-white">Resolve Reward — {resolving.name}</h3>
-                <button onClick={() => setResolving(null)} className="text-white/40 hover:text-white cursor-pointer"><X size={18} /></button>
+                <button onClick={() => setResolving(null)} className="text-white/80 hover:text-white cursor-pointer"><X size={18} /></button>
               </div>
-              <p className="text-white/40 text-xs mb-4">Pick which of their {resolving.eventSlug} tickets to upgrade to VIP.</p>
+              <p className="text-white/80 text-xs mb-4">Pick which of their {resolving.eventSlug} tickets to upgrade to VIP.</p>
               {resolveTicketsLoading ? (
-                <p className="text-white/30 text-sm">Loading…</p>
+                <p className="text-white/80 text-sm">Loading…</p>
               ) : resolveTickets.length === 0 ? (
-                <p className="text-white/25 text-sm">No paid tickets found for this customer/event.</p>
+                <p className="text-white/80 text-sm">No paid tickets found for this customer/event.</p>
               ) : (
                 <div className="space-y-2">
                   {resolveTickets.map(t => (
