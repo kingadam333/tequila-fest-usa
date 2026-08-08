@@ -346,7 +346,7 @@ export function qrTicketHtml({
               <td><p style="margin:0;color:rgba(255,248,240,0.4);font-size:11px;text-transform:uppercase;letter-spacing:1px">Order #${orderNumber}</p></td>
               <td style="text-align:right"><p style="margin:0;color:#F5A623;font-weight:700;font-size:15px">$${total.toFixed(2)}</p></td>
             </tr>
-            ${ticketType ? `<tr><td colspan="2"><p style="margin:6px 0 0;color:rgba(255,248,240,0.6);font-size:13px">${quantity}× ${ticketType} — Tequila Fest ${eventCity}</p></td></tr>` : ""}
+            ${ticketType ? `<tr><td colspan="2"><p style="margin:6px 0 0;color:rgba(255,248,240,0.6);font-size:13px">${quantity ? `${quantity}× ` : ""}${ticketType} — Tequila Fest ${eventCity}</p></td></tr>` : ""}
           </table>
         </td></tr>
         <tr><td style="height:16px"></td></tr>` : ""}

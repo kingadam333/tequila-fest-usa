@@ -64,13 +64,27 @@ export async function POST(req: NextRequest) {
 }
 
 async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
-  const { eventSlug, ticketType, quantity, eventCity, customerName: metaName, customerPhone } = session.metadata || {};
+  const { eventSlug, ticketType, quantity, eventCity, customerName: metaName, customerPhone, ticketSummary } = session.metadata || {};
   const customerEmail = session.customer_email || session.customer_details?.email || "";
   const customerName = metaName || session.customer_details?.name || "Guest";
   const firstName = customerName.split(" ")[0] || "there";
   const amountTotal = (session.amount_total || 0) / 100;
   const qty = parseInt(quantity || "1");
   const orderNumber = session.metadata?.orderNumber || `TF-${new Date().getFullYear()}-${session.id.slice(-6).toUpperCase()}`;
+
+  // /api/pre-checkout supports a multi-type cart (e.g. 1 GA + 1 Early Bird)
+  // and stores the full per-type breakdown here — `ticketType`/`quantity`
+  // above are a collapsed "primary type"/total summary only, good for the
+  // order-level record but NOT for generating individual ticket_instances
+  // (every ticket in the order would otherwise get stamped with the same
+  // primary type, which is the mixed-cart mislabeling bug at check-in).
+  let cartItemsParsed: { type: string; qty: number }[] = [];
+  try {
+    cartItemsParsed = JSON.parse(session.metadata?.cartItems || "[]");
+  } catch {
+    cartItemsParsed = [];
+  }
+  const cartItemsForInstances = cartItemsParsed.length > 0 ? cartItemsParsed : [{ type: ticketType || "", qty }];
 
   console.log("✅ Payment completed:", { sessionId: session.id, customerEmail, eventSlug, ticketType, qty, amountTotal });
 
@@ -119,18 +133,27 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
       if (orderError) {
         console.error("Supabase order insert error:", orderError);
       } else if (order) {
-        // Create individual ticket instances with QR codes
-        const tickets = Array.from({ length: qty }, (_, i) => ({
-          order_id: order.id,
-          ticket_number: i + 1,
-          event_slug: eventSlug || "",
-          event_city: eventCity || event?.city || "",
-          event_id: dbEventId,
-          ticket_type: ticketType || "",
-          holder_name: i === 0 ? customerName : "Guest",
-          qr_code: `TKT-${order.id.slice(-8).toUpperCase()}-${String(i + 1).padStart(3, "0")}-${crypto.randomBytes(4).toString("hex").toUpperCase()}`,
-          status: "valid" as const,
-        }));
+        // Create individual ticket instances with QR codes — one row per
+        // cart item type so a mixed-type order (e.g. 1 GA + 1 Early Bird)
+        // gets each ticket stamped with ITS OWN type, not the order's
+        // collapsed "primary" type.
+        let ticketNumber = 0;
+        const tickets = cartItemsForInstances.flatMap(item =>
+          Array.from({ length: item.qty }, () => {
+            ticketNumber++;
+            return {
+              order_id: order.id,
+              ticket_number: ticketNumber,
+              event_slug: eventSlug || "",
+              event_city: eventCity || event?.city || "",
+              event_id: dbEventId,
+              ticket_type: item.type || "",
+              holder_name: ticketNumber === 1 ? customerName : "Guest",
+              qr_code: `TKT-${order.id.slice(-8).toUpperCase()}-${String(ticketNumber).padStart(3, "0")}-${crypto.randomBytes(4).toString("hex").toUpperCase()}`,
+              status: "valid" as const,
+            };
+          })
+        );
 
         const { error: ticketError } = await db.from("ticket_instances").insert(tickets);
         if (ticketError) console.error("Ticket instances error:", ticketError);
@@ -140,9 +163,13 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
         // Comp tickets (amountTotal === 0) never earn points.
         if (customerEmail && amountTotal > 0) {
           try {
-            const isGA = ticketType === "ga";
-            const pointsPerTicket = isGA ? 10 : 100;
-            const purchasePoints = qty * pointsPerTicket;
+            // Sum per cart-item type instead of treating the whole order as
+            // one type — a mixed GA + Early Bird order previously earned
+            // points as if every ticket were the order's single "primary" type.
+            const purchasePoints = cartItemsForInstances.reduce(
+              (sum, item) => sum + item.qty * (item.type === "ga" ? 10 : 100), 0
+            );
+            const isGA = cartItemsForInstances.every(item => item.type === "ga");
 
             const { data: buyer } = await db
               .from("customer_accounts")
@@ -159,11 +186,11 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
                 customer_id: buyer.id,
                 action_code: "ticket_purchase",
                 points: purchasePoints,
-                description: `Purchased ${qty} ${isGA ? "GA Entry" : "All Inclusive"} ticket${qty > 1 ? "s" : ""} to Tequila Fest ${eventCity}`,
+                description: `Purchased ${ticketSummary || `${qty} ${isGA ? "GA Entry" : "All Inclusive"} ticket${qty > 1 ? "s" : ""}`} to Tequila Fest ${eventCity}`,
                 source_id: order.id,
                 source_type: "order",
               });
-              console.log(`⭐ Awarded ${purchasePoints} points to ${customerEmail} (${isGA ? "GA: 1pt/ticket" : "All Inclusive: 5pts/ticket"})`);
+              console.log(`⭐ Awarded ${purchasePoints} points to ${customerEmail}`);
             }
           } catch (pointsErr) {
             console.error("Points award error:", pointsErr);
@@ -188,14 +215,14 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
         if (customerEmail) {
           try {
             const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.tequilafestusa.com";
-            const ticketInstances = tickets.map((t: { qr_code: string; ticket_number: number; holder_name: string }, i: number) => ({
+            const ticketInstances = tickets.map((t: { qr_code: string; ticket_number: number; holder_name: string; ticket_type: string }, i: number) => ({
               qrCode: t.qr_code,
               ticketNumber: t.ticket_number || i + 1,
               totalInOrder: qty,
               holderName: t.holder_name || customerName,
-              ticketType: ticketType ? (TICKET_LABELS[ticketType as keyof typeof TICKET_LABELS] || ticketType) : "All Inclusive",
+              ticketType: TICKET_LABELS[t.ticket_type as keyof typeof TICKET_LABELS] || t.ticket_type || "All Inclusive",
             }));
-            const ticketLabel = TICKET_LABELS[ticketType as keyof typeof TICKET_LABELS] || ticketType || "All Inclusive";
+            const ticketLabel = ticketSummary || TICKET_LABELS[ticketType as keyof typeof TICKET_LABELS] || ticketType || "All Inclusive";
 
             const emailResult = await resend.emails.send({
               from: FROM_EMAIL,
@@ -212,7 +239,10 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
                 appUrl,
                 total: amountTotal,
                 ticketType: ticketLabel,
-                quantity: qty,
+                // ticketSummary already spells out per-type quantities (e.g.
+                // "1x GA Entry, 1x Early Bird") — omit the separate ×qty
+                // prefix so a mixed-cart order doesn't double up the count.
+                quantity: ticketSummary ? undefined : qty,
                 newPassword: newAccountPassword || undefined,
               }),
             });
@@ -248,7 +278,7 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
               .single();
 
             if (refCodeRow && refCodeRow.customer_id !== order.customer_id) {
-              const isGA = ticketType === "ga";
+              const isGA = cartItemsForInstances.every(item => item.type === "ga");
               const POINTS = isGA ? 20 : 100;
               const ENTRIES = isGA ? 0 : 1; // GA referrals: points only, no raffle entry
 

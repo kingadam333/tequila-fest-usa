@@ -61,7 +61,11 @@ export async function resendTicketEmail(orderNumber: string): Promise<{ sent: bo
     ticketNumber: t.ticket_number || i + 1,
     totalInOrder: order.quantity,
     holderName: t.holder_name || order.customer_name,
-    ticketType: ticketLabel,
+    // Each ticket_instances row carries its own type (a mixed-type order —
+    // e.g. 1 GA + 1 Early Bird — has different types per row). Falling back
+    // to the order-level ticketLabel here mislabeled every ticket in a mixed
+    // order as whichever type happened to be the order's "primary" type.
+    ticketType: TICKET_LABELS[t.ticket_type as keyof typeof TICKET_LABELS] || t.ticket_type || ticketLabel,
   }));
 
   if (ticketInstances.length === 0) {
