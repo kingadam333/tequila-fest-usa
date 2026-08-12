@@ -7397,6 +7397,7 @@ interface ChargebackRow {
   evidence_submitted_at: string | null;
   created_at: string;
   ticket_orders: { order_number: string; event_slug: string; event_city: string; ticket_type: string; quantity: number; created_at: string; billing_address: any; card_cvc_check: string | null; card_avs_check: string | null } | null;
+  vendor_applications: { business_name: string; cities: string[]; vendor_type: string; created_at: string } | null;
 }
 
 interface BlacklistRow {
@@ -7612,7 +7613,14 @@ function ChargebacksSection({ adminToken }: { adminToken: string }) {
                             {c.ticket_orders.order_number}
                             <p className="text-white/80 text-xs capitalize">{c.ticket_orders.event_city} · {c.ticket_orders.ticket_type}</p>
                           </>
-                        ) : "—"}
+                        ) : c.vendor_applications ? (
+                          <>
+                            Vendor fee
+                            <p className="text-white/80 text-xs">{c.vendor_applications.business_name} · {c.vendor_applications.cities?.join(", ")}</p>
+                          </>
+                        ) : (
+                          <span className="text-white/80 text-xs italic">No matching order on file — likely a purchase from before this system was in place</span>
+                        )}
                       </td>
                       <td className="py-2 pr-3 text-white/70 capitalize">{(c.reason || "—").replace(/_/g, " ")}</td>
                       <td className="py-2 pr-3 text-right text-white/70">${Number(c.amount).toFixed(2)}</td>

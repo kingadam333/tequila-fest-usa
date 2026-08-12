@@ -14,13 +14,21 @@ export async function syncDisputeToDb(db: any, dispute: Stripe.Dispute) {
     ? await db.from("ticket_orders").select("id, customer_email, customer_name").eq("stripe_payment_intent_id", paymentIntentId).maybeSingle()
     : { data: null };
 
+  // A disputed charge might be a vendor's $150 booth fee rather than a
+  // ticket order — vendor_applications tracks its own stripe_payment_intent_id
+  // separately, so check there too before giving up on finding a match.
+  const { data: vendorApp } = !order && paymentIntentId
+    ? await db.from("vendor_applications").select("id, email, name, business_name").eq("stripe_payment_intent_id", paymentIntentId).maybeSingle()
+    : { data: null };
+
   const payload = {
     stripe_dispute_id: dispute.id,
     stripe_charge_id: chargeId,
     stripe_payment_intent_id: paymentIntentId,
     order_id: order?.id || null,
-    customer_email: (order?.customer_email || dispute.evidence?.customer_email_address || "").toLowerCase() || null,
-    customer_name: order?.customer_name || dispute.evidence?.customer_name || null,
+    vendor_application_id: vendorApp?.id || null,
+    customer_email: (order?.customer_email || vendorApp?.email || dispute.evidence?.customer_email_address || "").toLowerCase() || null,
+    customer_name: order?.customer_name || vendorApp?.name || dispute.evidence?.customer_name || null,
     amount: dispute.amount / 100,
     currency: dispute.currency,
     reason: dispute.reason,
