@@ -10,6 +10,7 @@ import {
   RefreshCw, Download, Send, CheckCircle, Search, Plus,
   Trash2, Edit2, Eye, AlertCircle, BarChart2, Mail, Utensils, Share2, Copy,
   Star, Gift, UserCheck, ChevronRight, Megaphone, ShieldCheck, Wrench, Sparkles, Bot, Link2, MapPin,
+  ShieldAlert, Ban,
 } from "lucide-react";
 import SocialShareSection from "./SocialShareSection";
 import SecuritySection from "./SecuritySection";
@@ -7382,6 +7383,358 @@ function ReferralsSection({ adminToken }: { adminToken: string }) {
   );
 }
 
+interface ChargebackRow {
+  id: string;
+  stripe_dispute_id: string;
+  order_id: string | null;
+  customer_email: string | null;
+  customer_name: string | null;
+  amount: number;
+  currency: string;
+  reason: string | null;
+  status: string;
+  evidence_due_by: string | null;
+  evidence_submitted_at: string | null;
+  created_at: string;
+  ticket_orders: { order_number: string; event_slug: string; event_city: string; ticket_type: string; quantity: number; created_at: string; billing_address: any; card_cvc_check: string | null; card_avs_check: string | null } | null;
+}
+
+interface BlacklistRow {
+  id: string;
+  email: string;
+  name: string | null;
+  phone: string | null;
+  reason: string;
+  notes: string | null;
+  created_at: string;
+}
+
+const CHARGEBACK_STATUS_STYLE: Record<string, string> = {
+  warning_needs_response: "bg-yellow-500/15 text-yellow-400 border-yellow-500/30",
+  needs_response: "bg-red-500/15 text-red-400 border-red-500/30",
+  warning_under_review: "bg-yellow-500/15 text-yellow-400 border-yellow-500/30",
+  under_review: "bg-yellow-500/15 text-yellow-400 border-yellow-500/30",
+  warning_closed: "bg-white/10 text-white/80 border-white/15",
+  won: "bg-green-500/15 text-green-400 border-green-500/30",
+  lost: "bg-red-500/15 text-red-400 border-red-500/30",
+  charge_refunded: "bg-white/10 text-white/80 border-white/15",
+};
+
+function ChargebacksSection({ adminToken }: { adminToken: string }) {
+  const headers = { "x-admin-token": adminToken };
+  const [chargebacks, setChargebacks] = useState<ChargebackRow[]>([]);
+  const [blacklist, setBlacklist] = useState<BlacklistRow[]>([]);
+  const [totals, setTotals] = useState({ count: 0, openCount: 0, wonCount: 0, lostCount: 0, amountDisputed: 0 });
+  const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
+  const [tab, setTab] = useState<"disputes" | "blacklist">("disputes");
+
+  const [viewing, setViewing] = useState<ChargebackRow | null>(null);
+  const [evidenceText, setEvidenceText] = useState("");
+  const [evidenceLoading, setEvidenceLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [copyStatus, setCopyStatus] = useState("");
+
+  const [blacklistEmail, setBlacklistEmail] = useState("");
+  const [blacklistName, setBlacklistName] = useState("");
+  const [blacklistNotes, setBlacklistNotes] = useState("");
+  const [addingBlacklist, setAddingBlacklist] = useState(false);
+
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    const res = await fetch("/api/admin/chargebacks", { headers });
+    if (res.ok) {
+      const data = await res.json();
+      setChargebacks(data.chargebacks || []);
+      setBlacklist(data.blacklist || []);
+      setTotals(data.totals);
+    }
+    setLoading(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adminToken]);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  const runSync = async () => {
+    setSyncing(true);
+    try {
+      const res = await fetch("/api/admin/chargebacks/sync", { method: "POST", headers });
+      const data = await res.json();
+      if (res.ok) {
+        await fetchData();
+        alert(`Synced ${data.synced} dispute${data.synced === 1 ? "" : "s"} from Stripe.`);
+      } else {
+        alert(`Error: ${data.error || "sync failed"}`);
+      }
+    } catch (e: any) {
+      alert(`Error: ${e?.message || "sync failed"}`);
+    }
+    setSyncing(false);
+  };
+
+  const openDispute = async (row: ChargebackRow) => {
+    setViewing(row);
+    setEvidenceText("");
+    setCopyStatus("");
+    setEvidenceLoading(true);
+    const res = await fetch(`/api/admin/chargebacks/${row.id}`, { headers });
+    if (res.ok) setEvidenceText((await res.json()).evidenceText || "");
+    setEvidenceLoading(false);
+  };
+
+  const copyEvidence = async () => {
+    await navigator.clipboard.writeText(evidenceText);
+    setCopyStatus("Copied!");
+    setTimeout(() => setCopyStatus(""), 2000);
+  };
+
+  const submitEvidenceDraft = async () => {
+    if (!viewing) return;
+    if (!confirm("Save this evidence to Stripe as a draft? You'll still need to click Submit in the Stripe Dashboard to finalize it.")) return;
+    setSubmitting(true);
+    try {
+      const res = await fetch(`/api/admin/chargebacks/${viewing.id}/submit-evidence`, { method: "POST", headers });
+      const data = await res.json();
+      if (res.ok) {
+        alert("Evidence saved to Stripe as a draft — open the dispute in the Stripe Dashboard to review and submit it.");
+        fetchData();
+      } else {
+        alert(`Error: ${data.error || "failed to save evidence"}`);
+      }
+    } catch (e: any) {
+      alert(`Error: ${e?.message || "failed to save evidence"}`);
+    }
+    setSubmitting(false);
+  };
+
+  const addToBlacklist = async () => {
+    if (!blacklistEmail.trim()) return;
+    setAddingBlacklist(true);
+    try {
+      const res = await fetch("/api/admin/blacklist", {
+        method: "POST",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify({ email: blacklistEmail, name: blacklistName, notes: blacklistNotes }),
+      });
+      if (res.ok) {
+        setBlacklistEmail(""); setBlacklistName(""); setBlacklistNotes("");
+        fetchData();
+      } else {
+        const data = await res.json();
+        alert(`Error: ${data.error || "failed to add"}`);
+      }
+    } catch (e: any) {
+      alert(`Error: ${e?.message || "failed to add"}`);
+    }
+    setAddingBlacklist(false);
+  };
+
+  const removeFromBlacklist = async (id: string, email: string) => {
+    if (!confirm(`Remove ${email} from the blacklist? They'll be able to buy tickets again.`)) return;
+    const res = await fetch("/api/admin/blacklist", {
+      method: "DELETE",
+      headers: { ...headers, "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+    if (res.ok) fetchData();
+    else alert("Failed to remove");
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h2 className="font-display text-white text-3xl mb-1">CHARGEBACKS</h2>
+          <p className="text-white/80 text-sm">Stripe disputes, evidence to fight them, and a blacklist so disputing buyers can never check out again.</p>
+        </div>
+        <button onClick={runSync} disabled={syncing}
+          className="flex items-center gap-2 text-xs font-semibold px-4 py-2 rounded-full bg-white/[0.05] border border-white/10 text-white hover:bg-white/[0.1] transition-all cursor-pointer disabled:opacity-50">
+          <RefreshCw size={13} className={syncing ? "animate-spin" : ""} /> {syncing ? "Syncing…" : "Sync from Stripe"}
+        </button>
+      </div>
+
+      {!loading && (
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+          {[
+            { label: "Total Disputes", value: totals.count },
+            { label: "Open / Needs Response", value: totals.openCount, color: totals.openCount > 0 ? "text-red-400" : "text-white" },
+            { label: "Won", value: totals.wonCount, color: "text-green-400" },
+            { label: "Lost", value: totals.lostCount, color: "text-red-400" },
+            { label: "Amount Disputed", value: `$${totals.amountDisputed.toFixed(2)}` },
+          ].map(s => (
+            <div key={s.label} className="bg-white/[0.03] border border-white/10 rounded-2xl p-4 text-center">
+              <p className={`font-bold text-lg ${s.color || "text-white"}`}>{s.value}</p>
+              <p className="text-white/80 text-[11px] mt-1">{s.label}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="flex gap-2">
+        {[{ id: "disputes", label: `Disputes (${chargebacks.length})` }, { id: "blacklist", label: `Blacklist (${blacklist.length})` }].map(t => (
+          <button key={t.id} onClick={() => setTab(t.id as "disputes" | "blacklist")}
+            className={`text-xs font-semibold px-4 py-2 rounded-full border transition-all cursor-pointer ${tab === t.id ? "bg-yellow-500/15 text-yellow-400 border-yellow-500/30" : "bg-white/[0.03] text-white/80 border-white/10 hover:bg-white/[0.06]"}`}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === "disputes" && (
+        <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-5">
+          {loading ? (
+            <p className="text-white/80 text-sm text-center py-8">Loading…</p>
+          ) : chargebacks.length === 0 ? (
+            <p className="text-white/80 text-sm text-center py-8">No disputes on file. Click &quot;Sync from Stripe&quot; to check for any that predate this page.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-white/80 text-[11px] uppercase tracking-wider text-left">
+                    <th className="pb-2 pr-3">Customer</th>
+                    <th className="pb-2 pr-3">Order</th>
+                    <th className="pb-2 pr-3">Reason</th>
+                    <th className="pb-2 pr-3 text-right">Amount</th>
+                    <th className="pb-2 pr-3">Status</th>
+                    <th className="pb-2 pr-3">Filed</th>
+                    <th className="pb-2"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {chargebacks.map(c => (
+                    <tr key={c.id} className="border-t border-white/5">
+                      <td className="py-2 pr-3">
+                        <span className="text-white font-medium">{c.customer_name || "—"}</span>
+                        <p className="text-white/80 text-xs">{c.customer_email || "—"}</p>
+                      </td>
+                      <td className="py-2 pr-3 text-white/70">
+                        {c.ticket_orders ? (
+                          <>
+                            {c.ticket_orders.order_number}
+                            <p className="text-white/80 text-xs capitalize">{c.ticket_orders.event_city} · {c.ticket_orders.ticket_type}</p>
+                          </>
+                        ) : "—"}
+                      </td>
+                      <td className="py-2 pr-3 text-white/70 capitalize">{(c.reason || "—").replace(/_/g, " ")}</td>
+                      <td className="py-2 pr-3 text-right text-white/70">${Number(c.amount).toFixed(2)}</td>
+                      <td className="py-2 pr-3">
+                        <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${CHARGEBACK_STATUS_STYLE[c.status] || "bg-white/5 text-white/80 border-white/15"}`}>
+                          {c.status.replace(/_/g, " ")}
+                        </span>
+                      </td>
+                      <td className="py-2 pr-3 text-white/70 text-xs">{new Date(c.created_at).toLocaleDateString()}</td>
+                      <td className="py-2">
+                        <button onClick={() => openDispute(c)}
+                          className="text-xs font-semibold px-3 py-1.5 rounded-full bg-yellow-500/10 text-yellow-400 border border-yellow-500/25 hover:bg-yellow-500/20 transition-all cursor-pointer">
+                          Evidence
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {tab === "blacklist" && (
+        <div className="space-y-4">
+          <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-5">
+            <h3 className="text-white font-bold text-sm mb-3 flex items-center gap-2"><Ban size={15} className="text-red-400" /> Add to Blacklist Manually</h3>
+            <div className="grid sm:grid-cols-3 gap-3">
+              <input value={blacklistEmail} onChange={e => setBlacklistEmail(e.target.value)} placeholder="Email"
+                className="bg-white/[0.04] border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder:text-white/40" />
+              <input value={blacklistName} onChange={e => setBlacklistName(e.target.value)} placeholder="Name (optional)"
+                className="bg-white/[0.04] border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder:text-white/40" />
+              <input value={blacklistNotes} onChange={e => setBlacklistNotes(e.target.value)} placeholder="Reason / notes (optional)"
+                className="bg-white/[0.04] border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder:text-white/40" />
+            </div>
+            <button onClick={addToBlacklist} disabled={addingBlacklist || !blacklistEmail.trim()}
+              className="mt-3 text-xs font-semibold px-4 py-2 rounded-full bg-red-500/10 text-red-400 border border-red-500/25 hover:bg-red-500/20 transition-all cursor-pointer disabled:opacity-50">
+              {addingBlacklist ? "Adding…" : "Blacklist Email"}
+            </button>
+          </div>
+
+          <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-5">
+            {blacklist.length === 0 ? (
+              <p className="text-white/80 text-sm text-center py-8">No blacklisted buyers.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-white/80 text-[11px] uppercase tracking-wider text-left">
+                      <th className="pb-2 pr-3">Email</th>
+                      <th className="pb-2 pr-3">Name</th>
+                      <th className="pb-2 pr-3">Reason</th>
+                      <th className="pb-2 pr-3">Added</th>
+                      <th className="pb-2"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {blacklist.map(b => (
+                      <tr key={b.id} className="border-t border-white/5">
+                        <td className="py-2 pr-3 text-white">{b.email}</td>
+                        <td className="py-2 pr-3 text-white/70">{b.name || "—"}</td>
+                        <td className="py-2 pr-3 text-white/70">
+                          <span className="capitalize">{b.reason}</span>
+                          {b.notes && <p className="text-white/80 text-xs">{b.notes}</p>}
+                        </td>
+                        <td className="py-2 pr-3 text-white/70 text-xs">{new Date(b.created_at).toLocaleDateString()}</td>
+                        <td className="py-2">
+                          <button onClick={() => removeFromBlacklist(b.id, b.email)}
+                            className="text-xs font-semibold px-3 py-1.5 rounded-full bg-white/[0.05] text-white/80 border border-white/10 hover:bg-white/[0.1] transition-all cursor-pointer">
+                            Remove
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Evidence modal */}
+      <AnimatePresence>
+        {viewing && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+            onClick={e => { if (e.target === e.currentTarget) setViewing(null); }}>
+            <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }}
+              className="bg-[#0d0500] border border-white/10 rounded-2xl p-6 w-full max-w-2xl max-h-[85vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-white">Dispute Evidence — {viewing.customer_name || viewing.customer_email}</h3>
+                <button onClick={() => setViewing(null)} className="text-white/80 hover:text-white cursor-pointer"><X size={18} /></button>
+              </div>
+              {evidenceLoading ? (
+                <p className="text-white/80 text-sm">Loading…</p>
+              ) : (
+                <>
+                  <textarea readOnly value={evidenceText} rows={18}
+                    className="w-full bg-white/[0.04] border border-white/10 rounded-xl px-3 py-3 text-xs text-white/90 font-mono leading-relaxed" />
+                  <div className="flex items-center gap-3 mt-4 flex-wrap">
+                    <button onClick={copyEvidence}
+                      className="flex items-center gap-2 text-xs font-semibold px-4 py-2 rounded-full bg-white/[0.05] border border-white/10 text-white hover:bg-white/[0.1] transition-all cursor-pointer">
+                      <Copy size={13} /> {copyStatus || "Copy to Clipboard"}
+                    </button>
+                    <button onClick={submitEvidenceDraft} disabled={submitting}
+                      className="text-xs font-semibold px-4 py-2 rounded-full bg-yellow-500/10 text-yellow-400 border border-yellow-500/25 hover:bg-yellow-500/20 transition-all cursor-pointer disabled:opacity-50">
+                      {submitting ? "Saving…" : "Save as Draft to Stripe"}
+                    </button>
+                    <p className="text-white/80 text-[11px]">Saves this text into Stripe's dispute form — you still click Submit in the Stripe Dashboard to finalize it.</p>
+                  </div>
+                </>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 const REFERRAL_MILESTONE_LABEL = 5;
 
 // ─── Nav config ───────────────────────────────────────────────────────────────
@@ -7407,6 +7760,7 @@ const NAV_ITEMS = [
   { id: "tools",      label: "Tools",       icon: <RefreshCw size={17} /> },
   { id: "blog",       label: "Blog",        icon: <FileText size={17} /> },
   { id: "security",   label: "Security",    icon: <ShieldCheck size={17} /> },
+  { id: "chargebacks", label: "Chargebacks", icon: <ShieldAlert size={17} /> },
 ];
 
 // ─── Admin login gate ─────────────────────────────────────────────────────────
@@ -7519,6 +7873,7 @@ export default function AdminDashboard() {
     tools:     <ToolsSection adminToken={adminToken} />,
     blog:      <BlogAdminSection />,
     security:  <SecuritySection adminToken={adminToken} />,
+    chargebacks: <ChargebacksSection adminToken={adminToken} />,
   };
 
   return (

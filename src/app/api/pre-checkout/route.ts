@@ -28,6 +28,15 @@ export async function POST(req: NextRequest) {
   const event = getEvent(eventSlug);
   if (!event) return NextResponse.json({ error: "Event not found" }, { status: 404 });
 
+  const db = supabaseAdmin as any;
+
+  // Anyone who's ever disputed a charge with us is blocked from buying
+  // again — checked before any Stripe/Supabase writes happen.
+  const { data: blacklisted } = await db.from("blacklisted_buyers").select("id").eq("email", email.trim().toLowerCase()).maybeSingle();
+  if (blacklisted) {
+    return NextResponse.json({ error: "Unable to process this order. Please contact support." }, { status: 403 });
+  }
+
   // Support both old single-item format and new multi-item cart format
   const cartItems: CartItem[] = items?.length > 0
     ? items
@@ -38,7 +47,6 @@ export async function POST(req: NextRequest) {
   }
 
   // Save lead to Supabase immediately
-  const db = supabaseAdmin as any;
   const fullName = `${firstName} ${lastName}`.trim();
   await db.from("customer_accounts").upsert({
     email: email.toLowerCase(),
@@ -91,6 +99,9 @@ export async function POST(req: NextRequest) {
     payment_method_types: ["card"],
     mode: "payment",
     customer_email: email,
+    // Required (not "auto") — an entered-but-unverified billing address is
+    // the core evidence that wins a chargeback dispute later.
+    billing_address_collection: "required",
     allow_promotion_codes: true,
     line_items: stripeLineItems,
     success_url: `${appUrl}/ticket-confirmation?session_id={CHECKOUT_SESSION_ID}&event=${eventSlug}`,

@@ -54,6 +54,14 @@ export async function POST(req: NextRequest) {
         await handleRefund(charge);
         break;
       }
+      case "charge.dispute.created":
+      case "charge.dispute.updated":
+      case "charge.dispute.closed": {
+        const dispute = event.data.object as Stripe.Dispute;
+        console.log("Dispute event:", event.type, dispute.id, dispute.status);
+        await handleDispute(dispute);
+        break;
+      }
     }
   } catch (err) {
     console.error("Webhook handler error:", err);
@@ -108,6 +116,31 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
         dbEventId = eventRow?.id || null;
       }
 
+      // Pull the card verification results Stripe already ran at checkout
+      // (CVC + billing-address match) — not present on the Checkout Session
+      // itself, only on the underlying charge. Captured now, while it's
+      // available, since this is the evidence that actually wins a
+      // chargeback dispute later (proof the buyer's own card details were
+      // used, not a stolen number with a guessed CVC).
+      let billingAddress: Record<string, unknown> | null = null;
+      let cardCvcCheck: string | null = null;
+      let cardAvsCheck: string | null = null;
+      const paymentIntentId = typeof session.payment_intent === "string" ? session.payment_intent : null;
+      if (paymentIntentId) {
+        try {
+          const pi = await stripe.paymentIntents.retrieve(paymentIntentId, {
+            expand: ["latest_charge.payment_method_details"],
+          });
+          const charge = pi.latest_charge as Stripe.Charge | null;
+          billingAddress = (charge?.billing_details?.address as unknown as Record<string, unknown>) || (session.customer_details?.address as unknown as Record<string, unknown>) || null;
+          const checks = charge?.payment_method_details?.card?.checks;
+          cardCvcCheck = checks?.cvc_check || null;
+          cardAvsCheck = checks?.address_line1_check || checks?.address_postal_code_check || null;
+        } catch (chargeErr) {
+          console.error("Failed to fetch charge details for dispute evidence:", chargeErr);
+        }
+      }
+
       const orderPayload = {
         order_number: orderNumber,
         customer_email: customerEmail,
@@ -121,8 +154,11 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
         discount_amount: 0,
         total: amountTotal,
         stripe_session_id: session.id,
-        stripe_payment_intent_id: typeof session.payment_intent === "string" ? session.payment_intent : null,
+        stripe_payment_intent_id: paymentIntentId,
         status: "paid",
+        billing_address: billingAddress,
+        card_cvc_check: cardCvcCheck,
+        card_avs_check: cardAvsCheck,
       };
       const { data: order, error: orderError } = await db
         .from("ticket_orders")
@@ -465,6 +501,19 @@ async function handleVendorPaid(session: Stripe.Checkout.Session) {
     }
   } catch (err) {
     console.error("handleVendorPaid error:", err);
+  }
+}
+
+async function handleDispute(dispute: Stripe.Dispute) {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) return;
+  try {
+    const { supabaseAdmin } = await import("@/lib/supabase");
+    const { syncDisputeToDb } = await import("@/lib/chargebacks");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const db = supabaseAdmin as any;
+    await syncDisputeToDb(db, dispute);
+  } catch (err) {
+    console.error("Dispute handling error:", err);
   }
 }
 
