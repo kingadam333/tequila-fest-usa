@@ -7489,15 +7489,24 @@ function ChargebacksSection({ adminToken }: { adminToken: string }) {
     setTimeout(() => setCopyStatus(""), 2000);
   };
 
-  const submitEvidenceDraft = async () => {
+  const submitEvidence = async (finalize: boolean) => {
     if (!viewing) return;
-    if (!confirm("Save this evidence to Stripe as a draft? You'll still need to click Submit in the Stripe Dashboard to finalize it.")) return;
+    const confirmMsg = finalize
+      ? "Submit this evidence to Stripe NOW? This sends it to the card network for a final decision — it cannot be edited or resubmitted after this."
+      : "Save this evidence to Stripe as a draft? You'll still need to click Submit in the Stripe Dashboard to finalize it.";
+    if (!confirm(confirmMsg)) return;
     setSubmitting(true);
     try {
-      const res = await fetch(`/api/admin/chargebacks/${viewing.id}/submit-evidence`, { method: "POST", headers });
+      const res = await fetch(`/api/admin/chargebacks/${viewing.id}/submit-evidence`, {
+        method: "POST",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify({ finalize }),
+      });
       const data = await res.json();
       if (res.ok) {
-        alert("Evidence saved to Stripe as a draft — open the dispute in the Stripe Dashboard to review and submit it.");
+        alert(finalize
+          ? "Evidence submitted to Stripe — the dispute is now with the card network for a decision."
+          : "Evidence saved to Stripe as a draft — open the dispute in the Stripe Dashboard to review and submit it.");
         fetchData();
       } else {
         alert(`Error: ${data.error || "failed to save evidence"}`);
@@ -7727,12 +7736,16 @@ function ChargebacksSection({ adminToken }: { adminToken: string }) {
                       className="flex items-center gap-2 text-xs font-semibold px-4 py-2 rounded-full bg-white/[0.05] border border-white/10 text-white hover:bg-white/[0.1] transition-all cursor-pointer">
                       <Copy size={13} /> {copyStatus || "Copy to Clipboard"}
                     </button>
-                    <button onClick={submitEvidenceDraft} disabled={submitting}
-                      className="text-xs font-semibold px-4 py-2 rounded-full bg-yellow-500/10 text-yellow-400 border border-yellow-500/25 hover:bg-yellow-500/20 transition-all cursor-pointer disabled:opacity-50">
-                      {submitting ? "Saving…" : "Save as Draft to Stripe"}
+                    <button onClick={() => submitEvidence(false)} disabled={submitting}
+                      className="text-xs font-semibold px-4 py-2 rounded-full bg-white/[0.05] border border-white/10 text-white hover:bg-white/[0.1] transition-all cursor-pointer disabled:opacity-50">
+                      {submitting ? "Working…" : "Save as Draft to Stripe"}
                     </button>
-                    <p className="text-white/80 text-[11px]">Saves this text into Stripe's dispute form — you still click Submit in the Stripe Dashboard to finalize it.</p>
+                    <button onClick={() => submitEvidence(true)} disabled={submitting}
+                      className="text-xs font-semibold px-4 py-2 rounded-full bg-red-500/10 text-red-400 border border-red-500/25 hover:bg-red-500/20 transition-all cursor-pointer disabled:opacity-50">
+                      {submitting ? "Working…" : "Submit to Stripe Now"}
+                    </button>
                   </div>
+                  <p className="text-white/80 text-[11px] mt-2">Draft pre-fills Stripe's dispute form for you to review there. Submit sends it straight to the card network — final, can't be undone or resubmitted.</p>
                 </>
               )}
             </motion.div>

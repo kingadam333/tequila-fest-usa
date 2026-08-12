@@ -4,14 +4,17 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { stripe } from "@/lib/stripe";
 import { buildEvidenceText } from "@/lib/chargebacks";
 
-// Saves the evidence bundle to Stripe as a DRAFT (submit: false) — it shows
-// up in the Stripe Dashboard's dispute evidence form, pre-filled, but still
-// requires a human to review and click Submit there. Deliberately not a
-// one-click final submission: evidence can only be sent to the card network
-// once, so the last review step stays manual in Stripe's own UI.
+// Pushes the evidence bundle to Stripe. `finalize: false` (default) saves it
+// as a DRAFT — visible in the Stripe Dashboard's dispute form, pre-filled,
+// still requiring a human click to actually submit. `finalize: true` submits
+// it to the card network for real, right from this admin page — evidence can
+// only be sent once per dispute, so the frontend gates this behind its own
+// explicit confirm() before calling here.
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!verifyAdminToken(req)) return unauthorizedResponse();
   const { id } = await params;
+  const body = await req.json().catch(() => ({}));
+  const finalize = body?.finalize === true;
   const db = supabaseAdmin as any;
 
   const { data: chargeback } = await db.from("chargebacks").select("*").eq("id", id).single();
@@ -35,7 +38,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         customer_name: chargeback.customer_name || undefined,
         refund_refusal_explanation: "Tequila Fest USA's Terms of Service, agreed to at checkout, state all ticket sales are final with no refunds or exchanges for any reason.",
       },
-      submit: false,
+      submit: finalize,
     });
   } catch (err: any) {
     console.error("Submit evidence to Stripe error:", err);
@@ -43,5 +46,5 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   await db.from("chargebacks").update({ evidence_submitted_at: new Date().toISOString() }).eq("id", id);
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, finalized: finalize });
 }
