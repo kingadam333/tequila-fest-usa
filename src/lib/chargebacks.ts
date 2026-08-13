@@ -109,23 +109,37 @@ export function buildEvidenceText(chargeback: any, order: any): string {
   }
   lines.push("");
 
+  // Only claim what this specific order actually has on file — an order
+  // placed before card-verification capture shipped has neither, and
+  // asserting "the buyer's CVC was verified" right under "not on file" is a
+  // self-contradicting statement that would undermine the whole submission.
+  const cvcPass = order?.card_cvc_check === "pass";
+  const avsPass = order?.card_avs_check === "pass";
+  const hasAnyVerification = !!order?.card_cvc_check || !!order?.card_avs_check;
+
   lines.push("── Card verification at time of purchase ──");
   if (order?.card_cvc_check) {
-    lines.push(`CVC check: ${order.card_cvc_check.toUpperCase()} — the card's security code was verified by the card network at checkout.`);
+    lines.push(`CVC check: ${order.card_cvc_check.toUpperCase()} — the card's security code entered at checkout was checked against the card network's records.`);
   } else {
-    lines.push(`CVC check: not on file for this order.`);
+    lines.push(`CVC check: not on file for this order (this purchase predates our card-verification logging).`);
   }
   if (order?.card_avs_check) {
-    lines.push(`Address verification (AVS): ${order.card_avs_check.toUpperCase()} — the billing address entered matched the cardholder's bank records.`);
+    lines.push(`Address verification (AVS): ${order.card_avs_check.toUpperCase()} — the billing address entered was checked against the cardholder's bank records.`);
   } else {
-    lines.push(`Address verification (AVS): not on file for this order.`);
+    lines.push(`Address verification (AVS): not on file for this order (this purchase predates our card-verification logging).`);
   }
   if (order?.billing_address) {
     const a = order.billing_address;
     const addr = [a.line1, a.line2, a.city, a.state, a.postal_code, a.country].filter(Boolean).join(", ");
     lines.push(`Billing address entered by cardholder: ${addr || "N/A"}`);
   }
-  lines.push("This was not a card-present or manually-keyed transaction — the buyer entered their own card number, CVC, and billing address directly into Stripe's secure checkout form. A stranger could not have known the correct CVC and billing address for this card.");
+  if (cvcPass || avsPass) {
+    lines.push("This was not a card-present or manually-keyed transaction — the buyer entered their own card number, CVC, and billing address directly into Stripe's secure checkout form, and the results above confirm those details matched the card issuer's records. A stranger could not have known the correct CVC and/or billing address for this card.");
+  } else if (!hasAnyVerification) {
+    lines.push("Note: this order was placed before our system began logging CVC/AVS check results, so we cannot cite a specific pass/fail result for this transaction. All purchases go through Stripe's standard checkout, which requires the card number, expiration, and CVC to be entered correctly before Stripe will authorize the charge at all — an incorrect CVC is rejected by the card network before the order is ever created.");
+  } else {
+    lines.push("Note: the verification checks on file for this order did not return a clear pass — this is included for completeness rather than as evidence of a verified match.");
+  }
   lines.push("");
 
   lines.push("── Terms agreed to at purchase ──");
@@ -135,7 +149,7 @@ export function buildEvidenceText(chargeback: any, order: any): string {
   lines.push("");
 
   lines.push("── Requested outcome ──");
-  lines.push("We respectfully request this dispute be decided in the merchant's favor. The cardholder's own payment details (CVC + billing address) were verified at the time of purchase, the ticket was delivered, and the buyer agreed to a clear no-refund policy before completing checkout.");
+  lines.push(`We respectfully request this dispute be decided in the merchant's favor. ${cvcPass || avsPass ? "The cardholder's own payment details (CVC and/or billing address) were verified at the time of purchase, " : ""}The ticket was delivered, and the buyer agreed to a clear no-refund policy before completing checkout.`);
 
   return lines.join("\n");
 }
