@@ -127,17 +127,31 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
       let cardAvsCheck: string | null = null;
       const paymentIntentId = typeof session.payment_intent === "string" ? session.payment_intent : null;
       if (paymentIntentId) {
-        try {
-          const pi = await stripe.paymentIntents.retrieve(paymentIntentId, {
-            expand: ["latest_charge.payment_method_details"],
-          });
-          const charge = pi.latest_charge as Stripe.Charge | null;
-          billingAddress = (charge?.billing_details?.address as unknown as Record<string, unknown>) || (session.customer_details?.address as unknown as Record<string, unknown>) || null;
-          const checks = charge?.payment_method_details?.card?.checks;
-          cardCvcCheck = checks?.cvc_check || null;
-          cardAvsCheck = checks?.address_line1_check || checks?.address_postal_code_check || null;
-        } catch (chargeErr) {
-          console.error("Failed to fetch charge details for dispute evidence:", chargeErr);
+        // Retried once — a transient Stripe API hiccup here would otherwise
+        // permanently leave this order with no verification data on file,
+        // with no way to backfill it later (Stripe doesn't expose historical
+        // check results any other way).
+        for (let attempt = 1; attempt <= 2; attempt++) {
+          try {
+            const pi = await stripe.paymentIntents.retrieve(paymentIntentId, {
+              expand: ["latest_charge.payment_method_details"],
+            });
+            const charge = pi.latest_charge as Stripe.Charge | null;
+            billingAddress = (charge?.billing_details?.address as unknown as Record<string, unknown>) || (session.customer_details?.address as unknown as Record<string, unknown>) || null;
+            const checks = charge?.payment_method_details?.card?.checks;
+            // Stripe always returns a check result for a card payment —
+            // "pass"/"fail" if the network checked it, "unavailable" if the
+            // issuing bank doesn't support the check, "unchecked" if Stripe
+            // didn't run it. All four are meaningful evidence; only an
+            // actual fetch failure (caught below) should leave this null.
+            cardCvcCheck = checks?.cvc_check || null;
+            cardAvsCheck = checks?.address_line1_check || checks?.address_postal_code_check || null;
+            break;
+          } catch (chargeErr) {
+            console.error(`Failed to fetch charge details for dispute evidence (attempt ${attempt}):`, chargeErr);
+            if (attempt === 2) break;
+            await new Promise(r => setTimeout(r, 1500));
+          }
         }
       }
 

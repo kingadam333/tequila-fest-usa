@@ -109,25 +109,30 @@ export function buildEvidenceText(chargeback: any, order: any): string {
   }
   lines.push("");
 
-  // Only claim what this specific order actually has on file — an order
-  // placed before card-verification capture shipped has neither, and
-  // asserting "the buyer's CVC was verified" right under "not on file" is a
-  // self-contradicting statement that would undermine the whole submission.
+  // Stripe returns one of four values for a card check: "pass"/"fail" (the
+  // network actually checked it), "unavailable" (the issuing bank doesn't
+  // support the check — common for many non-US and some US issuers, not a
+  // gap on our end), or "unchecked" (Stripe didn't run it). Only a genuinely
+  // missing value (null — an order that predates capture, or a one-off fetch
+  // failure) means we truly have nothing to say. Each gets its own accurate
+  // phrasing so the evidence never claims a "verified match" it can't back up.
+  const describeCheck = (value: string | null, label: string) => {
+    switch (value) {
+      case "pass": return `${label}: PASS — checked against the card network's records at checkout and matched.`;
+      case "fail": return `${label}: FAIL — checked against the card network's records at checkout and did NOT match.`;
+      case "unavailable": return `${label}: UNAVAILABLE — the card's issuing bank does not support this check (common and not indicative of fraud); Stripe could not return a result either way.`;
+      case "unchecked": return `${label}: UNCHECKED — Stripe did not run this check for this transaction.`;
+      default: return `${label}: not on file for this order (this purchase predates our card-verification logging, or the result failed to save).`;
+    }
+  };
+
   const cvcPass = order?.card_cvc_check === "pass";
   const avsPass = order?.card_avs_check === "pass";
-  const hasAnyVerification = !!order?.card_cvc_check || !!order?.card_avs_check;
+  const hasAnyVerification = order?.card_cvc_check != null || order?.card_avs_check != null;
 
   lines.push("── Card verification at time of purchase ──");
-  if (order?.card_cvc_check) {
-    lines.push(`CVC check: ${order.card_cvc_check.toUpperCase()} — the card's security code entered at checkout was checked against the card network's records.`);
-  } else {
-    lines.push(`CVC check: not on file for this order (this purchase predates our card-verification logging).`);
-  }
-  if (order?.card_avs_check) {
-    lines.push(`Address verification (AVS): ${order.card_avs_check.toUpperCase()} — the billing address entered was checked against the cardholder's bank records.`);
-  } else {
-    lines.push(`Address verification (AVS): not on file for this order (this purchase predates our card-verification logging).`);
-  }
+  lines.push(describeCheck(order?.card_cvc_check ?? null, "CVC check"));
+  lines.push(describeCheck(order?.card_avs_check ?? null, "Address verification (AVS)"));
   if (order?.billing_address) {
     const a = order.billing_address;
     const addr = [a.line1, a.line2, a.city, a.state, a.postal_code, a.country].filter(Boolean).join(", ");
@@ -135,10 +140,10 @@ export function buildEvidenceText(chargeback: any, order: any): string {
   }
   if (cvcPass || avsPass) {
     lines.push("This was not a card-present or manually-keyed transaction — the buyer entered their own card number, CVC, and billing address directly into Stripe's secure checkout form, and the results above confirm those details matched the card issuer's records. A stranger could not have known the correct CVC and/or billing address for this card.");
-  } else if (!hasAnyVerification) {
-    lines.push("Note: this order was placed before our system began logging CVC/AVS check results, so we cannot cite a specific pass/fail result for this transaction. All purchases go through Stripe's standard checkout, which requires the card number, expiration, and CVC to be entered correctly before Stripe will authorize the charge at all — an incorrect CVC is rejected by the card network before the order is ever created.");
+  } else if (hasAnyVerification) {
+    lines.push("Note: the card issuer did not return a definitive pass on these checks for this transaction (see results above) — included for completeness. This is a limitation of the issuing bank's own systems, not evidence that the transaction was unauthorized.");
   } else {
-    lines.push("Note: the verification checks on file for this order did not return a clear pass — this is included for completeness rather than as evidence of a verified match.");
+    lines.push("Note: this order was placed before our system began logging CVC/AVS check results, so we cannot cite a specific result for this transaction. All purchases go through Stripe's standard checkout, which requires the card number, expiration, and CVC to be entered correctly before Stripe will authorize the charge at all — an incorrect CVC is rejected by the card network before the order is ever created.");
   }
   lines.push("");
 
