@@ -7395,6 +7395,7 @@ interface ChargebackRow {
   status: string;
   evidence_due_by: string | null;
   evidence_submitted_at: string | null;
+  evidence_draft_saved_at: string | null;
   created_at: string;
   ticket_orders: { order_number: string; event_slug: string; event_city: string; ticket_type: string; quantity: number; created_at: string; billing_address: any; card_cvc_check: string | null; card_avs_check: string | null } | null;
   vendor_applications: { business_name: string; cities: string[]; vendor_type: string; created_at: string } | null;
@@ -7504,9 +7505,11 @@ function ChargebacksSection({ adminToken }: { adminToken: string }) {
       });
       const data = await res.json();
       if (res.ok) {
-        alert(finalize
-          ? "Evidence submitted to Stripe — the dispute is now with the card network for a decision."
-          : "Evidence saved to Stripe as a draft — open the dispute in the Stripe Dashboard to review and submit it.");
+        if (finalize) {
+          setViewing(null);
+        } else {
+          alert("Evidence saved to Stripe as a draft — open the dispute in the Stripe Dashboard to review and submit it.");
+        }
         fetchData();
       } else {
         alert(`Error: ${data.error || "failed to save evidence"}`);
@@ -7637,12 +7640,17 @@ function ChargebacksSection({ adminToken }: { adminToken: string }) {
                         <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${CHARGEBACK_STATUS_STYLE[c.status] || "bg-white/5 text-white/80 border-white/15"}`}>
                           {c.status.replace(/_/g, " ")}
                         </span>
+                        {c.evidence_submitted_at ? (
+                          <p className="text-green-400 text-[10px] font-semibold mt-1">✓ Evidence submitted {new Date(c.evidence_submitted_at).toLocaleDateString()}</p>
+                        ) : c.evidence_draft_saved_at ? (
+                          <p className="text-white/80 text-[10px] mt-1">Draft saved {new Date(c.evidence_draft_saved_at).toLocaleDateString()}</p>
+                        ) : null}
                       </td>
                       <td className="py-2 pr-3 text-white/70 text-xs">{new Date(c.created_at).toLocaleDateString()}</td>
                       <td className="py-2">
                         <button onClick={() => openDispute(c)}
                           className="text-xs font-semibold px-3 py-1.5 rounded-full bg-yellow-500/10 text-yellow-400 border border-yellow-500/25 hover:bg-yellow-500/20 transition-all cursor-pointer">
-                          Evidence
+                          {c.evidence_submitted_at ? "View Evidence" : "Evidence"}
                         </button>
                       </td>
                     </tr>

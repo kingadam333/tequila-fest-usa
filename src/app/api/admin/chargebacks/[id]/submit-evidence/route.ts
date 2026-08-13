@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyAdminToken, unauthorizedResponse } from "@/lib/adminAuth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { stripe } from "@/lib/stripe";
-import { buildEvidenceText } from "@/lib/chargebacks";
+import { buildEvidenceText, syncDisputeToDb } from "@/lib/chargebacks";
 
 // Pushes the evidence bundle to Stripe. `finalize: false` (default) saves it
 // as a DRAFT — visible in the Stripe Dashboard's dispute form, pre-filled,
@@ -26,8 +26,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const evidenceText = buildEvidenceText(chargeback, order);
 
+  let updatedDispute;
   try {
-    await stripe.disputes.update(chargeback.stripe_dispute_id, {
+    updatedDispute = await stripe.disputes.update(chargeback.stripe_dispute_id, {
       evidence: {
         uncategorized_text: evidenceText,
         product_description: order ? `${order.quantity}x ${order.ticket_type} ticket(s) to Tequila Fest ${order.event_city}` : undefined,
@@ -45,6 +46,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: err?.message || "Failed to save evidence to Stripe" }, { status: 500 });
   }
 
-  await db.from("chargebacks").update({ evidence_submitted_at: new Date().toISOString() }).eq("id", id);
+  // Re-sync from Stripe's response immediately — submitting evidence usually
+  // flips the dispute's status (e.g. needs_response → under_review) right
+  // away, and the admin list shouldn't show stale status until the next
+  // webhook delivery.
+  await syncDisputeToDb(db, updatedDispute);
+
+  const now = new Date().toISOString();
+  await db.from("chargebacks").update(
+    finalize ? { evidence_submitted_at: now } : { evidence_draft_saved_at: now }
+  ).eq("id", id);
+
   return NextResponse.json({ ok: true, finalized: finalize });
 }
