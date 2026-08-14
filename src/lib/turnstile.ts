@@ -30,8 +30,16 @@ export async function verifyTurnstile(token: string, ip?: string): Promise<boole
       body: formData,
     });
     const data = await res.json();
+    if (data.success !== true) {
+      // Cloudflare's error-codes are the only way to tell "bad/expired
+      // token" apart from "this secret doesn't belong to this widget"
+      // (invalid-input-secret) — logging them is what makes a mismatched
+      // secret/sitekey pair actually diagnosable instead of a silent no-op.
+      console.error("Turnstile siteverify rejected token:", JSON.stringify(data["error-codes"] || data));
+    }
     return data.success === true;
-  } catch {
+  } catch (err) {
+    console.error("Turnstile siteverify request failed:", err);
     return false;
   }
 }
