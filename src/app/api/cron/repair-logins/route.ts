@@ -1,17 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { repairCustomerLogin } from "@/lib/accountActions";
+import { authorizeCron } from "@/lib/cronAuth";
 
-// Vercel cron hits this. Auth via CRON_SECRET (Vercel sets `Authorization: Bearer $CRON_SECRET`).
-// Manual trigger from admin uses the x-admin-token header.
-function authorized(req: NextRequest): boolean {
-  const cronSecret = process.env.CRON_SECRET;
-  const auth = req.headers.get("authorization") || "";
-  if (cronSecret && auth === `Bearer ${cronSecret}`) return true;
-  const adminToken = req.headers.get("x-admin-token");
-  if (adminToken && adminToken === process.env.ADMIN_PASSWORD) return true;
-  return false;
-}
 
 // Trickles out the one-time backfill of logins for accounts that were stuck
 // with a lead row but no real Supabase Auth user (see accountActions.ts —
@@ -22,7 +13,8 @@ function authorized(req: NextRequest): boolean {
 const BATCH_SIZE = 20;
 
 export async function GET(req: NextRequest) {
-  if (!authorized(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const denied = authorizeCron(req, "repair-logins");
+  if (denied) return denied;
 
   const db = supabaseAdmin as any;
   const { data: batch } = await db
