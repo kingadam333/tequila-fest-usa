@@ -3,18 +3,11 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { listFolder, listFolders, getTemporaryLink, isConfigured as dbxConfigured } from "@/lib/social/dropbox";
 import { generateCaption } from "@/lib/social/captions";
 import { postToFacebook, postToInstagram, type PostMedia } from "@/lib/social/meta";
+import { authorizeCron } from "@/lib/cronAuth";
 
 // Vercel cron hits this. Auth via CRON_SECRET (Vercel sets `Authorization: Bearer $CRON_SECRET`).
 // Manual trigger from admin uses the x-admin-token header.
 
-function authorized(req: NextRequest): boolean {
-  const cronSecret = process.env.CRON_SECRET;
-  const auth = req.headers.get("authorization") || "";
-  if (cronSecret && auth === `Bearer ${cronSecret}`) return true;
-  const adminToken = req.headers.get("x-admin-token");
-  if (adminToken && adminToken === process.env.ADMIN_PASSWORD) return true;
-  return false;
-}
 
 function pickRandom<T>(arr: T[]): T | undefined {
   if (!arr.length) return undefined;
@@ -22,7 +15,8 @@ function pickRandom<T>(arr: T[]): T | undefined {
 }
 
 export async function GET(req: NextRequest) {
-  if (!authorized(req)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  const denied = authorizeCron(req, "social-auto-post");
+  if (denied) return denied;
 
   const { searchParams } = new URL(req.url);
   const type = (searchParams.get("type") || "event") as "event" | "brand" | "meme";
