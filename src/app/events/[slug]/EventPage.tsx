@@ -259,7 +259,9 @@ export default function EventPage({ event, ogImage, dbStatus }: { event: EventDa
 
           <div className="relative z-20 text-center px-4 max-w-4xl mx-auto w-full pt-8 pb-10">
 
-            {/* Scroll nudge */}
+            {/* Scroll nudge — pointless on a finished event, where there are
+                no tickets further down the page to scroll to */}
+            {!isCompleted && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -291,6 +293,7 @@ export default function EventPage({ event, ogImage, dbStatus }: { event: EventDa
                 </svg>
               </motion.div>
             </motion.div>
+            )}
 
             {/* Back link */}
             <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.4 }}>
