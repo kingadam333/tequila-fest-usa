@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { stripe, TICKET_PRICES, TICKET_LABELS, type TicketType } from "@/lib/stripe";
 import { getEvent } from "@/lib/events";
+import { supabaseAdmin } from "@/lib/supabase";
+import { areTicketSalesClosed } from "@/lib/eventSales";
 
 export interface CheckoutBody {
   eventSlug: string;
@@ -21,6 +23,25 @@ export async function POST(req: NextRequest) {
     const event = getEvent(eventSlug);
     if (!event) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
+    }
+
+    // Same past-event/closed-status guard as /api/pre-checkout. This endpoint
+    // has no callers left in the app, but it is still publicly reachable and
+    // creates real Stripe sessions, so it must not be the way around the
+    // guard. See src/lib/eventSales.ts.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- `events`
+    // is absent from the generated Database types, same as every other route
+    // that queries it.
+    const { data: eventRow } = await (supabaseAdmin as any)
+      .from("events")
+      .select("status, date_iso")
+      .eq("slug", eventSlug)
+      .maybeSingle();
+    if (eventRow && areTicketSalesClosed(eventRow.status, eventRow.date_iso)) {
+      return NextResponse.json(
+        { error: "Tickets for this event are no longer on sale." },
+        { status: 409 },
+      );
     }
 
     const unitAmount = TICKET_PRICES[ticketType];

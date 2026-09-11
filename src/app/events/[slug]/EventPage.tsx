@@ -8,6 +8,7 @@ import { MapPin, Calendar, Clock, Ticket, ArrowLeft, Star } from "lucide-react";
 import { PRICING } from "@/lib/events";
 import type { EventData } from "@/lib/events";
 import type { TicketType } from "@/lib/ticket-config";
+import { isEventPast } from "@/lib/eventSales";
 import Navbar from "@/components/Navbar";
 import OfficialBanner from "@/components/OfficialBanner";
 import Footer from "@/components/Footer";
@@ -146,7 +147,10 @@ export default function EventPage({ event, ogImage, dbStatus }: { event: EventDa
   const liveTypes = useLiveTicketTypes(event.slug);
   const { openCart, modal } = useCartModal(event, liveTypes);
   const isComingSoon = dbStatus === "coming_soon";
-  const isCompleted = dbStatus === "completed";
+  // A past-dated event is completed whether or not anyone remembered to flip
+  // its status in admin — see src/lib/eventSales.ts for why the date alone is
+  // not enough and what the grace period absorbs.
+  const isCompleted = dbStatus === "completed" || isEventPast(event.dateISO);
 
   // "Late Registration" unlocks during the final week before the event
   // (through the event date itself) — was previously hardcoded to always
@@ -429,7 +433,7 @@ export default function EventPage({ event, ogImage, dbStatus }: { event: EventDa
             {/* CTAs */}
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.65 }}
               className="mt-4 flex flex-col sm:flex-row gap-4 justify-center items-center flex-wrap">
-              {gaTicket && (
+              {gaTicket && !isCompleted && (
                 <button onClick={() => openCart("ga")}
                   className="cursor-pointer inline-flex items-center gap-2 border border-white/25 hover:border-white/50 text-white/70 hover:text-white text-base px-7 py-4 rounded-full transition-all duration-200">
                   $5 GA Entry
@@ -745,16 +749,32 @@ export default function EventPage({ event, ogImage, dbStatus }: { event: EventDa
         {/* Bottom CTA */}
         <section className="py-16 px-4 bg-[#0a0300] text-center">
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
-            <p className="text-white/80 text-sm mb-2">Don&apos;t wait — tickets sell out every year</p>
-            <h2 className="font-display text-shimmer mb-8" style={{ fontSize: "clamp(2rem, 6vw, 4.5rem)" }}>
-              GET YOUR TICKETS NOW
-            </h2>
-            <button onClick={() => openCart()}
-              className="animate-pulse-glow inline-flex items-center justify-center gap-3 bg-yellow-500 hover:bg-yellow-400 text-black font-bold text-xl px-12 py-5 rounded-full transition-all duration-200 hover:scale-105 cursor-pointer">
-              <Ticket size={20} />
-              Select Tickets
-            </button>
-            <p className="mt-4 text-white/80 text-sm">Must be 21+ · Mix ticket types · Bring friends</p>
+            {isCompleted ? (
+              <>
+                <p className="text-white/80 text-sm mb-2">This year&apos;s festival has wrapped</p>
+                <h2 className="font-display text-shimmer mb-8" style={{ fontSize: "clamp(2rem, 6vw, 4.5rem)" }}>
+                  THANKS FOR CELEBRATING WITH US
+                </h2>
+                <p className="text-white/80 text-base">
+                  Next year&apos;s date will be announced here — check{" "}
+                  <Link href="/events" className="text-yellow-400 hover:text-yellow-300 underline">all upcoming events</Link>{" "}
+                  in the meantime.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-white/80 text-sm mb-2">Don&apos;t wait — tickets sell out every year</p>
+                <h2 className="font-display text-shimmer mb-8" style={{ fontSize: "clamp(2rem, 6vw, 4.5rem)" }}>
+                  GET YOUR TICKETS NOW
+                </h2>
+                <button onClick={() => openCart()}
+                  className="animate-pulse-glow inline-flex items-center justify-center gap-3 bg-yellow-500 hover:bg-yellow-400 text-black font-bold text-xl px-12 py-5 rounded-full transition-all duration-200 hover:scale-105 cursor-pointer">
+                  <Ticket size={20} />
+                  Select Tickets
+                </button>
+                <p className="mt-4 text-white/80 text-sm">Must be 21+ · Mix ticket types · Bring friends</p>
+              </>
+            )}
           </motion.div>
         </section>
 

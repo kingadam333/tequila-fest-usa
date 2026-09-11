@@ -5,6 +5,7 @@ import { getEvent } from "@/lib/events";
 import { verifyTurnstile } from "@/lib/turnstile";
 import { supabaseAdmin } from "@/lib/supabase";
 import { calculateFeesForCart } from "@/lib/fees";
+import { areTicketSalesClosed } from "@/lib/eventSales";
 
 interface CartItem { ticketType: TicketType; quantity: number; price: number; platformFee?: number; }
 
@@ -29,6 +30,23 @@ export async function POST(req: NextRequest) {
   if (!event) return NextResponse.json({ error: "Event not found" }, { status: 404 });
 
   const db = supabaseAdmin as any;
+
+  // getEvent() above reads the STATIC src/lib/events.ts list, which carries no
+  // status and no live date — on its own it will happily sell a festival that
+  // finished last month. Check the real DB row before creating any Stripe
+  // session. A slug with no DB row is let through rather than blocked, so a
+  // naming mismatch can't take checkout down for a live event.
+  const { data: eventRow } = await db
+    .from("events")
+    .select("status, date_iso")
+    .eq("slug", eventSlug)
+    .maybeSingle();
+  if (eventRow && areTicketSalesClosed(eventRow.status, eventRow.date_iso)) {
+    return NextResponse.json(
+      { error: "Tickets for this event are no longer on sale." },
+      { status: 409 },
+    );
+  }
 
   // Anyone who's ever disputed a charge with us is blocked from buying
   // again — checked before any Stripe/Supabase writes happen.
