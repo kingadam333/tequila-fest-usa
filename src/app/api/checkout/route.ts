@@ -3,6 +3,7 @@ import { stripe, TICKET_PRICES, TICKET_LABELS, type TicketType } from "@/lib/str
 import { getEvent } from "@/lib/events";
 import { supabaseAdmin } from "@/lib/supabase";
 import { areTicketSalesClosed } from "@/lib/eventSales";
+import { eventLabel } from "@/lib/eventLabel";
 
 export interface CheckoutBody {
   eventSlug: string;
@@ -44,6 +45,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Same rule as /api/pre-checkout: derive the year, never hardcode it.
+    const label = eventLabel(event.city, eventRow?.date_iso ?? event.dateISO);
+
     const unitAmount = TICKET_PRICES[ticketType];
     if (!unitAmount) {
       return NextResponse.json({ error: "Invalid ticket type" }, { status: 400 });
@@ -60,7 +64,7 @@ export async function POST(req: NextRequest) {
             currency: "usd",
             unit_amount: unitAmount,
             product_data: {
-              name: `${TICKET_LABELS[ticketType]} — Tequila Fest ${event.city} 2026`,
+              name: `${TICKET_LABELS[ticketType]} — ${label}`,
               description: `${event.date} · ${event.venue}, ${event.venueDetail}`,
               images: ["https://tequilafestusa.com/tequilafest_usa.png"],
             },
@@ -80,7 +84,7 @@ export async function POST(req: NextRequest) {
         type: "ticket_purchase",
       },
       payment_intent_data: {
-        description: `Tequila Fest ${event.city} 2026 — ${TICKET_LABELS[ticketType]} x${quantity}`,
+        description: `${label} — ${TICKET_LABELS[ticketType]} x${quantity}`,
         metadata: {
           eventSlug,
           ticketType,
