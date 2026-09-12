@@ -6,6 +6,7 @@ import { verifyTurnstile } from "@/lib/turnstile";
 import { supabaseAdmin } from "@/lib/supabase";
 import { calculateFeesForCart } from "@/lib/fees";
 import { areTicketSalesClosed } from "@/lib/eventSales";
+import { eventLabel } from "@/lib/eventLabel";
 
 interface CartItem { ticketType: TicketType; quantity: number; price: number; platformFee?: number; }
 
@@ -47,6 +48,10 @@ export async function POST(req: NextRequest) {
       { status: 409 },
     );
   }
+
+  // Year comes from the event's own date (DB first, static definition as a
+  // fallback), never a literal — see src/lib/eventLabel.ts.
+  const label = eventLabel(event.city, eventRow?.date_iso ?? event.dateISO);
 
   // Anyone who's ever disputed a charge with us is blocked from buying
   // again — checked before any Stripe/Supabase writes happen.
@@ -91,7 +96,7 @@ export async function POST(req: NextRequest) {
         currency: "usd",
         unit_amount: TICKET_PRICES[item.ticketType],
         product_data: {
-          name: `${TICKET_LABELS[item.ticketType]} — Tequila Fest ${event.city} 2026`,
+          name: `${TICKET_LABELS[item.ticketType]} — ${label}`,
           description: `${event.date} · ${event.venue}, ${event.venueDetail}`,
         },
       },
@@ -143,7 +148,7 @@ export async function POST(req: NextRequest) {
       affiliateCode,
     },
     payment_intent_data: {
-      description: `Tequila Fest ${event.city} 2026 — ${ticketSummary}`,
+      description: `${label} — ${ticketSummary}`,
       metadata: { eventSlug, customerEmail: email },
     },
   });

@@ -456,7 +456,7 @@ export function vendorConfirmationHtml({
               <td style="background:linear-gradient(135deg,#1a0e00,#0d0500);padding:16px 20px;border-bottom:1px solid rgba(255,255,255,0.08)">
                 <p style="margin:0;color:rgba(255,248,240,0.4);font-size:11px;letter-spacing:2px;text-transform:uppercase">Vendor Pass 1 of 1</p>
                 <p style="margin:4px 0 0;font-family:Arial;font-size:20px;font-weight:900;letter-spacing:3px;color:#F5A623">TEQUILA FEST USA</p>
-                <p style="margin:2px 0 0;color:rgba(255,248,240,0.5);font-size:13px">${cityLabel} · 2026</p>
+                <p style="margin:2px 0 0;color:rgba(255,248,240,0.5);font-size:13px">${cityLabel}</p>
               </td>
             </tr>
             <tr>
