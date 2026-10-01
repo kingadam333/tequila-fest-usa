@@ -2,11 +2,55 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { buildEscalationHtml, ADMIN_EMAIL } from "@/lib/aiInboxEmail";
 import { resend, FROM_SUPPORT } from "@/lib/resend";
+import { verifyResendSignature, webhookSecretConfigured } from "@/lib/resendWebhook";
 
 export async function POST(req: NextRequest) {
+  // The raw text is required to check the signature — re-serializing a parsed
+  // object would not reproduce the exact bytes that were signed.
+  let rawRequestBody: string;
+  try {
+    rawRequestBody = await req.text();
+  } catch {
+    return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
+  }
+
+  // This endpoint used to accept any unauthenticated POST and insert whatever
+  // it was handed into contact_submissions, so anyone who found the URL could
+  // forge an email into any inbox from any sender. Two independent gates now
+  // stand in front of that; see src/lib/resendWebhook.ts.
+  //
+  // Gate 1 — the signature, once RESEND_WEBHOOK_SECRET is set (Resend
+  // dashboard -> Webhooks -> this endpoint -> Signing Secret).
+  let signatureVerified = false;
+  if (webhookSecretConfigured()) {
+    const result = verifyResendSignature({
+      secret: process.env.RESEND_WEBHOOK_SECRET!.trim(),
+      rawBody: rawRequestBody,
+      svixId: req.headers.get("svix-id"),
+      svixTimestamp: req.headers.get("svix-timestamp"),
+      svixSignature: req.headers.get("svix-signature"),
+    });
+    if (!result.ok) {
+      console.error(`[email-inbound] rejected: ${result.reason}`);
+      return NextResponse.json({ error: "Unauthorized" }, { status: result.status });
+    }
+    signatureVerified = true;
+  } else {
+    // Gate 2 applies instead (enforced further down, once the email id is
+    // known): the event only counts if Resend's own API will hand back the
+    // inbound email it names. Failing closed here instead would silently drop
+    // real customer mail the moment this deployed, which is worse than the
+    // forgery risk it would close an hour earlier.
+    console.error(
+      "[email-inbound] RESEND_WEBHOOK_SECRET is not set — falling back to " +
+        "verifying provenance against Resend's API. Set the signing secret in " +
+        "Vercel and redeploy to authenticate deliveries properly.",
+    );
+  }
+
   let payload: any;
   try {
-    payload = await req.json();
+    payload = JSON.parse(rawRequestBody);
   } catch {
     return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
   }
@@ -59,11 +103,16 @@ export async function POST(req: NextRequest) {
   let fetchedHtml = "";
   let fetchedHeaders: Record<string, string> = {};
   const emailId: string | undefined = data?.email_id || data?.id;
+  // Tracked separately from the body: a 200 proves the event names a real
+  // inbound email (a forger cannot make Resend return one), even when the
+  // body itself has not been indexed yet.
+  let idResolvedAtResend = false;
   async function fetchReceivedOnce() {
     const r = await fetch(`https://api.resend.com/emails/receiving/${emailId}`, {
       headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}` },
     });
     if (!r.ok) return { ok: false, status: r.status, msg: await r.text() };
+    idResolvedAtResend = true;
     const body = await r.json();
     return {
       ok: true,
@@ -88,6 +137,17 @@ export async function POST(req: NextRequest) {
     } catch (err) {
       console.error("Resend receiving fetch threw", err);
     }
+  }
+
+  // Gate 2: with no signing secret configured, an event is only trusted if
+  // Resend confirmed the email exists. Resend retries failed deliveries, so a
+  // genuine email that lost the indexing race is redelivered rather than lost.
+  if (!signatureVerified && !idResolvedAtResend) {
+    console.error(
+      "[email-inbound] rejected: unsigned delivery whose email_id did not resolve at Resend",
+      { emailId, from: fromRaw, to },
+    );
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   // HTML → plain text that preserves line breaks. Block-level tags become

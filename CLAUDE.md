@@ -498,6 +498,10 @@ STRIPE_SECRET_KEY=...
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=...
 STRIPE_WEBHOOK_SECRET=...
 RESEND_API_KEY=...                      # must be current/active key from resend.com
+RESEND_WEBHOOK_SECRET=...               # Svix signing secret for the inbound-email webhook
+                                        # (Resend → Webhooks → endpoint → Signing Secret).
+                                        # Until set, /api/webhooks/email-inbound falls back to
+                                        # verifying the event's email_id against Resend's API.
 ADMIN_PASSWORD=...                      # used in x-admin-token header
 CRON_SECRET=...                         # Vercel Cron auth — sent as Authorization: Bearer $CRON_SECRET automatically
 NEXT_PUBLIC_TURNSTILE_SITE_KEY=...      # Cloudflare Turnstile site key
