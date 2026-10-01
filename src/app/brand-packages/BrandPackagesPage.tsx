@@ -9,6 +9,8 @@ import Navbar from "@/components/Navbar";
 import OfficialBanner from "@/components/OfficialBanner";
 import Footer from "@/components/Footer";
 import Turnstile from "@/components/Turnstile";
+import HoneypotField from "@/components/HoneypotField";
+import { HONEYPOT_FIELD } from "@/lib/spamGuard";
 
 type City = { id: string; label: string };
 type Pkg = {
@@ -173,6 +175,7 @@ export default function BrandPackagesPage() {
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
   const [captchaToken, setCaptchaToken] = useState("");
+  const [hp, setHp] = useState("");
 
   // Checkout modal state
   const [checkout, setCheckout] = useState<{ tier: string; cities: string[]; total: number } | null>(null);
@@ -248,6 +251,7 @@ export default function BrandPackagesPage() {
           subject: "Brand Inquiry",
           message: `Brand: ${form.brand}\n\n${form.message}`,
           captchaToken,
+          [HONEYPOT_FIELD]: hp,
         }),
       });
       if (!res.ok) {
@@ -366,6 +370,7 @@ export default function BrandPackagesPage() {
                   <textarea required rows={5} value={form.message} onChange={set("message")} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-yellow-500/50 placeholder-white/30 resize-y" placeholder="Distribution, target cities, package interest, anything else…" />
                 </div>
 
+                <HoneypotField value={hp} onChange={setHp} />
                 <Turnstile onVerify={setCaptchaToken} onError={() => setCaptchaToken("")} onExpire={() => setCaptchaToken("")} />
 
                 {error && <p className="text-red-400 text-sm">{error}</p>}

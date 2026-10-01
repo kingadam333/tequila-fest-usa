@@ -2,12 +2,15 @@
 
 import { motion } from "framer-motion";
 import { useState } from "react";
+import HoneypotField from "@/components/HoneypotField";
+import { HONEYPOT_FIELD } from "@/lib/spamGuard";
 
 export default function EmailSignup() {
   const [firstName, setFirstName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [cities, setCities] = useState<string[]>([]);
+  const [hp, setHp] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -29,7 +32,7 @@ export default function EmailSignup() {
       const res = await fetch("/api/newsletter", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ firstName, email, phone: phone || undefined, cities }),
+        body: JSON.stringify({ firstName, email, phone: phone || undefined, cities, [HONEYPOT_FIELD]: hp }),
       });
       if (!res.ok) throw new Error("Subscribe failed");
       setSubmitted(true);
@@ -137,6 +140,7 @@ export default function EmailSignup() {
                 <p className="text-red-400 text-sm text-center">{error}</p>
               )}
 
+              <HoneypotField value={hp} onChange={setHp} />
               <button
                 type="submit"
                 disabled={loading}

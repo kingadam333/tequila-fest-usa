@@ -9,6 +9,8 @@ import Navbar from "@/components/Navbar";
 import OfficialBanner from "@/components/OfficialBanner";
 import Footer from "@/components/Footer";
 import Turnstile from "@/components/Turnstile";
+import HoneypotField from "@/components/HoneypotField";
+import { HONEYPOT_FIELD } from "@/lib/spamGuard";
 
 const SUBJECTS = [
   "General Inquiry",
@@ -50,6 +52,7 @@ export default function ContactPage() {
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
   const [captchaToken, setCaptchaToken] = useState("");
+  const [hp, setHp] = useState("");
 
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
@@ -67,7 +70,7 @@ export default function ContactPage() {
       const res = await fetch("/api/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, captchaToken }),
+        body: JSON.stringify({ ...form, captchaToken, [HONEYPOT_FIELD]: hp }),
       });
       const data = await res.json();
       if (res.ok) setSubmitted(true);
@@ -218,6 +221,7 @@ export default function ContactPage() {
                       />
                     </div>
 
+                    <HoneypotField value={hp} onChange={setHp} />
                     <Turnstile
                       onVerify={setCaptchaToken}
                       onError={() => setCaptchaToken("")}

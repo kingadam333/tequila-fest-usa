@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
+import { honeypotTripped, SPAM_REJECTION } from "@/lib/spamGuard";
 import { resend, FROM_SUPPORT } from "@/lib/resend";
 import { wrapEmailHtml } from "@/lib/emailLayout";
 
@@ -46,10 +47,20 @@ async function addToBrevo(firstName: string, email: string, phone: string | null
 }
 
 export async function POST(req: NextRequest) {
-  const { firstName, email, phone, cities } = await req.json();
+  const body = await req.json();
+  const { firstName, email, phone, cities } = body;
 
   if (!firstName?.trim() || !email?.trim()) {
     return NextResponse.json({ error: "First name and email are required" }, { status: 400 });
+  }
+
+  // This endpoint writes straight through to the Brevo mailing list, so an
+  // unguarded POST pollutes the list and burns send quota. A honeypot keeps
+  // the signup frictionless for real visitors — no CAPTCHA on a one-field
+  // email capture — while stopping the form bots that fill every input.
+  if (honeypotTripped(body)) {
+    console.warn("[newsletter] rejected: honeypot field filled", { email });
+    return NextResponse.json(SPAM_REJECTION, { status: 400 });
   }
 
   const cleanEmail = email.trim().toLowerCase();

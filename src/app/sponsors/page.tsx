@@ -7,6 +7,8 @@ import Navbar from "@/components/Navbar";
 import OfficialBanner from "@/components/OfficialBanner";
 import Footer from "@/components/Footer";
 import Turnstile from "@/components/Turnstile";
+import HoneypotField from "@/components/HoneypotField";
+import { HONEYPOT_FIELD } from "@/lib/spamGuard";
 
 
 const PACKAGES = [
@@ -78,6 +80,7 @@ export default function SponsorsPage() {
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
   const [captchaToken, setCaptchaToken] = useState("");
+  const [hp, setHp] = useState("");
   
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
@@ -102,6 +105,7 @@ export default function SponsorsPage() {
           subject: "Sponsorship Opportunity",
           message: `Company: ${form.company}\nPackage Interest: ${form.package}\n\n${form.message}`,
           captchaToken,
+          [HONEYPOT_FIELD]: hp,
         }),
       });
       const data = await res.json();
@@ -269,6 +273,7 @@ export default function SponsorsPage() {
                       className="w-full bg-white/5 border border-white/15 focus:border-yellow-500/50 rounded-xl px-4 py-3 text-white placeholder-white/30 outline-none transition-colors text-sm resize-none" />
                   </div>
                   
+                  <HoneypotField value={hp} onChange={setHp} />
                   <Turnstile
                     onVerify={setCaptchaToken}
                     onError={() => setCaptchaToken("")}

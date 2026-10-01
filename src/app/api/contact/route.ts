@@ -1,16 +1,32 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { verifyTurnstile } from "@/lib/turnstile";
+import { automatedSubmissionReason, honeypotTripped, normalizeEmail, SPAM_REJECTION } from "@/lib/spamGuard";
 import { resend, INBOX_ROUTING, FROM_SUPPORT } from "@/lib/resend";
 import { generateAIReply } from "@/lib/aiInbox";
 import { buildReplyHtml, buildEscalationHtml, ADMIN_EMAIL } from "@/lib/aiInboxEmail";
 import { lookupAccount, sendPasswordResetEmail, resendTicketEmail } from "@/lib/accountActions";
 
 export async function POST(req: NextRequest) {
-  const { name, email, phone, subject, message, captchaToken } = await req.json();
+  const body = await req.json();
+  const { name, email, phone, subject, message, captchaToken } = body;
 
   if (!name || !email || !subject || !message) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+  }
+
+  // Layered under Turnstile, which is verified and working but which this
+  // spam run clears anyway — see src/lib/spamGuard.ts. Both checks are local,
+  // so an obvious bot costs us no siteverify round-trip. The response is
+  // deliberately vague and the reason is logged, not returned.
+  if (honeypotTripped(body)) {
+    console.warn("[contact] rejected: honeypot field filled", { email });
+    return NextResponse.json(SPAM_REJECTION, { status: 400 });
+  }
+  const automated = automatedSubmissionReason({ name, email, message });
+  if (automated) {
+    console.warn(`[contact] rejected: ${automated}`, { email });
+    return NextResponse.json(SPAM_REJECTION, { status: 400 });
   }
 
   const ip = req.headers.get("cf-connecting-ip") || req.headers.get("x-forwarded-for") || undefined;
@@ -29,14 +45,22 @@ export async function POST(req: NextRequest) {
   // because an earlier auto-reply didn't solve their issue) fragmented the
   // same problem across many separate tickets.
   const mergeWindow = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
-  const { data: recentSubmission } = await db
+  // Match on the NORMALIZED address, so one mailbox wearing many dotted Gmail
+  // disguises merges into a single thread instead of N separate tickets. The
+  // stored column holds whatever the sender typed, so the comparison can't be
+  // done in SQL without a migration — the window is one inbox over 3 days, a
+  // small enough set to normalize in memory.
+  const normalizedEmail = normalizeEmail(email);
+  const { data: windowSubmissions } = await db
     .from("contact_submissions")
-    .select("id")
-    .ilike("email", email)
+    .select("id, email")
     .eq("inbox", routing.label)
     .gte("created_at", mergeWindow)
     .order("created_at", { ascending: false })
-    .limit(1);
+    .limit(200);
+  const recentSubmission = (windowSubmissions || []).filter(
+    (r: { email: string | null }) => normalizeEmail(r.email || "") === normalizedEmail,
+  );
 
   let submissionId: string | undefined;
   if (recentSubmission?.length) {
