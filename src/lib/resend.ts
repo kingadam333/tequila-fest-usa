@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import { randomInt } from "node:crypto";
 
 export const resend = new Resend(process.env.RESEND_API_KEY || "re_placeholder");
 
@@ -158,12 +159,25 @@ export function ticketConfirmationHtml({
 }
 
 // ─── Generate readable password ──────────────────────────────────────────────
+// Supabase Auth enforces a password policy requiring ALL FOUR character
+// classes — lowercase, uppercase, digit and symbol. The previous format
+// (`AgaveBlanco742`) had no symbol, so every Auth user this function tried to
+// create was rejected with "Password should contain at least one character of
+// each…". That broke the login backfill (16 of the first 20 rows) and, more
+// quietly, `ensureCustomerLogin()` in the Stripe webhook — a new ticket buyer
+// would get their tickets but no working login.
+//
+// All four classes are now guaranteed by construction rather than by luck, and
+// the symbols are drawn from a set that survives being pasted into an email,
+// a URL or an HTML attribute (no <, >, &, quotes or backslash).
 export function generatePassword(): string {
   const words = ["Agave","Blanco","Fiesta","Tequila","Mezcal","Jalisco","Ambar","Reposado","Anejo","Sauza","Patron","Ocho","Clase","Fortaleza"];
-  const w1 = words[Math.floor(Math.random() * words.length)];
-  const w2 = words[Math.floor(Math.random() * words.length)];
-  const num = Math.floor(Math.random() * 900) + 100;
-  return `${w1}${w2}${num}`;
+  const symbols = "!@#$%*?";
+  const w1 = words[randomInt(words.length)];   // capitalised → upper + lower
+  const w2 = words[randomInt(words.length)];
+  const num = 100 + randomInt(900);            // three digits
+  const sym = symbols[randomInt(symbols.length)]; // the class that was missing
+  return `${w1}-${w2}${num}${sym}`;
 }
 
 // ─── Welcome Email (auto-created account after ticket purchase) ───────────────

@@ -30,16 +30,24 @@ export async function GET(req: NextRequest) {
   }
 
   let repaired = 0;
+  let skipped = 0;
   let failed = 0;
   for (const item of batch) {
     try {
       const result = await repairCustomerLogin(item.email);
+      // "Already has a working login" is the goal state, not a failure —
+      // recording it as failed left rows looking broken and, worse, excluded
+      // them from any retry. The status column only allows pending/repaired/
+      // failed, so these land as `repaired` with a message saying why.
+      const alreadyFine = !result.repaired && result.alreadyHadLogin === true;
       await db.from("login_repair_queue").update({
-        status: result.repaired ? "repaired" : "failed",
+        status: result.repaired || alreadyFine ? "repaired" : "failed",
         message: result.repaired ? null : result.message,
         processed_at: new Date().toISOString(),
       }).eq("id", item.id);
-      if (result.repaired) repaired++; else failed++;
+      if (result.repaired) repaired++;
+      else if (alreadyFine) skipped++;
+      else failed++;
     } catch (err: any) {
       await db.from("login_repair_queue").update({
         status: "failed", message: err?.message || "unknown error", processed_at: new Date().toISOString(),
@@ -49,5 +57,5 @@ export async function GET(req: NextRequest) {
   }
 
   const { count: remaining } = await db.from("login_repair_queue").select("id", { count: "exact", head: true }).eq("status", "pending");
-  return NextResponse.json({ processed: batch.length, repaired, failed, remaining: remaining || 0 });
+  return NextResponse.json({ processed: batch.length, repaired, skipped, failed, remaining: remaining || 0 });
 }

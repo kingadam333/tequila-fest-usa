@@ -197,6 +197,33 @@ export async function reassignOrderEmail(orderNumber: string, newEmail: string, 
 // real login. The check now looks for an actual Auth user, and links up to
 // the pre-existing lead row's id (rather than leaving the two orphaned from
 // each other) using the same id-preserving createUser trick as
+
+// Supabase's admin listUsers() returns ONE page. `perPage: 1000` looked like
+// "everything" when this was written; auth.users has since passed 1276, so the
+// last few hundred were invisible to the "does a login already exist?" check —
+// the same silent-truncation trap this project already hit with PostgREST's
+// 1000-row cap. A user past the first page read as "no login exists", the
+// repair tried to create one, and Auth rejected it with "A user with this email
+// address has already been registered".
+async function findAuthUserByEmail(email: string) {
+  const target = email.trim().toLowerCase();
+  const perPage = 1000;
+  for (let page = 1; page <= 50; page++) {
+    const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage });
+    if (error) throw new Error(error.message);
+    const users = data?.users || [];
+    const hit = users.find((u) => u.email?.toLowerCase() === target);
+    if (hit) return hit;
+    if (users.length < perPage) return null; // a short page means the end
+  }
+  return null;
+}
+
+/** Auth's wording when the address is taken — treat as "already has a login". */
+function isAlreadyRegistered(message?: string | null): boolean {
+  return !!message && /already\s+(been\s+)?registered|already\s+exists/i.test(message);
+}
+
 // repairCustomerLogin below.
 export async function ensureCustomerLogin(
   email: string, firstName: string, lastName: string, phone: string
@@ -204,13 +231,13 @@ export async function ensureCustomerLogin(
   const cleanEmail = email.trim().toLowerCase();
   const db = supabaseAdmin as any;
 
-  const { data: { users }, error: listErr } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
-  if (listErr) {
-    console.error("ensureCustomerLogin: failed to list Auth users:", listErr);
+  try {
+    if (await findAuthUserByEmail(cleanEmail)) {
+      return null; // already has a working login
+    }
+  } catch (err: any) {
+    console.error("ensureCustomerLogin: failed to list Auth users:", err?.message || err);
     return null;
-  }
-  if (users.find(u => u.email?.toLowerCase() === cleanEmail)) {
-    return null; // already has a working login
   }
 
   const { data: existingAccount } = await db.from("customer_accounts").select("id").eq("email", cleanEmail).maybeSingle();
@@ -225,6 +252,9 @@ export async function ensureCustomerLogin(
   } as any);
 
   if (authErr || !authUser?.user) {
+    // Losing a race (or a lookup that somehow missed) is not a failure: the
+    // customer ends up with exactly what this function exists to guarantee.
+    if (isAlreadyRegistered(authErr?.message)) return null;
     console.error("ensureCustomerLogin: createUser failed:", authErr);
     return null;
   }
@@ -253,7 +283,8 @@ export async function ensureCustomerLogin(
 // Auth user must be created with the SAME id customer_accounts already uses
 // rather than re-keying across non-deferrable foreign keys.
 export async function repairCustomerLogin(email: string): Promise<
-  { repaired: true; tempPassword: string } | { repaired: false; message: string }
+  | { repaired: true; tempPassword: string }
+  | { repaired: false; alreadyHadLogin?: boolean; message: string }
 > {
   const db = supabaseAdmin as any;
   const cleanEmail = email.trim().toLowerCase();
@@ -265,11 +296,12 @@ export async function repairCustomerLogin(email: string): Promise<
     .maybeSingle();
   if (!account) return { repaired: false, message: "No account found for that email." };
 
-  const { data: { users }, error: listErr } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
-  if (listErr) return { repaired: false, message: "Failed to look up Auth users." };
-
-  if (users.find(u => u.email?.toLowerCase() === cleanEmail)) {
-    return { repaired: false, message: "This account already has a working login — nothing to repair." };
+  try {
+    if (await findAuthUserByEmail(cleanEmail)) {
+      return { repaired: false, alreadyHadLogin: true, message: "This account already has a working login — nothing to repair." };
+    }
+  } catch (err: any) {
+    return { repaired: false, message: `Failed to look up Auth users: ${err?.message || err}` };
   }
 
   const tempPassword = generatePassword();
@@ -282,6 +314,9 @@ export async function repairCustomerLogin(email: string): Promise<
   } as any);
 
   if (authErr || !authUser?.user) {
+    if (isAlreadyRegistered(authErr?.message)) {
+      return { repaired: false, alreadyHadLogin: true, message: "This account already has a working login — nothing to repair." };
+    }
     return { repaired: false, message: authErr?.message || "Failed to create login." };
   }
   if (authUser.user.id !== account.id) {
