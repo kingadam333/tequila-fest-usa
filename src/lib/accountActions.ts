@@ -214,7 +214,10 @@ async function findAuthUserByEmail(email: string) {
     const users = data?.users || [];
     const hit = users.find((u) => u.email?.toLowerCase() === target);
     if (hit) return hit;
-    if (users.length < perPage) return null; // a short page means the end
+    // Stop on an EMPTY page rather than a short one: GoTrue is free to cap
+    // page size below the requested perPage, and "short page = end of list"
+    // would then stop after page 1 and recreate the very bug this fixes.
+    if (users.length === 0) return null;
   }
   return null;
 }
