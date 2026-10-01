@@ -502,6 +502,9 @@ RESEND_WEBHOOK_SECRET=...               # Svix signing secret for the inbound-em
                                         # (Resend → Webhooks → endpoint → Signing Secret).
                                         # Until set, /api/webhooks/email-inbound falls back to
                                         # verifying the event's email_id against Resend's API.
+RESEND_EVENTS_WEBHOOK_SECRET=...        # Svix signing secret for the outbound-events webhook.
+                                        # Separate endpoint in Resend = separate secret; never
+                                        # reuse RESEND_WEBHOOK_SECRET here.
 ADMIN_PASSWORD=...                      # used in x-admin-token header
 CRON_SECRET=...                         # Vercel Cron auth — sent as Authorization: Bearer $CRON_SECRET automatically
 NEXT_PUBLIC_TURNSTILE_SITE_KEY=...      # Cloudflare Turnstile site key
