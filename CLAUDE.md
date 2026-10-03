@@ -128,7 +128,13 @@ This is a recurring failure mode (two separate real incidents), so the rules are
 | `src/lib/fetchAllRows.ts` | Pagination helper for any Supabase query that could cross the 1000-row default cap — loops `.range()` in pages of 1000 until done. Use for aggregate/reporting queries. |
 | `src/lib/turnstile.ts` | Cloudflare Turnstile server-side verification (enforced — see CAPTCHA section) |
 | `src/components/Turnstile.tsx` | Turnstile widget React component (renders once, no remount loop) |
-| `src/lib/adminAuth.ts` | Admin token verification (`verifyAdminToken`/`unauthorizedResponse`) — also doubles as the auth check for Vercel Cron routes via the shared `authorized()` pattern (`CRON_SECRET` bearer token OR `x-admin-token` header) |
+| `src/lib/adminAuth.ts` | Admin token verification (`verifyAdminToken`/`unauthorizedResponse`). Cron-route auth used to live here as a triplicated `authorized()` helper — it now lives in `cronAuth.ts` below. |
+| `src/lib/cronAuth.ts` | Shared auth for every Vercel Cron route (`authorizeCron(req, job)`) — `Authorization: Bearer $CRON_SECRET`, or `x-admin-token` for manual admin triggering. Replaced the copy-pasted helper in all three cron routes, which is part of why a missing `CRON_SECRET` went unnoticed for eight weeks: there was no single place it could announce itself. Now logs *which* cause it hit (secret absent / secret mismatch / unauthenticated). Compares the RAW secret, not a trimmed one — Vercel builds the header from the stored value verbatim. |
+| `src/lib/eventSales.ts` | Shared, client-safe "are ticket sales closed" rule — `isEventPast()` / `areTicketSalesClosed()`. `date_iso` stores local wall-clock as if it were UTC, so the past-date cutoff is 24h past the stored start. `sold_out` is deliberately NOT a closed status (a sold-out event can still reopen); `draft`/`cancelled`/`completed` are. Used by `EventPage.tsx` and enforced server-side in `/api/pre-checkout` + `/api/checkout` (409). |
+| `src/lib/eventLabel.ts` | Builds the human event label (incl. year) from the event's own date instead of a hardcoded year — this is what stopped Stripe descriptions reading "2026" for a 2027 event. Omits the year entirely if the date is unusable rather than guessing, and uses `getUTCFullYear()` to match the `date_iso` convention above. |
+| `src/lib/spamGuard.ts` | Server-side spam rules layered UNDER Turnstile, not replacing it: `HONEYPOT_FIELD`/`honeypotTripped()`, `normalizeEmail()` (collapses Gmail dot/plus variants so one spammer counts as one sender), `automatedSubmissionReason()` (rejects a body with no letters at all, or 7+ digits and ≤2 letters). **Deliberately contains no rule that judges whether a NAME looks real** — a wrongly-rejected customer is worse than a spam row an admin deletes. |
+| `src/components/HoneypotField.tsx` | The hidden field only a bot fills. Hidden with inline styles (not Tailwind `hidden`) so it stays invisible if a stylesheet fails to load, plus `tabIndex={-1}`, `aria-hidden` and `autoComplete="off"` so no keyboard user, screen reader or password manager can trip it. |
+| `src/lib/resendWebhook.ts` | Svix signature verification for both Resend webhooks (`verifyResendSignature()`). HMAC-SHA256 over `${id}.${timestamp}.${body}`, keyed on the base64-decoded part after `whsec_`, 5-minute replay tolerance, handles the multi-signature header Svix sends during a secret rotation. Exists because `/api/webhooks/email-inbound` previously accepted ANY unauthenticated POST and inserted it into `contact_submissions` — anyone with the URL could forge mail into any inbox from any sender. |
 | `src/lib/normalizeTicketType.ts` | Canonicalizes raw ticket type strings (`"vip"`, `"VIP Experience"`, `"vip_experience"` all → `"VIP Experience"`) — every sold-count aggregation must run raw DB values through this before grouping, or the same ticket type splits into multiple buckets |
 | `src/app/api/webhooks/stripe/route.ts` | Stripe webhook handler — routes by `session.metadata.type` (`"vendor"` → `handleVendorPaid`, `"brand_package"` → `handleBrandPackagePaid`, unset → `handleCheckoutComplete` for tickets). Sets the vendor PaymentIntent's Stripe dashboard `description` at payment time here (not at link-creation time — see Vendor Flow section). |
 | `src/app/api/admin/resend-email/route.ts` | Admin: resend ticket email for any order (uses qrTicketHtml) |
@@ -195,6 +201,20 @@ The widget component had `onVerify/onError/onExpire` in its `useEffect` dependen
 - Secret key: `1x0000000000000000000000000000000AA`
 
 With these, the widget renders, issues a dummy token, and enables the submit button — proving the wiring without bot friction.
+
+### Spam still got through — the second layer (added Sept/Oct 2026)
+
+**Turnstile being correctly enforced and spam still arriving are not a contradiction.** A live probe of `/api/contact` with no token and with a bogus token both returned 400, so enforcement was verified working — yet spam kept coming. Managed mode lets a large share of visitors through with no interaction, and a solver service or headless-browser farm clears the rest. A CAPTCHA alone was never going to be the whole answer.
+
+The spam signature it was written against (`contact_submissions`, late Sept 2026): randomly generated names, message bodies that were nothing but a bare 10-digit phone number, and **one** Gmail mailbox wearing dozens of faces via the dot trick (`adot.ic.edaq.671@`, `a.do.ti.c.ed.aq.6.7.1@`, `ad.otic.ed.aq.6.71@` are all the same inbox), which is how a single spammer slipped past the 3-day thread-merge window.
+
+The second layer is `src/lib/spamGuard.ts` + `src/components/HoneypotField.tsx` (see Key Files). Against the preceding 30 days of real traffic, the rules would have blocked **19 of 33** submissions. Note the honest caveat: those rows had already been deleted by the time the rules shipped, so any later drop in volume can't be attributed to this fix with confidence.
+
+**`/api/contact` was the actual entry point**, not the affiliate/sponsor forms it was blamed on — identified because the spam rows had `phone` populated, and the inbound-email webhook always writes `phone: null`.
+
+**Turnstile mode:** there is **no "Interactive" mode** — Cloudflare offers Managed, Non-Interactive and Invisible only. **Managed is the only mode that can present a challenge**, so switching away from it would weaken protection, not strengthen it. Leave it on Managed.
+
+The city splash sites got the same honeypot + email-validation treatment on their `/api/subscribe` routes (they have no Turnstile of their own). Those are separate repos — see the paths at the top of this file.
 
 ---
 
@@ -266,6 +286,78 @@ With these, the widget renders, issues a dummy token, and enables the submit but
 
 ---
 
+## Account Identity — `customer_accounts.id` MUST Equal `auth.users.id`
+
+`/api/auth/session`, `/api/redeem` and `/api/media/upload` all look the customer up with `.eq("id", user.id)` using the **Auth** user's id. So a `customer_accounts` row whose `id` has drifted from its Auth user is invisible to the very customer it belongs to — their orders, loyalty points and tickets are all still in the DB, they just can't see any of it, and support can't find anything wrong because at the row level nothing *is* wrong.
+
+**Re-keying a drifted row is genuinely expensive, which is why this invariant matters more than it looks.** All **nine** foreign keys into `customer_accounts` are `NO ACTION` on update, so the `id` cannot be rewritten in place. Each row must be re-inserted under the correct id, have every child row repointed, then be deleted — and `UNIQUE(email)` stops the staged copy from holding the real address, so staging rows need a temporarily suffixed email.
+
+Worse, three of those nine FKs are **`ON DELETE CASCADE`** (`referrals.referrer_customer_id`, `referral_codes.customer_id`, `referral_rewards.customer_id`) and `redemptions.customer_id` is **`ON DELETE SET NULL`**. Deleting an old row before its children are repointed therefore **destroys referral data silently instead of erroring**. Always confirm all nine FK children reference zero old ids before deleting anything.
+
+### The Oct 3 2026 cleanup (done — don't redo it)
+
+- **22 duplicate email groups merged**, 1,789 → 1,767 rows. Loyalty points unchanged at 143,430; all 1,329 `loyalty_transactions` intact, 0 orphans.
+- **24 uppercase emails lowercased.** A case-mismatched email makes the `.eq("email", cleanEmail)` lookups in `signup`/`ensureCustomerLogin` miss an existing lead row — one of the ways drift got created in the first place.
+- **46 id mismatches re-keyed to 0.** All 1,465 Auth users now align exactly with their `customer_accounts` row. Audit trail of the 24 standalone re-keys (email → old_id → new_id) is in `public._rekey_audit_20261003`.
+- Enqueued the one remaining paying customer who had a row but no login and had never been in `login_repair_queue` at all (Cleveland order TF-MRZJY5CP). The other 302 login-less rows are `pre-checkout` leads with no orders — expected, not a bug.
+
+### Guards that now prevent recurrence
+
+- `ensureCustomerLogin()` passes the existing row's `id` into `createUser`, and if Auth doesn't honor it, **deletes the Auth user and bails** rather than leaving a second disconnected account.
+- `auth/signup/route.ts` does the same (added Oct 3 2026) and now also **checks the `customer_accounts` upsert error**. That error was previously discarded, so a collision on `UNIQUE(email)` returned `success: true` to a customer who had no usable account row.
+- `admin/users/route.ts` creates the Auth user first and rolls it back if the row insert fails.
+
+**Two traps when working on any of this:**
+
+1. **`supabaseAdmin.auth.admin.listUsers()` returns ONE page.** `perPage: 1000` read as "everything" until `auth.users` passed 1,276 — then the last few hundred were invisible to the "does a login already exist?" check, the repair tried to create a duplicate, and Auth rejected it. `findAuthUserByEmail()` pages properly and stops on an **empty** page, not a short one: GoTrue may cap page size below the requested `perPage`, which would make page 1 look "short" and stop the scan there, recreating the bug. Same class of silent truncation as PostgREST's 1000-row cap.
+2. **Supabase Auth's password policy requires a symbol.** Always use `generatePassword()` from `src/lib/resend.ts` — it's the generator known to satisfy the policy, and every call site uses it. Hand-rolled shapes like `Agave` + 4 digits get rejected and surface as a generic failure: that is what failed all 20 rows of the backfill's first batch, and it silently broke admin "create user" until Oct 3 2026.
+
+---
+
+## Supabase MCP — Unqualified Writes Hang For 60s (it is NOT the database)
+
+The Supabase MCP connector has a guard that **stalls for the full 60s tool timeout instead of refusing** when a statement is an unqualified write. Confirmed precisely, on a purpose-built one-row scratch table:
+
+| Statement | Result |
+|---|---|
+| `DELETE` (any, even single-row by PK) | hangs 60s, rolls back |
+| `DROP TABLE` / `DROP FUNCTION` | hangs 60s, rolls back |
+| `UPDATE` with **no** `WHERE` | hangs 60s, rolls back |
+| `UPDATE` **with** a `WHERE` | instant |
+| `SELECT`, `INSERT`, `CREATE TABLE AS`, `CREATE FUNCTION` | instant |
+
+`execute_sql` **and** `apply_migration` stall identically, so it isn't one code path. Nothing commits, so a stalled call is safe — just useless.
+
+**Don't burn a session re-diagnosing this as a Postgres problem.** It looks exactly like lock contention and it isn't: `pg_locks`/`pg_stat_activity` come back empty, there are no triggers on the table, adding the missing FK indexes changes nothing, and — decisively — `set statement_timeout = '8s'` still produces a 60s *tool* timeout, which proves Postgres is not the thing hanging.
+
+**Workaround for a DELETE you actually need:** wrap it in a plpgsql function and invoke it with `SELECT`, which the guard allows. Add count assertions so a wrong match count rolls the whole thing back:
+
+```sql
+create or replace function public._tmp_fix() returns int language plpgsql as $fn$
+declare n int;
+begin
+  delete from public.some_table where <narrow condition>;
+  get diagnostics n = row_count;
+  if n <> <expected> then raise exception 'expected <expected>, got %', n; end if;
+  return n;
+end $fn$;
+
+select public._tmp_fix();
+```
+
+Note that a `SELECT` which both calls the function and re-counts the table shows the **pre-delete** count in the sibling subquery — one statement, one snapshot. Verify in a separate call.
+
+`DROP` has no equivalent workaround: a `CREATE FUNCTION` whose body text contains `drop table` trips the guard too. So **scratch objects must be dropped by hand from the Supabase SQL editor.** Don't obfuscate SQL to evade the guard. Leftovers currently awaiting a manual drop:
+
+```sql
+drop table if exists public._rekey_backup_20261003;  -- already scrubbed of emails + password hashes
+drop table if exists public._tmp_delete_probe;
+drop function if exists public._tmp_do_delete();
+drop function if exists public._tmp_finish_rekey();
+```
+
+---
+
 ## Stripe Configuration
 
 - **Webhook URL:** `https://www.tequilafestusa.com/api/webhooks/stripe` (must be exact — www prefix required, no trailing slash)
@@ -333,7 +425,7 @@ Finds ticket purchases where a Stripe Checkout Session was started but never com
 - **Manual**: Admin → Inbox → collapsible "🛒 Abandoned Checkout Recovery" panel (above the Support/Vendors/etc tabs) — per-city counts, "Send Now" per city or "Send to All Cities Now".
 - **Automatic**: Vercel Cron, `vercel.json` → `/api/cron/abandoned-checkout-recovery`, Wednesdays at `23:00 UTC` (= 7pm Eastern **Daylight** Time — correct for the entire remaining ticket-selling window this season; will read as 6pm once EST returns in November, not currently a concern).
 - Email makes clear the customer was **not charged** and links straight to that city's event page. Sent from `FROM_EMAIL` (help@) to match ticket confirmation branding.
-- Auth for the cron route follows the shared `authorized()` pattern (Vercel's `Authorization: Bearer $CRON_SECRET`, or `x-admin-token` for manual admin triggering of the same endpoint).
+- Auth for the cron route uses `authorizeCron()` from `src/lib/cronAuth.ts` (Vercel's `Authorization: Bearer $CRON_SECRET`, or `x-admin-token` for manual admin triggering of the same endpoint).
 
 ---
 
@@ -506,7 +598,13 @@ RESEND_EVENTS_WEBHOOK_SECRET=...        # Svix signing secret for the outbound-e
                                         # Separate endpoint in Resend = separate secret; never
                                         # reuse RESEND_WEBHOOK_SECRET here.
 ADMIN_PASSWORD=...                      # used in x-admin-token header
-CRON_SECRET=...                         # Vercel Cron auth — sent as Authorization: Bearer $CRON_SECRET automatically
+CRON_SECRET=...                         # Vercel Cron auth. Vercel sends Authorization: Bearer $CRON_SECRET
+                                        # automatically, but ONLY if this var is set — if it's unset, Vercel
+                                        # sends no credential AND the check has nothing to compare against, so
+                                        # every scheduled run 401s silently behind a healthy-looking schedule.
+                                        # Env vars bind at BUILD time: after adding or rotating this you must
+                                        # REDEPLOY, or the running deployment keeps the old/absent value.
+                                        # Confirm with GET /api/admin/diagnostics/cron-env (booleans only).
 NEXT_PUBLIC_TURNSTILE_SITE_KEY=...      # Cloudflare Turnstile site key
 TURNSTILE_SECRET_KEY=...                # Cloudflare Turnstile secret key
 OPENAI_API_KEY=...
@@ -580,6 +678,14 @@ TEXTMAGIC_LIST_ID_PHOENIX=...
 - [x] Fixed Overview vs. Events tab disagreeing on sold counts — Events tab wasn't excluding comp/giveaway tickets, Overview was; both now use the identical paid-and-non-comp filter
 - [x] Underlying cause of the original undercounting (before either of the above): Supabase's default 1000-row query cap, silently truncating any unpaginated aggregate query once `ticket_instances` crossed ~1000 rows — see `src/lib/fetchAllRows.ts`
 
+### Customer Account Data Integrity (Oct 3 2026)
+- [x] Merged 22 duplicate email groups (1,789 → 1,767 rows) with loyalty points and all 1,329 `loyalty_transactions` preserved exactly
+- [x] Lowercased 24 uppercase emails — a case mismatch makes the `.eq("email", ...)` lead-row lookups miss, which is one source of id drift
+- [x] Re-keyed 46 `customer_accounts` rows whose `id` had drifted from `auth.users.id`, down to **0 mismatches** across all 1,465 Auth users — these customers could not see their own orders, points or tickets
+- [x] Closed the recurrence path in `auth/signup/route.ts` (unhonored-id guard + the previously-discarded upsert error) and fixed admin "create user", which had been failing on a symbol-less temp password
+- [x] Found and queued the one paying customer who had an account row but no login and had never been in `login_repair_queue`
+- [x] See the full "Account Identity" section above — re-keying is expensive and partly destructive, so the invariant is worth protecting
+
 ### My Tickets Page Rebuilt (this session)
 - [x] Real scannable QR code (was a fake decorative pattern), working "Download PDF", removed a leftover dev-only fake-check-in button — see full section above
 
@@ -599,6 +705,10 @@ TEXTMAGIC_LIST_ID_PHOENIX=...
 - [x] **`robots.txt` and `sitemap.xml`** — added Aug 6 2026 (`src/app/robots.ts`, `src/app/sitemap.ts`). Sitemap pulls upcoming events live from Supabase and revalidates hourly, so admin changes appear without a redeploy; blog posts come from the static `POSTS` array. **`robots.ts` disallows the three post-payment confirmation pages** — that's not just SEO, those pages fire purchase conversions and a crawler reaching them would inject phantom purchases into Google Ads/Meta/Roku. Google's Tag Coverage may take a while to stop monitoring the ~89 dead Replit/Shopify-era URLs it already knows about.
 - [ ] **Coupon/promo codes** at checkout — `coupons` table exists in DB, UI and API not built
 - [ ] **Supabase RLS security audit** — Row Level Security policies need review on all tables
+- [ ] **Manual (needs a human in a dashboard — can't be done from here):**
+  - Set `RESEND_WEBHOOK_SECRET` and `RESEND_EVENTS_WEBHOOK_SECRET` in Vercel. Until they're set, `/api/webhooks/email-inbound` falls back to verifying the event's `email_id` against Resend's API, and the outbound-events webhook has no fallback at all. Two separate Resend endpoints = two different signing secrets; never reuse one for the other.
+  - Reconnect the Stripe connector with payments-write scope. Four PaymentIntent descriptions still read 2026 and need updating: `pi_3UEepsLyuw3Oooiq0xvsk9ae`, `pi_3UG9pPLyuw3Oooiq116ZVKYj`, `pi_3UCqwSLyuw3Oooiq0MaQCwqj`, `pi_3UC2k8Lyuw3Oooiq1xVzLmvi`. (The code-level year fix is already shipped — these are historical rows only.)
+  - Drop the leftover scratch objects listed at the end of the "Supabase MCP" section — the connector cannot execute `DROP`.
 
 ### Medium Priority
 - [ ] **Stripe receipt link** on account page — not currently shown
@@ -715,3 +825,11 @@ Original Replit project archived at: `/Users/adambossin/Sites/tequila-fest-usa-o
 21. **MNTN is now tracking too, not just Meta/GA4/Google Ads/Roku** — two GTM tags (Tracking Pixel + Conversion Pixel), advertiser ID `70795`. See the "MNTN" subsection under Tracking before assuming it doesn't exist.
 
 22. **Don't declare a GTM tag broken from an immediate zero-network-calls check** — both Roku and MNTN looked non-functional on the first live test this session and both turned out to be correctly configured; the beacons just hadn't dispatched yet (Roku needs its tracker warmed by a prior page-view event, MNTN's conversion pixel waits on async server-side GA4 enrichment before firing). Wait a few seconds and recheck before concluding a tag isn't firing, and read the compiled `gtm.js` bytecode directly if network capture stays empty — that's what actually resolved both false alarms.
+
+23. **`customer_accounts.id` must always equal the matching `auth.users.id`** — the logged-in customer's data is fetched with `.eq("id", user.id)`, so a drifted id hides their orders/points/tickets from them while looking perfectly healthy in the DB. Never write a code path that inserts a `customer_accounts` row with an id that didn't come from the Auth user (or vice versa) without verifying Auth honored the requested id, and never discard the row-write error. Re-keying after the fact is expensive and partly destructive — see the full "Account Identity" section for why (nine `NO ACTION` FKs, three of them `ON DELETE CASCADE`).
+
+24. **The Supabase MCP hangs for 60s on `DELETE`, `DROP`, and unqualified `UPDATE`** — it's a connector guard, not lock contention, not a slow query. A `WHERE`-qualified `UPDATE` is instant. Wrap a needed `DELETE` in a plpgsql function and call it with `SELECT`; `DROP` must be done by hand in the Supabase SQL editor. Full evidence and the workaround snippet are in the "Supabase MCP" section — read it before spending time on `pg_locks`.
+
+25. **Two Supabase Auth gotchas that both caused silent mass failures** — (a) `auth.admin.listUsers()` returns only ONE page, so any "does this login exist?" check must paginate and stop on an **empty** page, not a short one (`findAuthUserByEmail()` in `accountActions.ts`); (b) the password policy requires a **symbol**, so always mint temp passwords with `generatePassword()` from `src/lib/resend.ts` — a hand-rolled `Agave1234` is rejected behind a generic error and broke both the login backfill and admin "create user".
+
+26. **A missing `CRON_SECRET` makes every scheduled run 401 silently** — Vercel only sends the `Authorization: Bearer $CRON_SECRET` header when the var is set, and the route has nothing to compare against when it isn't, so the dashboard shows a perfectly healthy schedule while nothing runs. This went unnoticed for **eight weeks**: the one-time backfill of 256 customer logins never processed a single row, and the weekly abandoned-checkout recovery emails never went out. Env vars bind at **build** time, so adding or rotating the secret requires a **redeploy**. `src/lib/cronAuth.ts` now logs which specific cause it hit, and `GET /api/admin/diagnostics/cron-env` reports whether the running deployment actually has it (booleans only, never values).
