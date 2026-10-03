@@ -58,15 +58,53 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
-  // Also create/update the row in customer_accounts for our own data
+  // Also create/update the row in customer_accounts for our own data.
+  //
+  // customer_accounts.id MUST equal the Auth user's id — /api/auth/session,
+  // /api/redeem and /api/media/upload all look the customer up with
+  // .eq("id", user.id), so a row whose id drifts from Auth is invisible to the
+  // logged-in customer even though it holds their orders and points. A batch
+  // of 46 rows had drifted this way and had to be re-keyed by hand, which is
+  // expensive: all nine foreign keys into this table are NO ACTION on update,
+  // so the id cannot simply be rewritten in place.
+  //
+  // Two ways this path could produce that drift, both now closed:
   if (data.user) {
-    await db.from("customer_accounts").upsert({
+    if (existingLead && data.user.id !== existingLead.id) {
+      // Auth didn't honor the id we asked for. Writing the row anyway would
+      // either orphan the lead row or fail on UNIQUE(email), so undo the Auth
+      // user instead of leaving a half-made account behind. Mirrors the same
+      // guard in ensureCustomerLogin().
+      console.error(
+        `signup: id mismatch for ${cleanEmail} — Auth returned ${data.user.id}, expected lead ${existingLead.id}`,
+      );
+      await adminAuth.auth.admin.deleteUser(data.user.id).catch(() => {});
+      return NextResponse.json(
+        { error: "We couldn't finish creating your account. Please try again or contact support." },
+        { status: 500 },
+      );
+    }
+
+    const { error: rowErr } = await db.from("customer_accounts").upsert({
       id: data.user.id,
       email: cleanEmail,
       first_name: firstName,
       last_name: lastName || null,
       phone: phone || null,
     }, { onConflict: "id" });
+
+    // This error was previously unchecked, so a row that collided on
+    // UNIQUE(email) (a lead row the .eq("email") lookup above missed, or one
+    // created in the gap between that lookup and this write) returned
+    // success: true to a customer who had no usable account row.
+    if (rowErr) {
+      console.error(`signup: customer_accounts upsert failed for ${cleanEmail}:`, rowErr.message);
+      await adminAuth.auth.admin.deleteUser(data.user.id).catch(() => {});
+      return NextResponse.json(
+        { error: "We couldn't finish creating your account. Please try again or contact support." },
+        { status: 500 },
+      );
+    }
   }
 
   return NextResponse.json({ success: true });

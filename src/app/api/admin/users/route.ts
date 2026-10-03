@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAdminToken, unauthorizedResponse } from "@/lib/adminAuth";
 import { supabaseAdmin } from "@/lib/supabase";
-import { resend, FROM_SUPPORT } from "@/lib/resend";
+import { resend, FROM_SUPPORT, generatePassword } from "@/lib/resend";
 import { wrapEmailHtml } from "@/lib/emailLayout";
 
 export async function GET(req: NextRequest) {
@@ -107,7 +107,13 @@ export async function POST(req: NextRequest) {
   // first and Auth second (the old order) left an orphaned, un-loggable-into
   // row whenever the Auth call failed, silently, since the error was never
   // checked.
-  const tempPassword = `Agave${Math.floor(1000 + Math.random() * 9000)}`;
+  // Must satisfy the project's Supabase Auth password policy, which
+  // requires a symbol. The old `Agave1234` shape did not, so every admin
+  // "create user" failed at createUser and returned a generic 500 — the
+  // same policy rejection that made the login-repair backfill fail all 20
+  // rows of its first batch. generatePassword() is the one generator that
+  // is known to satisfy it; every other call site already uses it.
+  const tempPassword = generatePassword();
   const { data: authUser, error: authErr } = await (supabaseAdmin as any).auth.admin.createUser({
     email: email.toLowerCase().trim(),
     password: tempPassword,
