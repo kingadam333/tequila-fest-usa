@@ -299,7 +299,7 @@ Worse, three of those nine FKs are **`ON DELETE CASCADE`** (`referrals.referrer_
 - **22 duplicate email groups merged**, 1,789 → 1,767 rows. Loyalty points unchanged at 143,430; all 1,329 `loyalty_transactions` intact, 0 orphans.
 - **24 uppercase emails lowercased.** A case-mismatched email makes the `.eq("email", cleanEmail)` lookups in `signup`/`ensureCustomerLogin` miss an existing lead row — one of the ways drift got created in the first place.
 - **46 id mismatches re-keyed to 0.** All 1,465 Auth users now align exactly with their `customer_accounts` row. Audit trail of the 24 standalone re-keys (email → old_id → new_id) is in `public._rekey_audit_20261003`.
-- Enqueued the one remaining paying customer who had a row but no login and had never been in `login_repair_queue` at all (Cleveland order TF-MRZJY5CP). The other 302 login-less rows are `pre-checkout` leads with no orders — expected, not a bug.
+- Enqueued the one remaining paying customer who had a row but no login and had never been in `login_repair_queue` at all (Cleveland order TF-MRZJY5CP). **Confirmed repaired Oct 4 2026** — processed `02:00:05Z`, Auth user created, id aligned. The other 302 login-less rows are `pre-checkout` leads with no orders — expected, not a bug.
 
 ### Guards that now prevent recurrence
 
@@ -697,35 +697,107 @@ TEXTMAGIC_LIST_ID_PHOENIX=...
 
 ---
 
-## What Still Needs to Be Done
+## Supabase RLS & Access Posture — Audited Oct 4 2026
 
-### High Priority
-- [x] **Google Ads showing zero conversions** — FIXED Aug 6 2026. Root cause was a URL-based page-load conversion that never matched. Replaced with an event-based conversion firing off `purchase`; verified live end-to-end. See the "Google Ads conversions" subsection under Tracking. **Watch:** the `Purchase (GTM)` action stays "Inactive" until its first real ad-attributed conversion lands.
-- [x] **MNTN / Mountain.com** — pixel installed Aug 6 2026, verified working (both client-side and via MNTN's own dashboard verification tool). See the "MNTN" subsection under Tracking.
-- [x] **`robots.txt` and `sitemap.xml`** — added Aug 6 2026 (`src/app/robots.ts`, `src/app/sitemap.ts`). Sitemap pulls upcoming events live from Supabase and revalidates hourly, so admin changes appear without a redeploy; blog posts come from the static `POSTS` array. **`robots.ts` disallows the three post-payment confirmation pages** — that's not just SEO, those pages fire purchase conversions and a crawler reaching them would inject phantom purchases into Google Ads/Meta/Roku. Google's Tag Coverage may take a while to stop monitoring the ~89 dead Replit/Shopify-era URLs it already knows about.
-- [ ] **Coupon/promo codes** at checkout — `coupons` table exists in DB, UI and API not built
-- [ ] **Supabase RLS security audit** — Row Level Security policies need review on all tables
-- [ ] **Manual (needs a human in a dashboard — can't be done from here):**
-  - Set `RESEND_WEBHOOK_SECRET` and `RESEND_EVENTS_WEBHOOK_SECRET` in Vercel. Until they're set, `/api/webhooks/email-inbound` falls back to verifying the event's `email_id` against Resend's API, and the outbound-events webhook has no fallback at all. Two separate Resend endpoints = two different signing secrets; never reuse one for the other.
-  - Reconnect the Stripe connector with payments-write scope. Four PaymentIntent descriptions still read 2026 and need updating: `pi_3UEepsLyuw3Oooiq0xvsk9ae`, `pi_3UG9pPLyuw3Oooiq116ZVKYj`, `pi_3UCqwSLyuw3Oooiq0MaQCwqj`, `pi_3UC2k8Lyuw3Oooiq1xVzLmvi`. (The code-level year fix is already shipped — these are historical rows only.)
-  - Drop the leftover scratch objects listed at the end of the "Supabase MCP" section — the connector cannot execute `DROP`.
+**Audit result: the posture is better than it looks, and the remaining work is small and low-risk.** The important finding is *why* it's safe, because that's what a future change could accidentally break.
 
-### Medium Priority
-- [ ] **Stripe receipt link** on account page — not currently shown
-- [ ] **City-specific logos** on each event page — using generic logo currently
-- [ ] **Loyalty/points system** — DB table exists, no UI or award logic
-- [ ] **Blog CMS** — page scaffolded, needs admin editing and real content
-- [ ] **Push notifications** — VAPID keys in env, not wired up
-- [ ] **Remove unused `META_CAPI_ACCESS_TOKEN`** Vercel env var — low priority cleanup, see Tracking section
+### How access actually works today
 
-### Nice to Have
-- [ ] **AI auto-reply in inbox** — OpenAI key exists, partially wired
-- [ ] **Columbus event page** — city site not built at `/Users/adambossin/Sites/tequila-fest-columbus`
-- [ ] **Affiliate dashboard** — signup exists, no commission tracking UI for affiliates
-- [ ] **Sponsor portal**, **Brand owner portal** — not built
-- [ ] **Admin analytics** — revenue by city, ticket type breakdown, etc. beyond what Overview already shows
+- **RLS is ENABLED on all 45 real tables.** 40 of them have **zero policies**, which under RLS means *deny everything* for `anon` and `authenticated`. That is a default-deny posture, not an oversight.
+- **Every table read/write in the app goes through `supabaseAdmin` (service role), which bypasses RLS entirely.** Verified: `grep -rn '\bsupabase\.from('` across `src/` returns **zero** hits on the anon client. All data access is in API routes behind either `verifyAdminToken` or a per-request session check.
+- **The anon client is used only for `supabase.auth.*`** (`getUser`, `signInWithPassword`, `signOut`) — never for table data.
+- **The auth pattern is correct.** `/api/auth/session`, `/api/account/orders`, `/api/redeem`, `/api/media/upload` etc. each construct a **per-request** `createServerClient` from `@supabase/ssr` bound to that request's cookies. There is no module-level singleton being reused across requests, so there is no cross-user session bleed. (The module-level `supabase` export in `src/lib/supabase.ts` exists but is not used for table access.)
+
+**Consequence: no application code depends on any RLS policy or any `anon` table grant.** That is what makes the cleanup below safe — it is removing unused surface, not re-plumbing the app.
+
+### The five existing policies (all `SELECT`, all role `public`)
+
+| Table | Policy predicate | Verdict |
+|---|---|---|
+| `events` | `status <> 'draft'` | Fine as public read |
+| `ticket_types` | `is_active = true` | Fine as public read |
+| `blog_posts` | `published = true` | Fine as public read |
+| `banner_sponsors` | `active = true` | Fine as public read |
+| **`coupons`** | **`active = true`** | ⚠️ **Landmine — fix before the coupon feature ships** |
+
+⚠️ **`coupons` is world-readable to anyone holding the anon key, which is public by definition** (it ships in the browser bundle). Right now the table has **0 rows**, so nothing is leaking — but the moment a real discount code is inserted, anyone can enumerate every active code with one request. **Drop that policy before building the coupon UI.** Coupon validation belongs in a server route using the service role, never a client-side table read.
+
+### Fixed during the audit (Oct 4 2026)
+
+The three leftover scratch tables (`_rekey_audit_20261003`, `_rekey_backup_20261003`, `_tmp_delete_probe`) had **RLS disabled** while `anon` held full `SELECT,INSERT,UPDATE,DELETE,TRUNCATE` grants — so the 24 customer emails in the audit table were readable, and writable, by anyone with the public anon key. **This was self-inflicted** (created by the re-key migration) and is now closed: RLS enabled and all `anon`/`authenticated` grants revoked on all three. They still need dropping — see the roadmap.
+
+**This is the Supabase footgun to remember: a table created by plain `CREATE TABLE` gets RLS *off* and inherits the project's default grants to `anon`/`authenticated`, so it is immediately world-readable through PostgREST.** Every new table needs `ENABLE ROW LEVEL SECURITY` in the same migration that creates it. This applies to throwaway/scratch tables too — they are the easiest to forget and often hold exactly the data you were inspecting *because* it was sensitive.
+
+### Known dead path (not a leak, but it means signups aren't landing)
+
+The **city splash sites** call `supabase.from("email_subscribers").insert([...])` from a **client component** (`EmailSignup.tsx`) with the anon key. That table **does not exist** in this project, the call is **not awaited**, and its error is **never checked** — so it fails silently on every submission. `newsletter_subscribers` (which does exist) has **0 rows**. Brevo/TextMagic is the real list and is working, so no subscriber data is being lost, but that code path does nothing and should either be pointed at a real table through a server route or deleted.
+
+### The remediation plan (ordered, each step independently shippable)
+
+1. **Drop the three scratch tables.** Must be done by hand in the Supabase SQL editor — the MCP connector cannot execute `DROP` (see the "Supabase MCP" section). SQL is in the roadmap below.
+2. **Drop the `coupons` public-read policy.** `drop policy "Active coupons are readable" on public.coupons;` — do this before any coupon work begins.
+3. **Revoke the blanket `anon`/`authenticated` grants** on the five policy-bearing tables, keeping only `SELECT` where a policy intends public read. Today `anon` holds `INSERT,UPDATE,DELETE,TRUNCATE` on `events`, `ticket_types`, `blog_posts`, `banner_sponsors` and `coupons`. RLS-with-no-write-policy currently blocks those, so it is **not** presently exploitable — but it means a single careless `FOR ALL USING (true)` policy, or one `DISABLE ROW LEVEL SECURITY`, turns straight into public write access on live event and pricing data. Removing the grants makes that failure mode impossible rather than merely unreachable.
+4. **Decide the public-read question deliberately.** The app itself does not need *any* of the five policies, because `/api/events` and friends read through the service role. If nothing is ever going to query Supabase directly from a browser, the simplest and safest end state is to drop all five policies and revoke all `anon` table grants, leaving `anon` with auth only. Confirm with the owner before doing this — it is the one step with a (small) chance of breaking an unknown consumer.
+5. **Fix or delete the city-site `email_subscribers` write** (see above).
+6. **Add the standing rule to any new-table migration:** `alter table <t> enable row level security;` in the same migration, and no grant to `anon` unless a policy deliberately intends public read.
+
+**Do not "enable RLS everywhere" as a task — it is already enabled everywhere.** The work is removing unused grants and the one dangerous policy, not adding RLS.
 
 ---
+
+## What Still Needs to Be Done — Ordered Roadmap
+
+Work top to bottom. Phase 0 is security and correctness and should go first; everything below it is feature work ordered by customer impact.
+
+### Phase 0 — Security & hygiene (do these first)
+
+1. **[HUMAN] Set the two Resend webhook secrets in Vercel**, then redeploy. `RESEND_WEBHOOK_SECRET` (inbound) and `RESEND_EVENTS_WEBHOOK_SECRET` (outbound events). Two separate Resend endpoints = two different signing secrets; **never reuse one for the other**. Until the inbound one is set, `/api/webhooks/email-inbound` falls back to verifying the event's `email_id` against Resend's API (works, but slower and weaker); the outbound-events endpoint has **no fallback at all**. Signature verification code is already shipped (`src/lib/resendWebhook.ts`).
+2. **[HUMAN] Drop the leftover scratch tables** (the MCP connector cannot run `DROP` — see "Supabase MCP"). Already made safe (RLS on, anon grants revoked), so this is hygiene, not an emergency:
+   ```sql
+   drop table if exists public._rekey_audit_20261003;
+   drop table if exists public._rekey_backup_20261003;
+   drop table if exists public._tmp_delete_probe;
+   drop function if exists public._tmp_do_delete();
+   drop function if exists public._tmp_finish_rekey();
+   ```
+3. **Drop the `coupons` public-read policy** — before any coupon work. See RLS section step 2.
+4. **Revoke the blanket `anon`/`authenticated` write grants** on the five policy-bearing tables. See RLS section step 3.
+5. **[HUMAN DECISION] Settle the public-read question** (RLS section step 4) — drop all five policies and go auth-only for `anon`, or keep them deliberately.
+6. **[HUMAN] Reconnect the Stripe connector with payments-write scope**, then update the four PaymentIntent descriptions still reading 2026: `pi_3UEepsLyuw3Oooiq0xvsk9ae`, `pi_3UG9pPLyuw3Oooiq116ZVKYj`, `pi_3UCqwSLyuw3Oooiq0MaQCwqj`, `pi_3UC2k8Lyuw3Oooiq1xVzLmvi`. The code-level year fix is already shipped (`src/lib/eventLabel.ts`) — these are historical rows only, cosmetic in the Stripe dashboard.
+7. ~~Verify the queued login repair ran.~~ **DONE** — verified Oct 4 2026: the Cleveland customer (`TF-MRZJY5CP`) enqueued Oct 3 processed at `02:00:05Z` with status `repaired`, now has an `auth.users` row, and their `customer_accounts.id` matches it. Nothing outstanding. Kept here as the record so it isn't re-investigated.
+
+### Phase 1 — Revenue-affecting features
+
+8. **Coupon/promo codes at checkout.** `coupons` table exists; UI and API are not built. Do Phase 0 step 3 first. Validation must happen server-side with the service role — never a client-side read of the `coupons` table. Apply the discount when creating the Stripe Checkout Session, and make sure the discounted total is what reaches `ticket_orders.total` and the `purchase` dataLayer `value` (otherwise Google Ads/Meta/MNTN revenue over-reports).
+9. **Stripe receipt link on the account page.** Not currently shown. `ticket_orders.stripe_payment_intent_id` is already stored, so this is a link-rendering job, not a data one.
+
+### Phase 2 — Customer-facing polish
+
+10. **City-specific logos** on each event page — currently the generic logo. `CITY_STYLE` in `src/app/events/[slug]/page.tsx` is where per-city visual config already lives.
+11. **Loyalty/points UI + award logic.** `customer_accounts.loyalty_points` (143,430 points across 1,767 rows) and `loyalty_transactions` (1,329 rows) already hold real data, but there is no UI and no award logic — points exist and nobody can see or spend them. Read the "Account Identity" section first: anything reading a customer's own row must key on `auth.users.id`.
+12. **Blog CMS** — page is scaffolded, needs admin editing and real content. Note `blog_posts` has a `published = true` public-read policy, so drafts are already protected.
+13. **Push notifications** — VAPID keys are in env, nothing is wired up.
+
+### Phase 3 — Nice to have
+
+14. **AI auto-reply in inbox** — OpenAI key exists, partially wired. Keep the deliberately conservative escalate-by-default posture (see AI Inbox section).
+15. **Affiliate dashboard** — signup exists, no commission-tracking UI for affiliates.
+16. **Columbus splash site** — not built at `/Users/adambossin/Sites/tequila-fest-columbus`.
+17. **Sponsor portal / brand owner portal** — not built.
+18. **Admin analytics** beyond the current Overview — revenue by city, ticket-type breakdown.
+19. **Fix or delete the city-site `email_subscribers` write** (RLS section step 5) — currently a silent no-op.
+20. **Remove the unused `META_CAPI_ACCESS_TOKEN`** Vercel env var — leftover from the deleted direct-CAPI code.
+
+### Done — don't redo
+
+- [x] **Google Ads zero conversions** — fixed Aug 6 2026 (URL-based page-load conversion replaced with event-based off `purchase`). **Watch:** `Purchase (GTM)` reads "Inactive" until its first ad-attributed conversion lands.
+- [x] **MNTN pixel** — installed and verified Aug 6 2026.
+- [x] **`robots.txt` / `sitemap.xml`** — added Aug 6 2026. `robots.ts` disallows the three post-payment confirmation pages; that is not just SEO — those pages fire purchase conversions, and a crawler reaching them would inject phantom purchases into Google Ads/Meta/Roku.
+- [x] **Customer account data integrity** — Oct 3 2026, see "Account Identity".
+- [x] **Supabase RLS audit** — Oct 4 2026, see the RLS section above. Remaining items are folded into Phase 0.
+
+---
+
 
 ## Design System
 
@@ -833,3 +905,5 @@ Original Replit project archived at: `/Users/adambossin/Sites/tequila-fest-usa-o
 25. **Two Supabase Auth gotchas that both caused silent mass failures** — (a) `auth.admin.listUsers()` returns only ONE page, so any "does this login exist?" check must paginate and stop on an **empty** page, not a short one (`findAuthUserByEmail()` in `accountActions.ts`); (b) the password policy requires a **symbol**, so always mint temp passwords with `generatePassword()` from `src/lib/resend.ts` — a hand-rolled `Agave1234` is rejected behind a generic error and broke both the login backfill and admin "create user".
 
 26. **A missing `CRON_SECRET` makes every scheduled run 401 silently** — Vercel only sends the `Authorization: Bearer $CRON_SECRET` header when the var is set, and the route has nothing to compare against when it isn't, so the dashboard shows a perfectly healthy schedule while nothing runs. This went unnoticed for **eight weeks**: the one-time backfill of 256 customer logins never processed a single row, and the weekly abandoned-checkout recovery emails never went out. Env vars bind at **build** time, so adding or rotating the secret requires a **redeploy**. `src/lib/cronAuth.ts` now logs which specific cause it hit, and `GET /api/admin/diagnostics/cron-env` reports whether the running deployment actually has it (booleans only, never values).
+
+27. **RLS is already enabled on every table — the app is safe because ALL table access uses the service role, not because of policies.** `grep -rn '\bsupabase\.from('` returns zero hits on the anon client; the anon key is used only for `supabase.auth.*`. So no policy and no `anon` grant is load-bearing. Two things follow: (a) **never add a client-side table read** without writing a policy for it deliberately — the default-deny posture is doing real work; (b) a plain `CREATE TABLE` in Supabase lands with **RLS off** and inherits grants to `anon`, making it instantly world-readable through PostgREST, so every new table needs `enable row level security` in the same migration. That footgun already bit once: the re-key migration's scratch tables briefly exposed 24 customer emails to anyone holding the public anon key. The one live landmine left is the **`coupons` public-read policy** — harmless at 0 rows, a code-enumeration hole the moment a real discount code exists. See the "Supabase RLS & Access Posture" section.
