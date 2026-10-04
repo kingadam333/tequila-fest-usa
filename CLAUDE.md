@@ -73,7 +73,7 @@ The city-site paths at the top of this file are the **owner's Mac**. In a Claude
 | Cleveland | `~/Sites/tequila-fest-cleveland` | `/home/user/tequila-fest-cleveland` |
 | Columbus | `~/Sites/tequila-fest-columbus` | `/home/user/tequila-fest-columbus` |
 
-All four are present in a cloud session, so cross-repo greps work — but only the hub repo is the session's git remote. Changes to a city repo need its own remote and are **not** covered by this project's branch workflow.
+Don't assume all four are present: the Oct 4 2026 session had **only the hub repo** under `/home/user/` — check with `ls -d /home/user/tequila-fest-*` before relying on a cross-repo grep. Either way, only the hub repo is the session's git remote. Changes to a city repo need its own remote and are **not** covered by this project's branch workflow.
 
 ---
 
@@ -361,7 +361,7 @@ The Supabase MCP connector has a guard that **stalls for the full 60s tool timeo
 | Statement | Result |
 |---|---|
 | `DELETE` (any, even single-row by PK) | hangs 60s, rolls back |
-| `DROP TABLE` / `DROP FUNCTION` | hangs 60s, rolls back |
+| `DROP TABLE` / `DROP FUNCTION` / `DROP POLICY` | hangs 60s, rolls back (`DROP POLICY` confirmed Oct 4 2026 — it took a whole migration down with it, so keep `DROP`s out of otherwise-good migrations) |
 | `UPDATE` with **no** `WHERE` | hangs 60s, rolls back |
 | `UPDATE` **with** a `WHERE` | instant |
 | `SELECT`, `INSERT`, `CREATE TABLE AS`, `CREATE FUNCTION` | instant |
@@ -395,6 +395,7 @@ drop table if exists public._rekey_backup_20261003;  -- already scrubbed of emai
 drop table if exists public._tmp_delete_probe;
 drop function if exists public._tmp_do_delete();
 drop function if exists public._tmp_finish_rekey();
+drop policy if exists "Active coupons are readable" on public.coupons;  -- already unreachable (SELECT revoked)
 ```
 
 All three tables already have RLS enabled and `anon`/`authenticated` grants revoked (Oct 4 2026), so leaving them in place is untidy rather than unsafe — see the RLS section.
@@ -761,9 +762,9 @@ TEXTMAGIC_LIST_ID_PHOENIX=...
 | `ticket_types` | `is_active = true` | Fine as public read |
 | `blog_posts` | `published = true` | Fine as public read |
 | `banner_sponsors` | `active = true` | Fine as public read |
-| **`coupons`** | **`active = true`** | ⚠️ **Landmine — fix before the coupon feature ships** |
+| `coupons` | `active = true` | **Neutralized Oct 4 2026** — `SELECT` revoked from `anon`/`authenticated`, so the policy is unreachable. Still needs dropping by hand (see below) |
 
-⚠️ **`coupons` is world-readable to anyone holding the anon key, which is public by definition** (it ships in the browser bundle). Right now the table has **0 rows**, so nothing is leaking — but the moment a real discount code is inserted, anyone can enumerate every active code with one request. **Drop that policy before building the coupon UI.** Coupon validation belongs in a server route using the service role, never a client-side table read.
+**`coupons` was world-readable to anyone holding the anon key** (public by definition — it ships in the browser bundle). Closed Oct 4 2026 at 0 rows by revoking `SELECT` on `coupons` from `anon`/`authenticated` (verified: an anon PostgREST read returns `42501 permission denied`). The policy itself is still there because the Supabase MCP connector cannot run `DROP` of any kind — `DROP POLICY` stalls exactly like `DROP TABLE` (confirmed). **Never re-grant `SELECT` on `coupons` to `anon`/`authenticated`.** Coupon validation belongs in a server route using the service role, never a client-side table read.
 
 ### Fixed during the audit (Oct 4 2026)
 
@@ -778,8 +779,8 @@ The **city splash sites** call `supabase.from("email_subscribers").insert([...])
 ### The remediation plan (ordered, each step independently shippable)
 
 1. **Drop the three scratch tables.** Must be done by hand in the Supabase SQL editor — the MCP connector cannot execute `DROP` (see the "Supabase MCP" section). SQL is in the roadmap below.
-2. **Drop the `coupons` public-read policy.** `drop policy "Active coupons are readable" on public.coupons;` — do this before any coupon work begins.
-3. **Revoke the blanket `anon`/`authenticated` grants** on the five policy-bearing tables, keeping only `SELECT` where a policy intends public read. Today `anon` holds `INSERT,UPDATE,DELETE,TRUNCATE` on `events`, `ticket_types`, `blog_posts`, `banner_sponsors` and `coupons`. RLS-with-no-write-policy currently blocks those, so it is **not** presently exploitable — but it means a single careless `FOR ALL USING (true)` policy, or one `DISABLE ROW LEVEL SECURITY`, turns straight into public write access on live event and pricing data. Removing the grants makes that failure mode impossible rather than merely unreachable.
+2. ~~Drop the `coupons` public-read policy.~~ **Neutralized Oct 4 2026** (`SELECT` revoked, migration `revoke_public_select_on_coupons`). The policy object still needs dropping by hand in the SQL editor: `drop policy "Active coupons are readable" on public.coupons;`
+3. ~~Revoke the blanket `anon`/`authenticated` grants~~ **DONE Oct 4 2026** (migration `revoke_anon_write_grants_on_public_read_tables` — also revoked `TRIGGER`/`REFERENCES`; verified anon `PATCH events` / `POST ticket_types` now return `42501`, public reads and the live site unaffected). `anon`/`authenticated` now hold `SELECT` only on `events`, `ticket_types`, `blog_posts`, `banner_sponsors`, and nothing on `coupons`. Before this, `anon` held `INSERT,UPDATE,DELETE,TRUNCATE` on `events`, `ticket_types`, `blog_posts`, `banner_sponsors` and `coupons`. RLS-with-no-write-policy currently blocks those, so it is **not** presently exploitable — but it means a single careless `FOR ALL USING (true)` policy, or one `DISABLE ROW LEVEL SECURITY`, turns straight into public write access on live event and pricing data. Removing the grants makes that failure mode impossible rather than merely unreachable.
 4. **Decide the public-read question deliberately.** The app itself does not need *any* of the five policies, because `/api/events` and friends read through the service role. If nothing is ever going to query Supabase directly from a browser, the simplest and safest end state is to drop all five policies and revoke all `anon` table grants, leaving `anon` with auth only. Confirm with the owner before doing this — it is the one step with a (small) chance of breaking an unknown consumer.
 5. **Fix or delete the city-site `email_subscribers` write** (see above).
 6. **Add the standing rule to any new-table migration:** `alter table <t> enable row level security;` in the same migration, and no grant to `anon` unless a policy deliberately intends public read.
@@ -803,15 +804,15 @@ Work top to bottom. Phase 0 is security and correctness and should go first; eve
    drop function if exists public._tmp_do_delete();
    drop function if exists public._tmp_finish_rekey();
    ```
-3. **Drop the `coupons` public-read policy** — before any coupon work. See RLS section step 2.
-4. **Revoke the blanket `anon`/`authenticated` write grants** on the five policy-bearing tables. See RLS section step 3.
+3. ~~Drop the `coupons` public-read policy~~ — **neutralized Oct 4 2026** (`SELECT` revoked). **[HUMAN]** drop the now-unreachable policy object by hand in the SQL editor (connector can't run `DROP POLICY`): `drop policy "Active coupons are readable" on public.coupons;`
+4. ~~Revoke the blanket `anon`/`authenticated` write grants~~ — **DONE Oct 4 2026**. See RLS section step 3.
 5. **[HUMAN DECISION] Settle the public-read question** (RLS section step 4) — drop all five policies and go auth-only for `anon`, or keep them deliberately.
 6. **[HUMAN] Reconnect the Stripe connector with payments-write scope**, then update the four PaymentIntent descriptions still reading 2026: `pi_3UEepsLyuw3Oooiq0xvsk9ae`, `pi_3UG9pPLyuw3Oooiq116ZVKYj`, `pi_3UCqwSLyuw3Oooiq0MaQCwqj`, `pi_3UC2k8Lyuw3Oooiq1xVzLmvi`. The code-level year fix is already shipped (`src/lib/eventLabel.ts`) — these are historical rows only, cosmetic in the Stripe dashboard.
 7. ~~Verify the queued login repair ran.~~ **DONE** — verified Oct 4 2026: the Cleveland customer (`TF-MRZJY5CP`) enqueued Oct 3 processed at `02:00:05Z` with status `repaired`, now has an `auth.users` row, and their `customer_accounts.id` matches it. Nothing outstanding. Kept here as the record so it isn't re-investigated.
 
 ### Phase 1 — Revenue-affecting features
 
-8. **Coupon/promo codes at checkout.** `coupons` table exists; UI and API are not built. Do Phase 0 step 3 first. Validation must happen server-side with the service role — never a client-side read of the `coupons` table. Apply the discount when creating the Stripe Checkout Session, and make sure the discounted total is what reaches `ticket_orders.total` and the `purchase` dataLayer `value` (otherwise Google Ads/Meta/MNTN revenue over-reports).
+8. **Coupon/promo codes at checkout.** `coupons` table exists; UI and API are not built. Phase 0 step 3 is done (anon has no access to `coupons`). Validation must happen server-side with the service role — never a client-side read of the `coupons` table. Apply the discount when creating the Stripe Checkout Session, and make sure the discounted total is what reaches `ticket_orders.total` and the `purchase` dataLayer `value` (otherwise Google Ads/Meta/MNTN revenue over-reports).
 9. **Stripe receipt link on the account page.** Not currently shown. `ticket_orders.stripe_payment_intent_id` is already stored, so this is a link-rendering job, not a data one.
 
 ### Phase 2 — Customer-facing polish
@@ -949,4 +950,4 @@ Original Replit project archived at: `/Users/adambossin/Sites/tequila-fest-usa-o
 
 26. **A missing `CRON_SECRET` makes every scheduled run 401 silently** — Vercel only sends the `Authorization: Bearer $CRON_SECRET` header when the var is set, and the route has nothing to compare against when it isn't, so the dashboard shows a perfectly healthy schedule while nothing runs. This went unnoticed for **eight weeks**: the one-time backfill of 256 customer logins never processed a single row, and the weekly abandoned-checkout recovery emails never went out. Env vars bind at **build** time, so adding or rotating the secret requires a **redeploy**. `src/lib/cronAuth.ts` now logs which specific cause it hit, and `GET /api/admin/diagnostics/cron-env` reports whether the running deployment actually has it (booleans only, never values).
 
-27. **RLS is already enabled on every table — the app is safe because ALL table access uses the service role, not because of policies.** `grep -rn '\bsupabase\.from('` returns zero hits on the anon client; the anon key is used only for `supabase.auth.*`. So no policy and no `anon` grant is load-bearing. Two things follow: (a) **never add a client-side table read** without writing a policy for it deliberately — the default-deny posture is doing real work; (b) a plain `CREATE TABLE` in Supabase lands with **RLS off** and inherits grants to `anon`, making it instantly world-readable through PostgREST, so every new table needs `enable row level security` in the same migration. That footgun already bit once: the re-key migration's scratch tables briefly exposed 24 customer emails to anyone holding the public anon key. The one live landmine left is the **`coupons` public-read policy** — harmless at 0 rows, a code-enumeration hole the moment a real discount code exists. See the "Supabase RLS & Access Posture" section.
+27. **RLS is already enabled on every table — the app is safe because ALL table access uses the service role, not because of policies.** `grep -rn '\bsupabase\.from('` returns zero hits on the anon client; the anon key is used only for `supabase.auth.*`. So no policy and no `anon` grant is load-bearing. Two things follow: (a) **never add a client-side table read** without writing a policy for it deliberately — the default-deny posture is doing real work; (b) a plain `CREATE TABLE` in Supabase lands with **RLS off** and inherits grants to `anon`, making it instantly world-readable through PostgREST, so every new table needs `enable row level security` in the same migration. That footgun already bit once: the re-key migration's scratch tables briefly exposed 24 customer emails to anyone holding the public anon key. The `coupons` public-read policy was neutralized Oct 4 2026 by revoking `SELECT` from `anon`/`authenticated` — never re-grant it — and the write grants on the five public-read tables were revoked the same day. See the "Supabase RLS & Access Posture" section.
