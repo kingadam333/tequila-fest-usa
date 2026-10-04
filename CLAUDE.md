@@ -54,6 +54,46 @@ npx vercel env pull .env.local   # pulls to local (values will be empty strings 
 
 **Local dev cannot exercise anything that touches Supabase/Stripe** — `.env.local` only ever has blank placeholder values for protected/secret vars (see Critical Notes #6). Any page or admin section backed by live data will error locally with `supabaseUrl is required` or similar. Verify DB-backed changes by pushing and checking the live site instead of relying on local dev for those.
 
+### What actually counts as verification here
+
+- **`npm run build` ALWAYS fails locally**, on a clean checkout, at the page-data collection step with `supabaseUrl is required`. This is not a regression you introduced and not worth debugging — `.env.local` holds blank placeholders by design (Critical Notes #6). Confirm by stashing your changes if you ever doubt it.
+- **`npx tsc --noEmit` is the real pre-push gate.** It runs clean and catches what matters.
+- **`npm run lint` reports ~560 pre-existing problems** (almost all `@typescript-eslint/no-explicit-any` from the project's many `as any` casts). Do **not** treat a non-zero lint exit as your change breaking something, and do not "fix" them as a side quest. Check only that *your* files add no new findings — e.g. `npm run lint 2>&1 | grep -A6 'your/file/path'` and compare the reported line numbers against your diff.
+- **DB-backed behavior is verified against production**, via the live site, Vercel runtime logs, or Supabase — not local dev.
+- **A Vercel production deploy is the end-to-end check.** Pushing to `main` auto-deploys; branch pushes build as previews, which is a useful dry run. Project `prj_fhJE6gJ9IStaRkfcshg2FHCcFYM5`, team `team_fqhJaDCMFxA9Oj0tNWaJ8deq`.
+
+### Repo paths differ between local and cloud sessions
+
+The city-site paths at the top of this file are the **owner's Mac**. In a Claude Code cloud session the repos are checked out flat under `/home/user/`:
+
+| Repo | Mac | Cloud container |
+|---|---|---|
+| Hub (this one) | `~/Sites/tequila-fest-usa` | `/home/user/tequila-fest-usa` |
+| Cincinnati | `~/Sites/tequila-fest-cincinnati` | `/home/user/tequila-fest-cincinnati` |
+| Cleveland | `~/Sites/tequila-fest-cleveland` | `/home/user/tequila-fest-cleveland` |
+| Columbus | `~/Sites/tequila-fest-columbus` | `/home/user/tequila-fest-columbus` |
+
+All four are present in a cloud session, so cross-repo greps work — but only the hub repo is the session's git remote. Changes to a city repo need its own remote and are **not** covered by this project's branch workflow.
+
+---
+
+## Working Agreement — Git, Branches & Scope
+
+**Branch workflow (set by the owner, Oct 2026):**
+
+- **Develop and commit on the session's assigned feature branch**, and push there. The cloud harness assigns one per session (e.g. `claude/tender-volta-370xuu`); use whatever branch this session was given.
+- **Fast-forward `main` and push it when a change is ready to go live, and say so.** Don't merge silently, and don't commit straight to `main`.
+- **Never push to a branch other than the assigned one or `main`.**
+- **Do NOT open a pull request unless explicitly asked.** The owner merges via fast-forward, not PRs.
+- Vercel auto-deploys **only from `main`**. Branch pushes build as previews, which is a free pre-production check — use it.
+- `git push -u origin <branch>`; on network failure retry up to 4 times with exponential backoff (2s/4s/8s/16s).
+- **If the assigned branch's PR was already merged**, don't stack new commits on merged history — restart the branch from the latest `main` (`git fetch origin main && git checkout -B <branch> origin/main`) and put follow-up work there.
+- **Force-pushing is usually blocked** by the sandbox's destructive-git guard. If the assigned branch's remote tip is pre-merge history that `main` already carries, merge the remote tip in (`git merge FETCH_HEAD`) so the push becomes a fast-forward, rather than reaching for `--force-with-lease`. Verify afterwards that `git diff --name-only origin/main` shows only the files you meant to change.
+
+**Commit messages:** explain *why*, including the failure mode being prevented, not just what changed — the git log is the main record of the incidents this file summarizes. End with the attribution lines the harness supplies. **Never put a model identifier in a commit message, PR body, code comment, or anything else pushed to the repo.**
+
+**Scope discipline:** this codebase has a history of fixes made on assumptions that turned out wrong (see the My Tickets, sold-count, and Google Ads sections). Verify against the live DB or the actual code before asserting something is broken or fixed, say plainly when something failed or was skipped, and don't widen a task beyond what was asked.
+
 ---
 
 ## Live URLs
@@ -350,11 +390,14 @@ Note that a `SELECT` which both calls the function and re-counts the table shows
 `DROP` has no equivalent workaround: a `CREATE FUNCTION` whose body text contains `drop table` trips the guard too. So **scratch objects must be dropped by hand from the Supabase SQL editor.** Don't obfuscate SQL to evade the guard. Leftovers currently awaiting a manual drop:
 
 ```sql
+drop table if exists public._rekey_audit_20261003;   -- 24-row email -> old_id -> new_id audit trail
 drop table if exists public._rekey_backup_20261003;  -- already scrubbed of emails + password hashes
 drop table if exists public._tmp_delete_probe;
 drop function if exists public._tmp_do_delete();
 drop function if exists public._tmp_finish_rekey();
 ```
+
+All three tables already have RLS enabled and `anon`/`authenticated` grants revoked (Oct 4 2026), so leaving them in place is untidy rather than unsafe — see the RLS section.
 
 ---
 
