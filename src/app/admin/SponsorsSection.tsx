@@ -1,11 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import SponsorReservationsPanel from "./SponsorReservationsPanel";
 import { Plus, Edit2, Trash2, Eye, EyeOff, X, ExternalLink } from "lucide-react";
 import { SPONSOR_EVENT_OPTIONS, type SponsorPackage } from "@/lib/sponsorPackages";
 
-// Admin -> Sponsors: manages the "Become a Sponsor" packages on /brand-packages.
-// Changes show on the public page on the next page load (it renders per request).
+// Admin -> Sponsors. Two tabs:
+//   Requests — reservations from "Reserve This" on /sponsors (SponsorReservationsPanel)
+//   Packages — the sponsor packages shown on /sponsors and /brand-packages. Changes
+//              show on the public pages on the next load (they render per request).
 
 type Draft = { name: string; price_per_event: string; blurb: string; features: string; sort_order: string };
 
@@ -28,6 +31,31 @@ const draftToBody = (d: Draft) => ({
 });
 
 export default function SponsorsSection({ adminToken }: { adminToken: string }) {
+  const [tab, setTab] = useState<"requests" | "packages">("requests");
+  const [pending, setPending] = useState(0);
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="font-display text-white text-3xl mb-1">SPONSORS</h2>
+        <p className="text-white/80 text-sm">Review sponsorship requests and manage the packages shown on /sponsors and /brand-packages.</p>
+      </div>
+      <div className="flex gap-2 border-b border-white/10">
+        {([["requests", "Requests"], ["packages", "Packages"]] as const).map(([id, label]) => (
+          <button key={id} onClick={() => setTab(id)}
+            className={`px-4 py-2 text-sm font-semibold cursor-pointer border-b-2 -mb-px transition-all ${tab === id ? "border-yellow-500 text-yellow-400" : "border-transparent text-white/70 hover:text-white"}`}>
+            {label}
+            {id === "requests" && pending > 0 && <span className="ml-2 text-[10px] font-bold bg-yellow-500 text-black rounded-full px-1.5 py-0.5">{pending}</span>}
+          </button>
+        ))}
+      </div>
+      {/* Both stay mounted so the pending badge stays accurate on either tab. */}
+      <div className={tab === "requests" ? "" : "hidden"}><SponsorReservationsPanel adminToken={adminToken} onPendingCount={setPending} /></div>
+      <div className={tab === "packages" ? "" : "hidden"}><PackagesPanel adminToken={adminToken} /></div>
+    </div>
+  );
+}
+
+function PackagesPanel({ adminToken }: { adminToken: string }) {
   const [packages, setPackages] = useState<SponsorPackage[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -125,13 +153,12 @@ export default function SponsorsSection({ adminToken }: { adminToken: string }) 
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h2 className="font-display text-white text-3xl mb-1">SPONSORS</h2>
           <p className="text-white/80 text-sm">
-            Packages in &ldquo;Become a Sponsor&rdquo; on the brand packages page. Mark each event sold or available, hide a package, or edit its details.
+            Mark each event sold or available, hide a package, or edit its details. Paid reservations mark their events sold automatically.
           </p>
         </div>
         <div className="flex gap-2">
-          <a href="/brand-packages#sponsorships" target="_blank" rel="noopener noreferrer"
+          <a href="/sponsors#tiers" target="_blank" rel="noopener noreferrer"
             className="inline-flex items-center gap-1.5 border border-white/15 hover:border-white/30 text-white text-xs font-bold tracking-wider px-3 py-2 rounded-xl transition-all">
             <ExternalLink size={14} /> VIEW ON SITE
           </a>

@@ -8,6 +8,7 @@ import { checkAndAwardReferralMilestone } from "@/lib/referralRewards";
 import { TICKET_LABELS } from "@/lib/stripe";
 import type Stripe from "stripe";
 import crypto from "crypto";
+import { handleSponsorCheckoutCompleted } from "@/lib/sponsorReservations";
 
 // Disable body parsing — Stripe needs raw body for signature verification
 export async function POST(req: NextRequest) {
@@ -36,6 +37,8 @@ export async function POST(req: NextRequest) {
         const session = event.data.object as Stripe.Checkout.Session;
         if (session.metadata?.type === "brand_package") {
           await handleBrandPackagePaid(session);
+        } else if (session.metadata?.type === "sponsor") {
+          await handleSponsorCheckoutCompleted(session);
         } else if (session.metadata?.type === "vendor") {
           await handleVendorPaid(session);
         } else {

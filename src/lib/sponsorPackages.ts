@@ -1,12 +1,20 @@
 // Sponsor packages ("Become a Sponsor" on /brand-packages), stored in the
 // sponsor_packages table and managed in admin -> Sponsors.
 
-// Event options a package can be sold out for. Must match the ids in the
-// brand packages page's EVENTS list.
+// Event options a package can be sold out for / reserved for. Must match the
+// ids in the brand packages page's EVENTS list. `events` is how many festival
+// dates the option covers; the price is price_per_event x events.
 export const SPONSOR_EVENT_OPTIONS = [
-  { id: "ohio", label: "Ohio" },
-  { id: "phoenix", label: "Phoenix" },
+  { id: "ohio", label: "Ohio", detail: "Cleveland · Cincinnati · Columbus", events: 3 },
+  { id: "phoenix", label: "Phoenix, AZ", detail: "", events: 1 },
 ] as const;
+
+export const sponsorEventLabel = (id: string) => SPONSOR_EVENT_OPTIONS.find((e) => e.id === id)?.label ?? id;
+
+/** Total in whole dollars for a package price across the chosen event options. */
+export function sponsorTotal(pricePerEvent: number, eventIds: string[]): number {
+  return eventIds.reduce((sum, id) => sum + pricePerEvent * (SPONSOR_EVENT_OPTIONS.find((e) => e.id === id)?.events ?? 0), 0);
+}
 
 const EVENT_IDS: string[] = SPONSOR_EVENT_OPTIONS.map((e) => e.id);
 

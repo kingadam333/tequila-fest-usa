@@ -23,7 +23,7 @@ function cityEnvSuffix(city: string): string | null {
 
 // Best-effort E.164 normalization, assumes US numbers when no country code
 // is present (matches this project's current city footprint).
-function toE164(phone: string): string | null {
+export function toE164(phone: string): string | null {
   const trimmed = phone.trim();
   if (!trimmed) return null;
   const digits = trimmed.replace(/[^\d]/g, "");
