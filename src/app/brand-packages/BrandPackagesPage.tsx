@@ -320,20 +320,15 @@ export default function BrandPackagesPage() {
               </motion.div>
             ))}
           </div>
-        </section>
-
-        {/* ─── TEQUILA BRAND PACKAGES ─── */}
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-24">
-          <div className="text-center mb-10">
-            <h2 className="font-display text-white text-3xl sm:text-4xl tracking-wider mb-3">TEQUILA BRAND PACKAGES</h2>
-            <p className="text-white/80 text-sm max-w-2xl mx-auto">
-              Choose your package tier based on your tequila's price point and select the events you want to participate in. Ohio covers all three Ohio events: Cleveland, Cincinnati and Columbus.
-            </p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {BRAND_PACKAGES.map((p, i) => (
-              <PackageCard key={p.name} pkg={p} index={i} onSelect={onPackagePick} accent="#F5A623" />
-            ))}
+          <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
+            <a href="#brand-packages"
+              className="w-full sm:w-auto inline-flex items-center justify-center bg-yellow-500 hover:bg-yellow-400 text-black font-bold tracking-widest text-sm px-8 py-3.5 rounded-xl transition-all">
+              ADD YOUR TEQUILA BRAND
+            </a>
+            <a href="#sponsorships"
+              className="w-full sm:w-auto inline-flex items-center justify-center border border-yellow-500/60 text-yellow-400 hover:bg-yellow-500/10 font-bold tracking-widest text-sm px-8 py-3.5 rounded-xl transition-all">
+              SPONSORSHIPS
+            </a>
           </div>
         </section>
 
@@ -384,10 +379,25 @@ export default function BrandPackagesPage() {
           </div>
         </section>
 
-        {/* ─── BECOME A PARTNER ─── */}
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-24">
+        {/* ─── TEQUILA BRAND PACKAGES ─── */}
+        <section id="brand-packages" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-24 scroll-mt-36">
           <div className="text-center mb-10">
-            <h2 className="font-display text-white text-3xl sm:text-4xl tracking-wider mb-3">BECOME A PARTNER</h2>
+            <h2 className="font-display text-white text-3xl sm:text-4xl tracking-wider mb-3">TEQUILA BRAND PACKAGES</h2>
+            <p className="text-white/80 text-sm max-w-2xl mx-auto">
+              Choose your package tier based on your tequila's price point and select the events you want to participate in. Ohio covers all three Ohio events: Cleveland, Cincinnati and Columbus.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {BRAND_PACKAGES.map((p, i) => (
+              <PackageCard key={p.name} pkg={p} index={i} onSelect={onPackagePick} accent="#F5A623" />
+            ))}
+          </div>
+        </section>
+
+        {/* ─── BECOME A SPONSOR ─── */}
+        <section id="sponsorships" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-24 scroll-mt-36">
+          <div className="text-center mb-10">
+            <h2 className="font-display text-white text-3xl sm:text-4xl tracking-wider mb-3">BECOME A SPONSOR</h2>
             <p className="text-white/80 text-sm">Exclusive sponsorship opportunities for beverage brands.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
