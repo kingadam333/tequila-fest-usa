@@ -80,7 +80,7 @@ export default function PayPageClient({ token, paidKind, reservation: r, deposit
         <img src={settings.zelle_qr_url} alt="Zelle QR code" width={180} height={180} className="mt-3 rounded-xl border border-white/10 bg-white" />
       )}
       <p className="text-white/70 text-sm mt-3">
-        Put <strong className="text-white">{r.invoice_number ? `invoice ${r.invoice_number}` : r.company_name}</strong> in the memo.
+        Put <strong className="text-white">{r.invoice_number ? `invoice ${r.invoice_number}` : r.company_name}</strong>{" "}in the memo.{" "}
         We&apos;ll email your confirmation as soon as it arrives.
       </p>
     </div>
@@ -150,6 +150,8 @@ export default function PayPageClient({ token, paidKind, reservation: r, deposit
 
   return (
     <>
+      {/* The site-wide floating widgets (install banner, support chat) would print over the invoice. */}
+      <style>{"@media print { .fixed { display: none !important; } }"}</style>
       <div className="print:hidden"><Navbar /></div>
       <main className="min-h-screen bg-[#0d0500] pt-28 pb-24 px-4 print:bg-white print:pt-0">
         <div className="max-w-2xl mx-auto">
