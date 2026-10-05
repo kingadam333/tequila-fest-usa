@@ -17,6 +17,14 @@ const CITY_LABELS: Record<string, string> = {
   phoenix: "Phoenix, AZ",
 };
 
+// What the buyer picks. Ohio is sold only as a bundle of all three Ohio events,
+// priced as three events. Each option expands to the per-city ids stored on the
+// order, so the webhook, success page and /api/brands city filter stay unchanged.
+const EVENT_OPTIONS: Record<string, { label: string; cities: string[] }> = {
+  ohio: { label: "Ohio (Cleveland, Cincinnati & Columbus)", cities: ["cleveland", "cincinnati", "columbus"] },
+  phoenix: { label: "Phoenix, AZ", cities: ["phoenix"] },
+};
+
 export async function POST(req: NextRequest) {
   const body = await req.json();
   const { brandName: rawBrandName, contactName, contactEmail, contactPhone, tier, cities, captchaToken } = body || {};
@@ -33,10 +41,14 @@ export async function POST(req: NextRequest) {
   if (!tier || !(tier in TIER_PRICES)) {
     return NextResponse.json({ error: "Invalid tier" }, { status: 400 });
   }
-  const cityList: string[] = Array.isArray(cities) ? cities.filter((c) => typeof c === "string" && c in CITY_LABELS) : [];
-  if (!cityList.length) {
-    return NextResponse.json({ error: "At least one city required" }, { status: 400 });
+  // Individual Ohio city ids are rejected on purpose: Ohio is only sold as the bundle.
+  const eventList: string[] = Array.isArray(cities)
+    ? [...new Set(cities.filter((c): c is string => typeof c === "string" && c in EVENT_OPTIONS))]
+    : [];
+  if (!eventList.length) {
+    return NextResponse.json({ error: "Please select at least one event" }, { status: 400 });
   }
+  const cityList = eventList.flatMap((e) => EVENT_OPTIONS[e].cities);
 
   const pricePerCity = TIER_PRICES[tier];
   const amount = pricePerCity * cityList.length;
@@ -52,12 +64,12 @@ export async function POST(req: NextRequest) {
     mode: "payment",
     customer_email: contactEmail,
     allow_promotion_codes: true,
-    line_items: cityList.map((city) => ({
+    line_items: eventList.map((event) => ({
       price_data: {
         currency: "usd",
-        unit_amount: pricePerCity * 100,
+        unit_amount: pricePerCity * EVENT_OPTIONS[event].cities.length * 100,
         product_data: {
-          name: `${tier} Brand Package — ${CITY_LABELS[city]}`,
+          name: `${tier} Brand Package — ${EVENT_OPTIONS[event].label}`,
           description: `Tequila Fest USA 2026 · ${brandName}`,
         },
       },

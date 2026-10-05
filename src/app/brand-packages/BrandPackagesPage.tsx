@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { Check, Users, Globe2, TrendingUp, DollarSign, Send, Trophy } from "lucide-react";
+import { Check, Users, Globe2, TrendingUp, DollarSign, Send, Trophy, GlassWater, Sparkles, Smile, Gift, Star, Award } from "lucide-react";
 
 import Navbar from "@/components/Navbar";
 import OfficialBanner from "@/components/OfficialBanner";
@@ -12,22 +12,24 @@ import Turnstile from "@/components/Turnstile";
 import HoneypotField from "@/components/HoneypotField";
 import { HONEYPOT_FIELD } from "@/lib/spamGuard";
 
-type City = { id: string; label: string };
+// `events` = how many festival dates the option covers; price = pricePerCity × events.
+type EventOption = { id: string; label: string; detail?: string; events: number };
 type Pkg = {
   name: string;
   pricePerCity: number;
   blurb: string;
   features: string[];
-  soldCityIds?: string[]; // cities where this package is sold out
+  soldEventIds?: string[]; // event options where this package is sold out
   buyable?: boolean; // true = Stripe checkout, false = inject into inquiry form
 };
 
-const CITIES: City[] = [
-  { id: "cleveland",  label: "Cleveland, OH" },
-  { id: "cincinnati", label: "Cincinnati, OH" },
-  { id: "columbus",   label: "Columbus, OH" },
-  { id: "phoenix",    label: "Phoenix, AZ" },
+// Ohio is sold only as a bundle of all three Ohio events. Keep in sync with
+// EVENT_OPTIONS in /api/brand-checkout, which is what actually sets the price.
+const EVENTS: EventOption[] = [
+  { id: "ohio",    label: "Ohio", detail: "Cleveland · Cincinnati · Columbus", events: 3 },
+  { id: "phoenix", label: "Phoenix, AZ", events: 1 },
 ];
+const eventLabel = (id: string) => EVENTS.find(e => e.id === id)?.label;
 
 const BRAND_PACKAGES: Pkg[] = [
   {
@@ -59,7 +61,7 @@ const PARTNER_PACKAGES: Pkg[] = [
     pricePerCity: 3000,
     blurb: "Title beverage partner",
     features: ["5 Case Commitment", "Logo on koozies", "10 Tickets w/ Samples & Food", "2 Posts per Week on Social"],
-    soldCityIds: ["cleveland", "cincinnati", "columbus"],
+    soldEventIds: ["ohio"],
   },
   {
     name: "VIP Sponsor",
@@ -88,11 +90,19 @@ const WHY = [
   { icon: <DollarSign size={22} />, title: "Sales Generation",      body: "We buy all the product from you, and consumers will continue buying your bottles at the store." },
 ];
 
-// ─── Package card with city picker + running total ────────────────────────────
+const CONTEST_CATEGORIES = [
+  { icon: <GlassWater size={20} />, title: "Tequila Taste" },
+  { icon: <Sparkles size={20} />,   title: "Table Decoration" },
+  { icon: <Smile size={20} />,      title: "Staff" },
+  { icon: <Gift size={20} />,       title: "Souvenirs" },
+  { icon: <Star size={20} />,       title: "Overall Best Experience" },
+];
+
+// ─── Package card with event picker + running total ───────────────────────────
 
 function PackageCard({ pkg, index, onSelect, accent = "#F5A623" }: { pkg: Pkg; index: number; onSelect: (pkgName: string, cities: string[], total: number) => void; accent?: string; }) {
   const [picked, setPicked] = useState<Set<string>>(new Set());
-  const sold = pkg.soldCityIds || [];
+  const sold = pkg.soldEventIds || [];
   const toggle = (id: string) => {
     if (sold.includes(id)) return;
     setPicked(prev => {
@@ -101,7 +111,10 @@ function PackageCard({ pkg, index, onSelect, accent = "#F5A623" }: { pkg: Pkg; i
       return next;
     });
   };
-  const total = useMemo(() => picked.size * pkg.pricePerCity, [picked, pkg.pricePerCity]);
+  const total = useMemo(
+    () => EVENTS.filter(e => picked.has(e.id)).reduce((sum, e) => sum + e.events * pkg.pricePerCity, 0),
+    [picked, pkg.pricePerCity],
+  );
 
   return (
     <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 * index }}
@@ -110,7 +123,7 @@ function PackageCard({ pkg, index, onSelect, accent = "#F5A623" }: { pkg: Pkg; i
         <p className="text-white font-bold text-xl">{pkg.name}</p>
         <p className="font-display text-4xl text-white mt-1">
           ${pkg.pricePerCity.toLocaleString()}
-          <span className="text-white/80 text-base font-sans font-normal"> / city</span>
+          <span className="text-white/80 text-base font-sans font-normal"> / event</span>
         </p>
         <p className="text-white/80 text-sm mt-2">{pkg.blurb}</p>
       </div>
@@ -128,25 +141,30 @@ function PackageCard({ pkg, index, onSelect, accent = "#F5A623" }: { pkg: Pkg; i
       </div>
 
       <div className="mt-5 pt-5 border-t border-white/10">
-        <p className="text-white/80 text-xs uppercase tracking-wider mb-3">Select Cities</p>
+        <p className="text-white/80 text-xs uppercase tracking-wider mb-3">Select Events</p>
         <div className="space-y-1.5">
-          {CITIES.map(c => {
-            const isSold = sold.includes(c.id);
-            const isChecked = picked.has(c.id);
+          {EVENTS.map(ev => {
+            const isSold = sold.includes(ev.id);
+            const isChecked = picked.has(ev.id);
             return (
-              <label key={c.id} className={`flex items-center justify-between gap-3 rounded-lg px-3 py-2 border transition-all ${isSold ? "border-yellow-500/20 bg-yellow-500/5 cursor-not-allowed" : "border-white/5 hover:border-white/15 cursor-pointer"}`}>
+              <label key={ev.id} className={`flex items-center justify-between gap-3 rounded-lg px-3 py-2 border transition-all ${isSold ? "border-yellow-500/20 bg-yellow-500/5 cursor-not-allowed" : "border-white/5 hover:border-white/15 cursor-pointer"}`}>
                 <div className="flex items-center gap-2.5">
-                  <input type="checkbox" checked={isChecked} disabled={isSold} onChange={() => toggle(c.id)}
+                  <input type="checkbox" checked={isChecked} disabled={isSold} onChange={() => toggle(ev.id)}
                     className="accent-yellow-500 disabled:opacity-30" />
-                  {isSold ? (
-                    <span className="text-yellow-400/60 line-through text-sm flex items-center gap-1.5">
-                      <Trophy size={13} /> {c.label}
-                    </span>
-                  ) : (
-                    <span className="text-white/80 text-sm">{c.label}</span>
-                  )}
+                  <div>
+                    {isSold ? (
+                      <span className="text-yellow-400/60 line-through text-sm flex items-center gap-1.5">
+                        <Trophy size={13} /> {ev.label}
+                      </span>
+                    ) : (
+                      <span className="text-white/80 text-sm">{ev.label}</span>
+                    )}
+                    {ev.detail && <span className="block text-white/50 text-[11px]">{ev.detail}</span>}
+                  </div>
                 </div>
-                {isSold && <span className="text-[10px] font-bold tracking-widest text-yellow-400 bg-yellow-500/10 border border-yellow-500/30 rounded-full px-2 py-0.5">SOLD</span>}
+                {isSold
+                  ? <span className="text-[10px] font-bold tracking-widest text-yellow-400 bg-yellow-500/10 border border-yellow-500/30 rounded-full px-2 py-0.5">SOLD</span>
+                  : <span className="text-white/70 text-sm">${(ev.events * pkg.pricePerCity).toLocaleString()}</span>}
               </label>
             );
           })}
@@ -155,12 +173,12 @@ function PackageCard({ pkg, index, onSelect, accent = "#F5A623" }: { pkg: Pkg; i
 
       <div className="mt-5 pt-5 border-t border-white/10">
         <div className="flex items-center justify-between mb-3">
-          <p className="text-white/80 text-sm">{picked.size} {picked.size === 1 ? "city" : "cities"}</p>
+          <p className="text-white/80 text-sm">{picked.size ? EVENTS.filter(e => picked.has(e.id)).map(e => e.label).join(" + ") : "No events selected"}</p>
           <p className="font-display text-2xl" style={{ color: accent }}>${total.toLocaleString()}</p>
         </div>
         <button onClick={() => onSelect(pkg.name, [...picked], total)} disabled={picked.size === 0}
           className="w-full flex items-center justify-center gap-2 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-40 disabled:hover:bg-yellow-500 text-black font-bold tracking-widest text-xs px-4 py-3 rounded-xl transition-all cursor-pointer disabled:cursor-not-allowed">
-          {pkg.buyable ? "BUY NOW" : "REQUEST CITIES"}
+          {pkg.buyable ? "BUY NOW" : "REQUEST EVENTS"}
         </button>
       </div>
     </motion.div>
@@ -197,7 +215,7 @@ export default function BrandPackagesPage() {
       setCoError("");
       return;
     }
-    const cityLabels = cities.map(id => CITIES.find(c => c.id === id)?.label).filter(Boolean).join(", ");
+    const cityLabels = cities.map(eventLabel).filter(Boolean).join(", ");
     setForm(f => ({
       ...f,
       message: `${f.message ? f.message + "\n\n" : ""}Interested in ${pkgName} — ${cityLabels} (~$${total.toLocaleString()})`,
@@ -309,13 +327,60 @@ export default function BrandPackagesPage() {
           <div className="text-center mb-10">
             <h2 className="font-display text-white text-3xl sm:text-4xl tracking-wider mb-3">TEQUILA BRAND PACKAGES</h2>
             <p className="text-white/80 text-sm max-w-2xl mx-auto">
-              Choose your package tier based on your tequila's price point and select the cities you want to participate in.
+              Choose your package tier based on your tequila's price point and select the events you want to participate in. Ohio covers all three Ohio events: Cleveland, Cincinnati and Columbus.
             </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {BRAND_PACKAGES.map((p, i) => (
               <PackageCard key={p.name} pkg={p} index={i} onSelect={onPackagePick} accent="#F5A623" />
             ))}
+          </div>
+        </section>
+
+        {/* ─── BEST TABLE CONTEST ─── */}
+        <section id="contest" className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mt-24">
+          <div className="relative overflow-hidden rounded-3xl border border-yellow-500/30 bg-gradient-to-br from-yellow-500/[0.12] via-[#C8102E]/[0.08] to-[#7B2FBE]/[0.10] p-6 sm:p-10">
+            <div className="text-center max-w-3xl mx-auto">
+              <div className="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center bg-yellow-500/15 border border-yellow-500/40 text-yellow-400">
+                <Award size={28} />
+              </div>
+              <p className="text-yellow-400 text-xs uppercase tracking-[4px] font-bold mb-3">Brand Contest · Every Event</p>
+              <h2 className="font-display text-white text-4xl sm:text-5xl tracking-wider mb-4">THE BEST TABLE CONTEST</h2>
+              <p className="text-white/75 text-base sm:text-lg leading-relaxed">
+                It&apos;s not just about the best tequila. It&apos;s about the best <span className="text-yellow-400 font-semibold">table</span>.
+                Make your table look awesome, engage with guests, and make it fun and educational. At every event, attendees vote,
+                and the winning brand gets its <span className="text-yellow-400 font-semibold">brand fee comped for the 2027 season</span>.
+              </p>
+            </div>
+
+            <div className="mt-10">
+              <p className="text-center text-white/80 text-xs uppercase tracking-wider mb-4">Attendees rate every table from 1 to 10 on</p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                {CONTEST_CATEGORIES.map(c => (
+                  <div key={c.title} className="bg-black/30 border border-white/10 rounded-2xl p-4 text-center last:col-span-2 sm:last:col-span-1">
+                    <div className="w-10 h-10 rounded-xl mx-auto mb-2 flex items-center justify-center bg-yellow-500/10 border border-yellow-500/30 text-yellow-400">{c.icon}</div>
+                    <p className="text-white font-semibold text-sm leading-snug">{c.title}</p>
+                    <p className="text-white/50 text-xs mt-1">1–10</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-10 grid grid-cols-1 md:grid-cols-3 gap-4">
+              {[
+                { step: "1", title: "Win your city", body: "The top-scoring brand at each event wins that city." },
+                { step: "2", title: "Ohio goes head-to-head", body: "The Cleveland, Cincinnati and Columbus winners are compared. The highest score wins Ohio." },
+                { step: "3", title: "Your 2027 fee, comped", body: "The Ohio winner and the Phoenix winner each get their brand fee comped for the 2027 season." },
+              ].map(s => (
+                <div key={s.step} className="flex gap-3 bg-black/30 border border-white/10 rounded-2xl p-5">
+                  <span className="font-display text-3xl text-yellow-400 leading-none">{s.step}</span>
+                  <div>
+                    <p className="text-white font-bold mb-1">{s.title}</p>
+                    <p className="text-white/60 text-sm leading-relaxed">{s.body}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </section>
 
@@ -401,7 +466,7 @@ export default function BrandPackagesPage() {
                   <p className="text-yellow-400 text-xs uppercase tracking-[3px] font-bold mb-1">Checkout</p>
                   <h3 className="text-white font-display text-2xl tracking-wider">{checkout.tier} BRAND PACKAGE</h3>
                   <p className="text-white/80 text-xs mt-1">
-                    {checkout.cities.map(id => CITIES.find(c => c.id === id)?.label).filter(Boolean).join(", ")}
+                    {checkout.cities.map(eventLabel).filter(Boolean).join(", ")}
                   </p>
                 </div>
                 <button onClick={() => !coLoading && setCheckout(null)} className="text-white/80 hover:text-white text-2xl leading-none">×</button>

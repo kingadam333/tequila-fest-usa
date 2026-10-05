@@ -49,6 +49,7 @@ export default function Footer() {
                 { label: "Get Tickets", href: "/#events" },
                 { label: "Earn Points", href: "/earn-points" },
                 { label: "Contact", href: "/contact" },
+                { label: "Add Your Tequila Brand", href: "/brand-packages" },
                 { label: "Become an Affiliate", href: "/affiliates" },
                 { label: "Sponsor Opportunities", href: "/contact" },
                 { label: "Terms & Conditions", href: "/terms" },
