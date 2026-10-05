@@ -10,10 +10,11 @@ import {
   RefreshCw, Download, Send, CheckCircle, Search, Plus,
   Trash2, Edit2, Eye, AlertCircle, BarChart2, Mail, Utensils, Share2, Copy,
   Star, Gift, UserCheck, ChevronRight, Megaphone, ShieldCheck, Wrench, Sparkles, Bot, Link2, MapPin,
-  ShieldAlert, Ban,
+  ShieldAlert, Ban, Handshake,
 } from "lucide-react";
 import SocialShareSection from "./SocialShareSection";
 import SecuritySection from "./SecuritySection";
+import SponsorsSection from "./SponsorsSection";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Order {
@@ -7773,6 +7774,7 @@ const NAV_ITEMS = [
   { id: "events",     label: "Events",      icon: <CalendarDays size={17} /> },
   { id: "customers",  label: "Users",       icon: <Users size={17} /> },
   { id: "brands",     label: "Brands",      icon: <Star size={17} /> },
+  { id: "sponsors",   label: "Sponsors",    icon: <Handshake size={17} /> },
   { id: "coupons",    label: "Coupons",     icon: <Tag size={17} /> },
   { id: "checkin",    label: "Check-In",    icon: <QrCode size={17} /> },
   { id: "contacts",   label: "Inbox",       icon: <MessageSquare size={17} /> },
@@ -7886,6 +7888,7 @@ export default function AdminDashboard() {
     events:    <EventsSection adminToken={adminToken} stats={stats} editingId={editingEventId} setEditingId={setEditingEventId} />,
     customers: <UsersSection adminToken={adminToken} />,
     brands:    <BrandsSection adminToken={adminToken} />,
+    sponsors:  <SponsorsSection adminToken={adminToken} />,
     coupons:   <CouponsSection />,
     checkin:   <CheckInSection adminToken={adminToken} />,
     contacts:  <ContactSection adminToken={adminToken} />,

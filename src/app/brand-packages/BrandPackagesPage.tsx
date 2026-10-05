@@ -11,6 +11,7 @@ import Footer from "@/components/Footer";
 import Turnstile from "@/components/Turnstile";
 import HoneypotField from "@/components/HoneypotField";
 import { HONEYPOT_FIELD } from "@/lib/spamGuard";
+import type { SponsorPackage } from "@/lib/sponsorPackages";
 
 // `events` = how many festival dates the option covers; price = pricePerCity × events.
 type EventOption = { id: string; label: string; detail?: string; events: number };
@@ -55,7 +56,9 @@ const BRAND_PACKAGES: Pkg[] = [
   },
 ];
 
-const PARTNER_PACKAGES: Pkg[] = [
+// Fallback only: the live list comes from sponsor_packages (admin -> Sponsors)
+// via page.tsx. Used if that load fails, so the section never renders empty by accident.
+const FALLBACK_SPONSOR_PACKAGES: Pkg[] = [
   {
     name: "Official Tequila",
     pricePerCity: 3000,
@@ -187,7 +190,17 @@ function PackageCard({ pkg, index, onSelect, accent = "#F5A623" }: { pkg: Pkg; i
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default function BrandPackagesPage() {
+export default function BrandPackagesPage({ sponsorPackages }: { sponsorPackages: SponsorPackage[] | null }) {
+  const sponsorPkgs: Pkg[] = sponsorPackages
+    ? sponsorPackages.map(p => ({
+        name: p.name,
+        pricePerCity: p.price_per_event,
+        blurb: p.blurb,
+        features: p.features,
+        soldEventIds: p.sold_events,
+      }))
+    : FALLBACK_SPONSOR_PACKAGES;
+
   const [form, setForm] = useState({ name: "", email: "", brand: "", phone: "", message: "" });
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -209,7 +222,7 @@ export default function BrandPackagesPage() {
     setForm(f => ({ ...f, [k]: e.target.value }));
 
   const onPackagePick = (pkgName: string, cities: string[], total: number) => {
-    const pkg = [...BRAND_PACKAGES, ...PARTNER_PACKAGES].find(p => p.name === pkgName);
+    const pkg = [...BRAND_PACKAGES, ...sponsorPkgs].find(p => p.name === pkgName);
     if (pkg?.buyable) {
       setCheckout({ tier: pkgName, cities, total });
       setCoError("");
@@ -325,10 +338,12 @@ export default function BrandPackagesPage() {
               className="w-full sm:w-auto inline-flex items-center justify-center bg-yellow-500 hover:bg-yellow-400 text-black font-bold tracking-widest text-sm px-8 py-3.5 rounded-xl transition-all">
               ADD YOUR TEQUILA BRAND
             </a>
-            <a href="#sponsorships"
-              className="w-full sm:w-auto inline-flex items-center justify-center border border-yellow-500/60 text-yellow-400 hover:bg-yellow-500/10 font-bold tracking-widest text-sm px-8 py-3.5 rounded-xl transition-all">
-              SPONSORSHIPS
-            </a>
+            {sponsorPkgs.length > 0 && (
+              <a href="#sponsorships"
+                className="w-full sm:w-auto inline-flex items-center justify-center border border-yellow-500/60 text-yellow-400 hover:bg-yellow-500/10 font-bold tracking-widest text-sm px-8 py-3.5 rounded-xl transition-all">
+                SPONSORSHIPS
+              </a>
+            )}
           </div>
         </section>
 
@@ -395,17 +410,19 @@ export default function BrandPackagesPage() {
         </section>
 
         {/* ─── BECOME A SPONSOR ─── */}
+        {sponsorPkgs.length > 0 && (
         <section id="sponsorships" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-24 scroll-mt-36">
           <div className="text-center mb-10">
             <h2 className="font-display text-white text-3xl sm:text-4xl tracking-wider mb-3">BECOME A SPONSOR</h2>
             <p className="text-white/80 text-sm">Exclusive sponsorship opportunities for beverage brands.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-            {PARTNER_PACKAGES.map((p, i) => (
+            {sponsorPkgs.map((p, i) => (
               <PackageCard key={p.name} pkg={p} index={i} onSelect={onPackagePick} accent="#C8102E" />
             ))}
           </div>
         </section>
+        )}
 
         {/* ─── INQUIRE FORM ─── */}
         <section id="inquire" className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 mt-24">
