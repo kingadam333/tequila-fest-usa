@@ -9,14 +9,32 @@ export const SPONSOR_EVENT_OPTIONS = [
   { id: "phoenix", label: "Phoenix, AZ", detail: "", events: 1 },
 ] as const;
 
-export const sponsorEventLabel = (id: string) => SPONSOR_EVENT_OPTIONS.find((e) => e.id === id)?.label ?? id;
+// Options for packages with per_city = true (e.g. Corporate Partners, which
+// suits smaller companies working in one city): each city is its own event.
+export const SPONSOR_CITY_OPTIONS = [
+  { id: "cleveland", label: "Cleveland, OH", detail: "", events: 1 },
+  { id: "cincinnati", label: "Cincinnati, OH", detail: "", events: 1 },
+  { id: "columbus", label: "Columbus, OH", detail: "", events: 1 },
+  { id: "phoenix", label: "Phoenix, AZ", detail: "", events: 1 },
+] as const;
+
+export type SponsorEventOption = { id: string; label: string; detail: string; events: number };
+
+/** The event options a package is sold by. */
+export const sponsorEventOptions = (perCity: boolean): readonly SponsorEventOption[] =>
+  perCity ? SPONSOR_CITY_OPTIONS : SPONSOR_EVENT_OPTIONS;
+
+const ALL_OPTIONS: readonly SponsorEventOption[] = [...SPONSOR_EVENT_OPTIONS, ...SPONSOR_CITY_OPTIONS];
+
+export const sponsorEventLabel = (id: string) => ALL_OPTIONS.find((e) => e.id === id)?.label ?? id;
 
 /** Total in whole dollars for a package price across the chosen event options. */
 export function sponsorTotal(pricePerEvent: number, eventIds: string[]): number {
-  return eventIds.reduce((sum, id) => sum + pricePerEvent * (SPONSOR_EVENT_OPTIONS.find((e) => e.id === id)?.events ?? 0), 0);
+  return eventIds.reduce((sum, id) => sum + pricePerEvent * (ALL_OPTIONS.find((e) => e.id === id)?.events ?? 0), 0);
 }
 
-const EVENT_IDS: string[] = SPONSOR_EVENT_OPTIONS.map((e) => e.id);
+// Any id either mode can hold, so sold_events survives a package switching modes.
+const EVENT_IDS: string[] = [...new Set(ALL_OPTIONS.map((e) => e.id))];
 
 export type SponsorPackage = {
   id: string;
@@ -25,6 +43,7 @@ export type SponsorPackage = {
   blurb: string;
   features: string[];
   sold_events: string[];
+  per_city: boolean;
   is_active: boolean;
   sort_order: number;
 };
@@ -61,6 +80,9 @@ export function parseSponsorPackageInput(
       return { ok: false, error: `Sold events must be from: ${EVENT_IDS.join(", ")}` };
     }
     values.sold_events = [...new Set(b.sold_events as string[])];
+  }
+  if ("per_city" in b) {
+    values.per_city = Boolean(b.per_city);
   }
   if ("is_active" in b) {
     values.is_active = Boolean(b.is_active);

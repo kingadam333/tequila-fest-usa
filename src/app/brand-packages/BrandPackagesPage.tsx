@@ -11,7 +11,7 @@ import Footer from "@/components/Footer";
 import Turnstile from "@/components/Turnstile";
 import HoneypotField from "@/components/HoneypotField";
 import { HONEYPOT_FIELD } from "@/lib/spamGuard";
-import type { SponsorPackage } from "@/lib/sponsorPackages";
+import { sponsorEventOptions, sponsorEventLabel, type SponsorPackage } from "@/lib/sponsorPackages";
 
 // `events` = how many festival dates the option covers; price = pricePerCity × events.
 type EventOption = { id: string; label: string; detail?: string; events: number };
@@ -21,6 +21,7 @@ type Pkg = {
   blurb: string;
   features: string[];
   soldEventIds?: string[]; // event options where this package is sold out
+  eventOptions?: readonly EventOption[]; // defaults to EVENTS (Ohio bundle + Phoenix)
   buyable?: boolean; // true = Stripe checkout, false = inject into inquiry form
 };
 
@@ -30,7 +31,7 @@ const EVENTS: EventOption[] = [
   { id: "ohio",    label: "Ohio", detail: "Cleveland · Cincinnati · Columbus", events: 3 },
   { id: "phoenix", label: "Phoenix, AZ", events: 1 },
 ];
-const eventLabel = (id: string) => EVENTS.find(e => e.id === id)?.label;
+const eventLabel = (id: string) => EVENTS.find(e => e.id === id)?.label ?? sponsorEventLabel(id);
 
 const BRAND_PACKAGES: Pkg[] = [
   {
@@ -106,6 +107,7 @@ const CONTEST_CATEGORIES = [
 function PackageCard({ pkg, index, onSelect, accent = "#F5A623" }: { pkg: Pkg; index: number; onSelect: (pkgName: string, cities: string[], total: number) => void; accent?: string; }) {
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const sold = pkg.soldEventIds || [];
+  const options = pkg.eventOptions ?? EVENTS;
   const toggle = (id: string) => {
     if (sold.includes(id)) return;
     setPicked(prev => {
@@ -115,8 +117,8 @@ function PackageCard({ pkg, index, onSelect, accent = "#F5A623" }: { pkg: Pkg; i
     });
   };
   const total = useMemo(
-    () => EVENTS.filter(e => picked.has(e.id)).reduce((sum, e) => sum + e.events * pkg.pricePerCity, 0),
-    [picked, pkg.pricePerCity],
+    () => options.filter(e => picked.has(e.id)).reduce((sum, e) => sum + e.events * pkg.pricePerCity, 0),
+    [picked, pkg.pricePerCity, options],
   );
 
   return (
@@ -146,7 +148,7 @@ function PackageCard({ pkg, index, onSelect, accent = "#F5A623" }: { pkg: Pkg; i
       <div className="mt-5 pt-5 border-t border-white/10">
         <p className="text-white/80 text-xs uppercase tracking-wider mb-3">Select Events</p>
         <div className="space-y-1.5">
-          {EVENTS.map(ev => {
+          {options.map(ev => {
             const isSold = sold.includes(ev.id);
             const isChecked = picked.has(ev.id);
             return (
@@ -176,7 +178,7 @@ function PackageCard({ pkg, index, onSelect, accent = "#F5A623" }: { pkg: Pkg; i
 
       <div className="mt-5 pt-5 border-t border-white/10">
         <div className="flex items-center justify-between mb-3">
-          <p className="text-white/80 text-sm">{picked.size ? EVENTS.filter(e => picked.has(e.id)).map(e => e.label).join(" + ") : "No events selected"}</p>
+          <p className="text-white/80 text-sm">{picked.size ? options.filter(e => picked.has(e.id)).map(e => e.label).join(" + ") : "No events selected"}</p>
           <p className="font-display text-2xl" style={{ color: accent }}>${total.toLocaleString()}</p>
         </div>
         <button onClick={() => onSelect(pkg.name, [...picked], total)} disabled={picked.size === 0}
@@ -198,6 +200,7 @@ export default function BrandPackagesPage({ sponsorPackages }: { sponsorPackages
         blurb: p.blurb,
         features: p.features,
         soldEventIds: p.sold_events,
+        eventOptions: sponsorEventOptions(p.per_city),
       }))
     : FALLBACK_SPONSOR_PACKAGES;
 

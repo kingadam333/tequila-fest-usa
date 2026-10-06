@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyTurnstile } from "@/lib/turnstile";
 import { honeypotTripped, SPAM_REJECTION } from "@/lib/spamGuard";
-import { SPONSOR_EVENT_OPTIONS, sponsorTotal } from "@/lib/sponsorPackages";
+import { sponsorEventOptions, sponsorTotal } from "@/lib/sponsorPackages";
 import { sponsorDb, sendSponsorEmail, receivedEmail, type SponsorReservation } from "@/lib/sponsorReservations";
 
-const EVENT_IDS: string[] = SPONSOR_EVENT_OPTIONS.map((e) => e.id);
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // Public: "Reserve This" on /sponsors. Creates a pending reservation for admin
@@ -27,8 +26,8 @@ export async function POST(req: NextRequest) {
   const contactPhone = str("contactPhone", 40);
   let website = str("website", 300);
   const packageId = str("packageId", 64);
-  const events = Array.isArray(body.events)
-    ? [...new Set((body.events as unknown[]).filter((e): e is string => typeof e === "string" && EVENT_IDS.includes(e)))]
+  const requested = Array.isArray(body.events)
+    ? [...new Set((body.events as unknown[]).filter((e): e is string => typeof e === "string"))]
     : [];
 
   if (!companyName || !contactName || !contactEmail || !contactPhone) {
@@ -36,16 +35,24 @@ export async function POST(req: NextRequest) {
   }
   if (!EMAIL_RE.test(contactEmail)) return NextResponse.json({ error: "Please enter a valid email address." }, { status: 400 });
   if (contactPhone.replace(/\D/g, "").length < 10) return NextResponse.json({ error: "Please enter a valid phone number." }, { status: 400 });
-  if (!events.length) return NextResponse.json({ error: "Please choose at least one event." }, { status: 400 });
+  if (!requested.length) return NextResponse.json({ error: "Please choose at least one event." }, { status: 400 });
   if (website && !/^https?:\/\//i.test(website)) website = `https://${website}`;
 
   const db = sponsorDb();
   const { data: pkg } = await db
     .from("sponsor_packages")
-    .select("id, name, price_per_event, sold_events, is_active")
+    .select("id, name, price_per_event, sold_events, per_city, is_active")
     .eq("id", packageId)
     .maybeSingle();
   if (!pkg || !pkg.is_active) return NextResponse.json({ error: "That sponsorship package is no longer available." }, { status: 400 });
+
+  // Only the options this package is sold by: city ids for a per-city package,
+  // ohio/phoenix otherwise. Anything else means a stale page or a forged request.
+  const allowed = sponsorEventOptions(Boolean(pkg.per_city)).map((e) => e.id);
+  if (requested.some((e) => !allowed.includes(e))) {
+    return NextResponse.json({ error: "Those events don't match this package. Please refresh and choose again." }, { status: 400 });
+  }
+  const events = requested;
 
   const soldChosen = events.filter((e) => (pkg.sold_events || []).includes(e));
   if (soldChosen.length) {

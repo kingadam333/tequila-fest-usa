@@ -3,16 +3,16 @@
 import { useEffect, useState } from "react";
 import SponsorReservationsPanel from "./SponsorReservationsPanel";
 import { Plus, Edit2, Trash2, Eye, EyeOff, X, ExternalLink } from "lucide-react";
-import { SPONSOR_EVENT_OPTIONS, type SponsorPackage } from "@/lib/sponsorPackages";
+import { sponsorEventOptions, type SponsorPackage } from "@/lib/sponsorPackages";
 
 // Admin -> Sponsors. Two tabs:
 //   Requests — reservations from "Reserve This" on /sponsors (SponsorReservationsPanel)
 //   Packages — the sponsor packages shown on /sponsors and /brand-packages. Changes
 //              show on the public pages on the next load (they render per request).
 
-type Draft = { name: string; price_per_event: string; blurb: string; features: string; sort_order: string };
+type Draft = { name: string; price_per_event: string; blurb: string; features: string; sort_order: string; per_city: boolean };
 
-const emptyDraft = (sortOrder: number): Draft => ({ name: "", price_per_event: "", blurb: "", features: "", sort_order: String(sortOrder) });
+const emptyDraft = (sortOrder: number): Draft => ({ name: "", price_per_event: "", blurb: "", features: "", sort_order: String(sortOrder), per_city: false });
 
 const toDraft = (p: SponsorPackage): Draft => ({
   name: p.name,
@@ -20,6 +20,7 @@ const toDraft = (p: SponsorPackage): Draft => ({
   blurb: p.blurb,
   features: p.features.join("\n"),
   sort_order: String(p.sort_order),
+  per_city: p.per_city,
 });
 
 const draftToBody = (d: Draft) => ({
@@ -28,6 +29,7 @@ const draftToBody = (d: Draft) => ({
   blurb: d.blurb,
   features: d.features.split("\n"),
   sort_order: Number(d.sort_order || 0),
+  per_city: d.per_city,
 });
 
 export default function SponsorsSection({ adminToken }: { adminToken: string }) {
@@ -203,6 +205,13 @@ function PackagesPanel({ adminToken }: { adminToken: string }) {
               <p className="text-white/50 text-xs mt-1">Lower numbers show first.</p>
             </div>
           </div>
+          <label className="flex items-start gap-2.5 cursor-pointer">
+            <input type="checkbox" checked={draft.per_city} onChange={e => setDraft(d => ({ ...d, per_city: e.target.checked }))} className="accent-yellow-500 mt-1" />
+            <span>
+              <span className="text-white text-sm">Sell by individual city</span>
+              <span className="block text-white/50 text-xs">Buyers pick Cleveland, Cincinnati, Columbus or Phoenix. Unchecked = Ohio sold as one bundle of all three, plus Phoenix. Sold markers don&apos;t carry over if you switch.</span>
+            </span>
+          </label>
           <div className="flex justify-end gap-2">
             <button onClick={() => setEditing(null)} className="text-white/80 hover:text-white text-sm px-4 py-2 cursor-pointer">Cancel</button>
             <button onClick={saveDraft} disabled={busyId !== null || !draft.name.trim() || draft.price_per_event === ""}
@@ -231,6 +240,7 @@ function PackagesPanel({ adminToken }: { adminToken: string }) {
                     </p>
                     <p className="text-yellow-400 font-display text-2xl">${p.price_per_event.toLocaleString()}<span className="text-white/60 text-sm font-sans"> / event</span></p>
                     {p.blurb && <p className="text-white/70 text-sm">{p.blurb}</p>}
+                    <p className="text-white/50 text-xs mt-1">{p.per_city ? "Sold by individual city" : "Ohio bundle + Phoenix"}</p>
                   </div>
                   <div className="flex gap-1">
                     <button title={p.is_active ? "Hide from site" : "Show on site"} onClick={() => patch(p.id, { is_active: !p.is_active })}
@@ -253,7 +263,7 @@ function PackagesPanel({ adminToken }: { adminToken: string }) {
                 <div className="mt-4 pt-4 border-t border-white/10">
                   <p className="text-white/60 text-xs uppercase tracking-wider mb-2">Availability · click to change</p>
                   <div className="flex flex-wrap gap-2">
-                    {SPONSOR_EVENT_OPTIONS.map(ev => {
+                    {sponsorEventOptions(p.per_city).map(ev => {
                       const sold = p.sold_events.includes(ev.id);
                       return (
                         <button key={ev.id} onClick={() => toggleSold(p, ev.id)}

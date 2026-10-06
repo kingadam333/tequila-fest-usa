@@ -9,7 +9,7 @@ import Footer from "@/components/Footer";
 import Turnstile from "@/components/Turnstile";
 import HoneypotField from "@/components/HoneypotField";
 import { HONEYPOT_FIELD } from "@/lib/spamGuard";
-import { SPONSOR_EVENT_OPTIONS, sponsorTotal, type SponsorPackage } from "@/lib/sponsorPackages";
+import { sponsorEventOptions, sponsorTotal, type SponsorPackage } from "@/lib/sponsorPackages";
 
 
 // Card accent colors, cycled by position (packages come from admin -> Sponsors).
@@ -135,7 +135,8 @@ export default function SponsorsPageClient({ packages }: { packages: SponsorPack
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
               {packages.map((pkg, i) => {
                 const color = ACCENTS[i % ACCENTS.length];
-                const allSold = SPONSOR_EVENT_OPTIONS.every(ev => pkg.sold_events.includes(ev.id));
+                const options = sponsorEventOptions(pkg.per_city);
+                const allSold = options.every(ev => pkg.sold_events.includes(ev.id));
                 return (
                   <div key={pkg.id} className="bg-white/[0.03] border rounded-2xl p-6 flex flex-col" style={{ borderColor: `${color}40` }}>
                     <div className="mb-4">
@@ -153,7 +154,7 @@ export default function SponsorsPageClient({ packages }: { packages: SponsorPack
                       ))}
                     </ul>
                     <div className="mt-5 pt-4 border-t border-white/10 space-y-1.5">
-                      {SPONSOR_EVENT_OPTIONS.map(ev => {
+                      {options.map(ev => {
                         const sold = pkg.sold_events.includes(ev.id);
                         return (
                           <div key={ev.id} className="flex items-center justify-between text-sm">
@@ -275,7 +276,8 @@ export default function SponsorsPageClient({ packages }: { packages: SponsorPack
 // ─── Reserve This ────────────────────────────────────────────────────────────
 
 function ReserveModal({ pkg, onClose }: { pkg: SponsorPackage; onClose: () => void }) {
-  const available = SPONSOR_EVENT_OPTIONS.filter(ev => !pkg.sold_events.includes(ev.id));
+  const options = sponsorEventOptions(pkg.per_city);
+  const available = options.filter(ev => !pkg.sold_events.includes(ev.id));
   const [events, setEvents] = useState<string[]>(available.length === 1 ? [available[0].id] : []);
   const [form, setForm] = useState({ companyName: "", contactName: "", contactEmail: "", contactPhone: "", website: "" });
   const [smsConsent, setSmsConsent] = useState(false);
@@ -337,7 +339,7 @@ function ReserveModal({ pkg, onClose }: { pkg: SponsorPackage; onClose: () => vo
             <div>
               <p className="text-white/80 text-xs uppercase tracking-wider mb-2">Events *</p>
               <div className="space-y-1.5">
-                {SPONSOR_EVENT_OPTIONS.map(ev => {
+                {options.map(ev => {
                   const sold = pkg.sold_events.includes(ev.id);
                   return (
                     <label key={ev.id} className={`flex items-center justify-between gap-3 rounded-xl px-3 py-2.5 border ${sold ? "border-white/5 opacity-50 cursor-not-allowed" : "border-white/10 hover:border-white/25 cursor-pointer"}`}>
