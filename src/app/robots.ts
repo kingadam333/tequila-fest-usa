@@ -31,6 +31,7 @@ export default function robots(): MetadataRoute.Robots {
           "/brand-packages/success",
           "/vendor-payment-success",
           "/sponsors/pay/",
+          "/brand-invoice-paid",
           "/go/",
         ],
       },

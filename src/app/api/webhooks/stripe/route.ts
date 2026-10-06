@@ -41,6 +41,8 @@ export async function POST(req: NextRequest) {
           await handleSponsorCheckoutCompleted(session);
         } else if (session.metadata?.type === "vendor") {
           await handleVendorPaid(session);
+        } else if (session.metadata?.type === "brand_invoice") {
+          await handleBrandInvoicePaid(session);
         } else {
           await handleCheckoutComplete(session);
         }
@@ -552,6 +554,28 @@ async function handleRefund(charge: Stripe.Charge) {
 }
 
 // ─── Brand Package paid (from /api/brand-checkout) ───────────────────────────
+// Admin-issued brand invoice paid through its Stripe Payment Link. Conditional
+// on the invoice not already being paid/cancelled, so a retried webhook is a no-op.
+async function handleBrandInvoicePaid(session: Stripe.Checkout.Session) {
+  const invoiceNumber = session.metadata?.invoice_number;
+  if (!invoiceNumber) {
+    console.error("[brand-invoice] paid session missing invoice_number:", session.id);
+    return;
+  }
+  const { supabaseAdmin } = await import("@/lib/supabase");
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = supabaseAdmin as any;
+  const now = new Date().toISOString();
+  const { data, error } = await db
+    .from("brand_invoices")
+    .update({ status: "paid", paid_at: now, stripe_session_id: session.id, updated_at: now })
+    .eq("invoice_number", invoiceNumber)
+    .in("status", ["draft", "sent"])
+    .select("id");
+  if (error) throw new Error(`[brand-invoice] failed to mark ${invoiceNumber} paid: ${error.message}`);
+  if (!data?.length) console.warn(`[brand-invoice] ${invoiceNumber} paid via ${session.id} but was not draft/sent (already paid or cancelled?)`);
+}
+
 async function handleBrandPackagePaid(session: Stripe.Checkout.Session) {
   const md = session.metadata || {};
   const orderNumber = md.orderNumber || `TFB-${session.id.slice(-6).toUpperCase()}`;

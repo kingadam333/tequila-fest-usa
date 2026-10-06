@@ -3469,14 +3469,16 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
   // Package picker: adds one line per chosen city at that tier's price.
   const [invPkgTier, setInvPkgTier] = useState("");
   const [invPkgCities, setInvPkgCities] = useState<string[]>([]);
+  const [invPkgBrand, setInvPkgBrand] = useState("");
+  const invContactBrands = (contacts.find(c => c.id === invoiceForm.brand_contact_id)?.brands || []).map(b => b.name.trim()).filter(Boolean);
   const addPackageLines = () => {
     const price = BRAND_TIER_PRICES[invPkgTier];
     if (!price || !invPkgCities.length) return;
-    const newLines = invPkgCities.map(c => ({ description: `${invPkgTier} Brand Package — ${BRAND_CITY_LABELS[c]}`, quantity: 1, unit_price: price, total: price }));
-    const cityNames = invPkgCities.map(c => BRAND_CITY_LABELS[c].split(",")[0]);
+    // A contact can represent several brands, so each line names the brand it's for.
+    const brand = invPkgBrand || (invContactBrands.length === 1 ? invContactBrands[0] : "");
+    const newLines = invPkgCities.map(c => ({ description: `${brand ? `${brand} — ` : ""}${invPkgTier} Brand Package — ${BRAND_CITY_LABELS[c]}`, quantity: 1, unit_price: price, total: price }));
     setInvoiceForm(f => ({
       ...f,
-      event_name: f.event_name.trim() ? f.event_name : cityNames.join(" and "),
       // Replace the untouched blank starter line instead of leaving it above the package lines.
       line_items: [...f.line_items.filter(li => li.description.trim() || li.unit_price), ...newLines],
     }));
@@ -3484,9 +3486,18 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
     setInvPkgCities([]);
   };
 
+  // The invoice's event label (email subject/heading, Stripe product name) now
+  // comes from the cities on its lines instead of a free-text Event field.
+  const invoiceEventName = (items: { description: string }[]) =>
+    Object.values(BRAND_CITY_LABELS)
+      .filter(label => items.some(li => li.description.includes(label)))
+      .map(label => label.split(",")[0])
+      .join(", ")
+      .replace(/, ([^,]*)$/, " and $1");
+
   const saveInvoice = async () => {
     setSavingInvoice(true);
-    const res = await fetch("/api/admin/brands/invoices", { method: "POST", headers: { ...headers, "Content-Type": "application/json" }, body: JSON.stringify(invoiceForm) });
+    const res = await fetch("/api/admin/brands/invoices", { method: "POST", headers: { ...headers, "Content-Type": "application/json" }, body: JSON.stringify({ ...invoiceForm, event_name: invoiceEventName(invoiceForm.line_items) || undefined }) });
     if (res.ok) { await fetchInvoices(); setShowNewInvoice(false); setInvoiceForm({ brand_contact_id: "", event_name: "", due_date: "", notes: "", line_items: [{ ...BLANK_LINE_ITEM }] }); }
     setSavingInvoice(false);
   };
@@ -4144,14 +4155,10 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className={labelCls}>Brand Contact *</label>
-                    <select value={invoiceForm.brand_contact_id} onChange={e => setInvoiceForm(f => ({ ...f, brand_contact_id: e.target.value }))} className={inputCls}>
+                    <select value={invoiceForm.brand_contact_id} onChange={e => { setInvPkgBrand(""); setInvoiceForm(f => ({ ...f, brand_contact_id: e.target.value })); }} className={inputCls}>
                       <option value="">Select a contact…</option>
                       {contacts.map(c => <option key={c.id} value={c.id}>{c.contact_name}{c.brands.length ? ` (${c.brands.map(b => b.name).join(", ")})` : ""}</option>)}
                     </select>
-                  </div>
-                  <div>
-                    <label className={labelCls}>Event</label>
-                    <input value={invoiceForm.event_name} onChange={e => setInvoiceForm(f => ({ ...f, event_name: e.target.value }))} className={inputCls} placeholder="e.g. Cincinnati 2026" />
                   </div>
                   <div>
                     <label className={labelCls}>Due Date</label>
@@ -4161,12 +4168,18 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
 
                 <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
                   <label className={labelCls}>Add Brand Package</label>
+                  {invContactBrands.length > 0 && (
+                    <select value={invPkgBrand || (invContactBrands.length === 1 ? invContactBrands[0] : "")} onChange={e => setInvPkgBrand(e.target.value)} className={`${inputCls} mb-3`}>
+                      {invContactBrands.length > 1 && <option value="">Select a brand…</option>}
+                      {invContactBrands.map(b => <option key={b} value={b}>{b}</option>)}
+                    </select>
+                  )}
                   <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3 items-start">
                     <select value={invPkgTier} onChange={e => setInvPkgTier(e.target.value)} className={inputCls}>
                       <option value="">Select a package…</option>
                       {Object.entries(BRAND_TIER_PRICES).map(([tier, price]) => <option key={tier} value={tier}>{tier} — ${price} per city</option>)}
                     </select>
-                    <button type="button" onClick={addPackageLines} disabled={!invPkgTier || !invPkgCities.length}
+                    <button type="button" onClick={addPackageLines} disabled={!invPkgTier || !invPkgCities.length || (invContactBrands.length > 1 && !invPkgBrand)}
                       className="bg-yellow-500 hover:bg-yellow-400 disabled:opacity-40 text-black font-semibold text-sm px-4 py-2.5 rounded-xl cursor-pointer disabled:cursor-not-allowed whitespace-nowrap">
                       Add to Invoice{invPkgTier && invPkgCities.length ? ` ($${BRAND_TIER_PRICES[invPkgTier] * invPkgCities.length})` : ""}
                     </button>
@@ -4182,7 +4195,7 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
                       );
                     })}
                   </div>
-                  <p className="text-white/60 text-xs mt-2">Adds one line per city at the package price. Same rates as online checkout.</p>
+                  <p className="text-white/60 text-xs mt-2">Adds one line per city at the package price, labeled with the brand. Same rates as online checkout. Repeat for each brand.</p>
                 </div>
 
                 <div>
