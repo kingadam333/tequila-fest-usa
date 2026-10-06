@@ -10,9 +10,9 @@ import { sponsorEventOptions, type SponsorPackage } from "@/lib/sponsorPackages"
 //   Packages — the sponsor packages shown on /sponsors and /brand-packages. Changes
 //              show on the public pages on the next load (they render per request).
 
-type Draft = { name: string; price_per_event: string; blurb: string; features: string; sort_order: string; per_city: boolean };
+type Draft = { name: string; price_per_event: string; blurb: string; features: string; sort_order: string; per_city: boolean; slots_per_event: string };
 
-const emptyDraft = (sortOrder: number): Draft => ({ name: "", price_per_event: "", blurb: "", features: "", sort_order: String(sortOrder), per_city: false });
+const emptyDraft = (sortOrder: number): Draft => ({ name: "", price_per_event: "", blurb: "", features: "", sort_order: String(sortOrder), per_city: false, slots_per_event: "1" });
 
 const toDraft = (p: SponsorPackage): Draft => ({
   name: p.name,
@@ -21,6 +21,7 @@ const toDraft = (p: SponsorPackage): Draft => ({
   features: p.features.join("\n"),
   sort_order: String(p.sort_order),
   per_city: p.per_city,
+  slots_per_event: String(p.slots_per_event),
 });
 
 const draftToBody = (d: Draft) => ({
@@ -30,6 +31,7 @@ const draftToBody = (d: Draft) => ({
   features: d.features.split("\n"),
   sort_order: Number(d.sort_order || 0),
   per_city: d.per_city,
+  slots_per_event: Number(d.slots_per_event || 1),
 });
 
 export default function SponsorsSection({ adminToken }: { adminToken: string }) {
@@ -205,6 +207,11 @@ function PackagesPanel({ adminToken }: { adminToken: string }) {
               <p className="text-white/50 text-xs mt-1">Lower numbers show first.</p>
             </div>
           </div>
+          <div className="max-w-xs">
+            <label className="block text-white/70 text-xs uppercase tracking-wider mb-1">Sponsors per event</label>
+            <input className={input} inputMode="numeric" value={draft.slots_per_event} onChange={e => setDraft(d => ({ ...d, slots_per_event: e.target.value.replace(/[^0-9]/g, "") }))} />
+            <p className="text-white/50 text-xs mt-1">An event flips to SOLD automatically once this many sponsors have paid for it.</p>
+          </div>
           <label className="flex items-start gap-2.5 cursor-pointer">
             <input type="checkbox" checked={draft.per_city} onChange={e => setDraft(d => ({ ...d, per_city: e.target.checked }))} className="accent-yellow-500 mt-1" />
             <span>
@@ -240,7 +247,7 @@ function PackagesPanel({ adminToken }: { adminToken: string }) {
                     </p>
                     <p className="text-yellow-400 font-display text-2xl">${p.price_per_event.toLocaleString()}<span className="text-white/60 text-sm font-sans"> / event</span></p>
                     {p.blurb && <p className="text-white/70 text-sm">{p.blurb}</p>}
-                    <p className="text-white/50 text-xs mt-1">{p.per_city ? "Sold by individual city" : "Ohio bundle + Phoenix"}</p>
+                    <p className="text-white/50 text-xs mt-1">{p.per_city ? "Sold by individual city" : "Ohio bundle + Phoenix"} · {p.slots_per_event} sponsor{p.slots_per_event === 1 ? "" : "s"} per event</p>
                   </div>
                   <div className="flex gap-1">
                     <button title={p.is_active ? "Hide from site" : "Show on site"} onClick={() => patch(p.id, { is_active: !p.is_active })}

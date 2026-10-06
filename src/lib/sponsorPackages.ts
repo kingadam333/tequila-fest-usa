@@ -44,6 +44,7 @@ export type SponsorPackage = {
   features: string[];
   sold_events: string[];
   per_city: boolean;
+  slots_per_event: number;
   is_active: boolean;
   sort_order: number;
 };
@@ -83,6 +84,11 @@ export function parseSponsorPackageInput(
   }
   if ("per_city" in b) {
     values.per_city = Boolean(b.per_city);
+  }
+  if ("slots_per_event" in b) {
+    const slots = Number(b.slots_per_event);
+    if (!Number.isInteger(slots) || slots < 1) return { ok: false, error: "Sponsors per event must be 1 or more" };
+    values.slots_per_event = slots;
   }
   if ("is_active" in b) {
     values.is_active = Boolean(b.is_active);

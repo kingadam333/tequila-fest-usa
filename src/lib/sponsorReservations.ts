@@ -90,13 +90,35 @@ export async function eventsStillAvailable(r: Pick<SponsorReservation, "package_
   return r.events.every((e) => !sold.includes(e));
 }
 
-/** Marks the reservation's events sold on its package (the site then shows SOLD). */
+/**
+ * Marks the reservation's events sold on its package (the site then shows SOLD)
+ * once each event has used up the package's slots_per_event. Call it after the
+ * reservation itself is paid / deposit_paid, so it counts toward the total.
+ * Without the slot count, the first of five Corporate Partners to pay for a
+ * city would mark it sold and lock out the other four.
+ */
 export async function markPackageSold(r: Pick<SponsorReservation, "package_id" | "events">): Promise<void> {
   if (!r.package_id) return;
   const db = sponsorDb();
-  const { data } = await db.from("sponsor_packages").select("sold_events").eq("id", r.package_id).maybeSingle();
+  const { data } = await db.from("sponsor_packages").select("sold_events, slots_per_event").eq("id", r.package_id).maybeSingle();
   if (!data) return;
-  const sold = [...new Set([...(data.sold_events || []), ...r.events])];
+  const slots: number = data.slots_per_event || 1;
+  let full = r.events;
+  if (slots > 1) {
+    const { data: taken, error: countError } = await db
+      .from("sponsor_reservations")
+      .select("events")
+      .eq("package_id", r.package_id)
+      .in("status", ["paid", "deposit_paid"]);
+    if (countError) {
+      console.error("[sponsor] couldn't count paid reservations; leaving availability unchanged:", countError.message);
+      return;
+    }
+    const rows = (taken || []) as { events: string[] }[];
+    full = r.events.filter((e) => rows.filter((row) => (row.events || []).includes(e)).length >= slots);
+  }
+  if (!full.length) return;
+  const sold = [...new Set([...(data.sold_events || []), ...full])];
   const { error } = await db.from("sponsor_packages").update({ sold_events: sold, updated_at: new Date().toISOString() }).eq("id", r.package_id);
   if (error) console.error("[sponsor] failed to mark package sold:", error.message);
 }
