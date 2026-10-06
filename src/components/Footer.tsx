@@ -51,7 +51,7 @@ export default function Footer() {
                 { label: "Contact", href: "/contact" },
                 { label: "Add Your Tequila Brand", href: "/brand-packages" },
                 { label: "Become an Affiliate", href: "/affiliates" },
-                { label: "Sponsor Opportunities", href: "/contact" },
+                { label: "Sponsor Opportunities", href: "/sponsors" },
                 { label: "Terms & Conditions", href: "/terms" },
                 { label: "Privacy Policy", href: "/privacy" },
               ].map((link) => (

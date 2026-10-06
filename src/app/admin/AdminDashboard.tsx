@@ -15,6 +15,7 @@ import {
 import SocialShareSection from "./SocialShareSection";
 import SecuritySection from "./SecuritySection";
 import SponsorsSection from "./SponsorsSection";
+import { BRAND_TIER_PRICES, BRAND_CITY_LABELS } from "@/lib/brandPackages";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Order {
@@ -3465,6 +3466,24 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
     });
   };
 
+  // Package picker: adds one line per chosen city at that tier's price.
+  const [invPkgTier, setInvPkgTier] = useState("");
+  const [invPkgCities, setInvPkgCities] = useState<string[]>([]);
+  const addPackageLines = () => {
+    const price = BRAND_TIER_PRICES[invPkgTier];
+    if (!price || !invPkgCities.length) return;
+    const newLines = invPkgCities.map(c => ({ description: `${invPkgTier} Brand Package — ${BRAND_CITY_LABELS[c]}`, quantity: 1, unit_price: price, total: price }));
+    const cityNames = invPkgCities.map(c => BRAND_CITY_LABELS[c].split(",")[0]);
+    setInvoiceForm(f => ({
+      ...f,
+      event_name: f.event_name.trim() ? f.event_name : cityNames.join(" and "),
+      // Replace the untouched blank starter line instead of leaving it above the package lines.
+      line_items: [...f.line_items.filter(li => li.description.trim() || li.unit_price), ...newLines],
+    }));
+    setInvPkgTier("");
+    setInvPkgCities([]);
+  };
+
   const saveInvoice = async () => {
     setSavingInvoice(true);
     const res = await fetch("/api/admin/brands/invoices", { method: "POST", headers: { ...headers, "Content-Type": "application/json" }, body: JSON.stringify(invoiceForm) });
@@ -4140,6 +4159,32 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
                   </div>
                 </div>
 
+                <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
+                  <label className={labelCls}>Add Brand Package</label>
+                  <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3 items-start">
+                    <select value={invPkgTier} onChange={e => setInvPkgTier(e.target.value)} className={inputCls}>
+                      <option value="">Select a package…</option>
+                      {Object.entries(BRAND_TIER_PRICES).map(([tier, price]) => <option key={tier} value={tier}>{tier} — ${price} per city</option>)}
+                    </select>
+                    <button type="button" onClick={addPackageLines} disabled={!invPkgTier || !invPkgCities.length}
+                      className="bg-yellow-500 hover:bg-yellow-400 disabled:opacity-40 text-black font-semibold text-sm px-4 py-2.5 rounded-xl cursor-pointer disabled:cursor-not-allowed whitespace-nowrap">
+                      Add to Invoice{invPkgTier && invPkgCities.length ? ` ($${BRAND_TIER_PRICES[invPkgTier] * invPkgCities.length})` : ""}
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    {Object.entries(BRAND_CITY_LABELS).map(([id, label]) => {
+                      const on = invPkgCities.includes(id);
+                      return (
+                        <button key={id} type="button" onClick={() => setInvPkgCities(cs => on ? cs.filter(c => c !== id) : [...cs, id])}
+                          className={`text-sm rounded-lg border px-3 py-1.5 cursor-pointer transition-colors ${on ? "border-yellow-500/50 bg-yellow-500/15 text-yellow-300" : "border-white/10 text-white/80 hover:border-white/25"}`}>
+                          {on ? "✓ " : ""}{label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="text-white/60 text-xs mt-2">Adds one line per city at the package price. Same rates as online checkout.</p>
+                </div>
+
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <label className={labelCls} style={{ margin: 0 }}>Line Items</label>
@@ -4147,7 +4192,7 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
                   </div>
                   <div className="space-y-2">
                     {invoiceForm.line_items.map((item, i) => (
-                      <div key={i} className="grid grid-cols-[1fr,80px,100px,80px,auto,auto] gap-2 items-center">
+                      <div key={i} className="grid grid-cols-[1fr_80px_100px_80px_auto_auto] gap-2 items-center">
                         <input value={item.description} onChange={e => updateLineItem(i, "description", e.target.value)} className={inputCls} placeholder="Description" />
                         <input type="number" min={1} value={item.quantity} onChange={e => updateLineItem(i, "quantity", Number(e.target.value))} className={inputCls} placeholder="Qty" />
                         <input type="number" value={item.unit_price || ""} onChange={e => updateLineItem(i, "unit_price", Number(e.target.value))} className={inputCls} placeholder="Unit $ (– for discount)" />

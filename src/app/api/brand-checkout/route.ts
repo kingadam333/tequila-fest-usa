@@ -3,19 +3,10 @@ import { stripe } from "@/lib/stripe";
 import { supabaseAdmin } from "@/lib/supabase";
 import { verifyTurnstile } from "@/lib/turnstile";
 import { normalizeBrandName } from "@/lib/normalizeBrandName";
+import { BRAND_TIER_PRICES, BRAND_CITY_LABELS } from "@/lib/brandPackages";
 
-const TIER_PRICES: Record<string, number> = {
-  Value: 250,
-  Standard: 300,
-  Premium: 350,
-};
-
-const CITY_LABELS: Record<string, string> = {
-  cleveland: "Cleveland, OH",
-  cincinnati: "Cincinnati, OH",
-  columbus: "Columbus, OH",
-  phoenix: "Phoenix, AZ",
-};
+const TIER_PRICES = BRAND_TIER_PRICES;
+const CITY_LABELS = BRAND_CITY_LABELS;
 
 // What the buyer picks. Ohio is sold only as a bundle of all three Ohio events,
 // priced as three events. Each option expands to the per-city ids stored on the
