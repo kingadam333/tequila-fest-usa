@@ -26,6 +26,7 @@ export interface EventData {
   description: string;
   foodVendor?: { name: string; ticketNote: string };
   samplingHours?: string;
+  logo?: string;          // city-branded logo in /public/logos, shown in the event hero instead of the text headline
 }
 
 export const EVENTS: EventData[] = [

@@ -400,17 +400,28 @@ export default function EventPage({ event, ogImage, dbStatus }: { event: EventDa
               </motion.div>
             )}
 
-            {/* Headline */}
-            <motion.h1 initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.6, delay: 0.15 }}
-              className="font-display leading-none" style={{ fontSize: "clamp(3.5rem, 12vw, 9rem)" }}>
-              <span className="text-shimmer">TEQUILA</span>
-              {" "}
-              <span className="text-shimmer-blue">FEST</span>
-            </motion.h1>
-            <motion.h2 initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
-              className="font-display tracking-[0.3em] mt-1" style={{ fontSize: "clamp(1.5rem, 5vw, 4rem)", color: event.color }}>
-              {event.city.toUpperCase()}
-            </motion.h2>
+            {/* Headline — the city's own logo where we have one (CITY_STYLE.logo), else the text lockup */}
+            {event.logo ? (
+              <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.6, delay: 0.15 }}>
+                <h1 className="sr-only">Tequila Fest {event.city}</h1>
+                <Image src={event.logo} alt={`Tequila Fest ${event.city}`} width={1000} height={680} priority
+                  sizes="(max-width: 640px) 85vw, 460px"
+                  className="mx-auto h-auto w-[85vw] max-w-[460px] drop-shadow-[0_8px_30px_rgba(0,0,0,0.6)]" />
+              </motion.div>
+            ) : (
+              <>
+                <motion.h1 initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.6, delay: 0.15 }}
+                  className="font-display leading-none" style={{ fontSize: "clamp(3.5rem, 12vw, 9rem)" }}>
+                  <span className="text-shimmer">TEQUILA</span>
+                  {" "}
+                  <span className="text-shimmer-blue">FEST</span>
+                </motion.h1>
+                <motion.h2 initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
+                  className="font-display tracking-[0.3em] mt-1" style={{ fontSize: "clamp(1.5rem, 5vw, 4rem)", color: event.color }}>
+                  {event.city.toUpperCase()}
+                </motion.h2>
+              </>
+            )}
 
             {/* Date/venue pill */}
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}

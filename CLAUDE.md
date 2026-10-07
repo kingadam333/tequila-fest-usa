@@ -817,7 +817,7 @@ Work top to bottom. Phase 0 is security and correctness and should go first; eve
 
 ### Phase 2 — Customer-facing polish
 
-10. **City-specific logos** on each event page — currently the generic logo. `CITY_STYLE` in `src/app/events/[slug]/page.tsx` is where per-city visual config already lives.
+10. ~~City-specific logos~~ — **DONE Oct 7 2026** for Cincinnati, Cleveland and Columbus: `CITY_STYLE[city].logo` → `/public/logos/<city>.png` (copied from each city splash repo, resized to ≤1000px), rendered in the event hero in place of the text headline with an `sr-only` `<h1>` kept for SEO. **Phoenix has no logo yet** and still shows the text lockup — add `public/logos/phoenix.png` + `logo` in `CITY_STYLE` when one exists. Columbus's source is only 500px wide (slightly soft on retina). (Original note:) currently the generic logo. `CITY_STYLE` in `src/app/events/[slug]/page.tsx` is where per-city visual config already lives.
 11. **Loyalty/points UI + award logic.** `customer_accounts.loyalty_points` (143,430 points across 1,767 rows) and `loyalty_transactions` (1,329 rows) already hold real data, but there is no UI and no award logic — points exist and nobody can see or spend them. Read the "Account Identity" section first: anything reading a customer's own row must key on `auth.users.id`.
 12. **Blog CMS** — page is scaffolded, needs admin editing and real content. `blog_posts` is not readable by `anon` at all — serve posts through a service-role API route/server component, filtering `published = true` there.
 13. **Push notifications** — VAPID keys are in env, nothing is wired up.
