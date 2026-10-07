@@ -787,7 +787,7 @@ The **city splash sites** call `supabase.from("email_subscribers").insert([...])
 2. ~~Drop the `coupons` public-read policy.~~ **Neutralized Oct 4 2026** (`SELECT` revoked, migration `revoke_public_select_on_coupons`). Policy object dropped by the owner the same day.
 3. ~~Revoke the blanket `anon`/`authenticated` grants~~ **DONE Oct 4 2026** (migration `revoke_anon_write_grants_on_public_read_tables` — also revoked `TRIGGER`/`REFERENCES`; verified anon `PATCH events` / `POST ticket_types` now return `42501`, public reads and the live site unaffected). `anon`/`authenticated` now hold `SELECT` only on `events`, `ticket_types`, `blog_posts`, `banner_sponsors`, and nothing on `coupons`. Before this, `anon` held `INSERT,UPDATE,DELETE,TRUNCATE` on `events`, `ticket_types`, `blog_posts`, `banner_sponsors` and `coupons`. RLS-with-no-write-policy currently blocks those, so it is **not** presently exploitable — but it means a single careless `FOR ALL USING (true)` policy, or one `DISABLE ROW LEVEL SECURITY`, turns straight into public write access on live event and pricing data. Removing the grants makes that failure mode impossible rather than merely unreachable.
 4. **DONE Oct 4 2026 — owner chose auth-only for `anon`.** `SELECT` revoked from `anon`/`authenticated` on `events`, `ticket_types`, `blog_posts`, `banner_sponsors` (migration `revoke_public_select_on_public_read_tables`); verified all five tables return `42501` to the anon key, and the live site (home, `/events/[slug]`, `/api/events`, `/blog`, `/loadin`) still returns 200. Checked first that no consumer needed them: the hub has no anon-client table reads or Realtime subscriptions, and the three city splash sites (source **and** live JS bundles) reference only the dead `email_subscribers` insert. Phoenix has no splash site (`tequilafestphoenix.com` DNS isn't serving). **If a future city site or browser feature needs a direct table read, that is a new decision — grant `SELECT` deliberately and add a policy, don't assume one exists.** Original reasoning: The app itself does not need *any* of the five policies, because `/api/events` and friends read through the service role. If nothing is ever going to query Supabase directly from a browser, the simplest and safest end state is to drop all five policies and revoke all `anon` table grants, leaving `anon` with auth only. Confirm with the owner before doing this — it is the one step with a (small) chance of breaking an unknown consumer.
-5. **Fix or delete the city-site `email_subscribers` write** (see above).
+5. ~~Fix or delete the city-site `email_subscribers` write~~ — **DONE Oct 7 2026** (deleted; see roadmap item 19).
 6. **Add the standing rule to any new-table migration:** `alter table <t> enable row level security;` in the same migration, and no grant to `anon` unless a policy deliberately intends public read.
 
 **Do not "enable RLS everywhere" as a task — it is already enabled everywhere.** The work is removing unused grants and the one dangerous policy, not adding RLS.
@@ -824,12 +824,12 @@ Work top to bottom. Phase 0 is security and correctness and should go first; eve
 
 ### Phase 3 — Nice to have
 
-14. **AI auto-reply in inbox** — OpenAI key exists, partially wired. Keep the deliberately conservative escalate-by-default posture (see AI Inbox section).
-15. **Affiliate dashboard** — signup exists, no commission-tracking UI for affiliates.
+14. **AI auto-reply in inbox** — checked Oct 7 2026: it is fully wired (inline in `/api/contact` + the admin "Auto-Handle with AI" button), it has just never auto-replied because the prompt escalates anything uncertain. Making it answer more on its own is an owner policy call, not missing code. (Original note:) OpenAI key exists, partially wired. Keep the deliberately conservative escalate-by-default posture (see AI Inbox section).
+15. ~~Affiliate dashboard~~ — **already exists** (checked Oct 7 2026): `/affiliate/login` + `/affiliate/dashboard` show per-city orders, tickets, sales and commission (`/api/affiliate/me`) and generate links. (Original, stale note:) signup exists, no commission-tracking UI for affiliates.
 16. **Columbus splash site** — not built at `/Users/adambossin/Sites/tequila-fest-columbus`.
 17. **Sponsor portal / brand owner portal** — not built.
 18. **Admin analytics** beyond the current Overview — revenue by city, ticket-type breakdown.
-19. **Fix or delete the city-site `email_subscribers` write** (RLS section step 5) — currently a silent no-op.
+19. ~~Fix or delete the city-site `email_subscribers` write~~ — **DONE Oct 7 2026**: deleted from `EmailSignup.tsx` in all three city repos (signups go through each site's `/api/subscribe` to Brevo/TextMagic, unchanged).
 20. **Remove the unused `META_CAPI_ACCESS_TOKEN`** Vercel env var — leftover from the deleted direct-CAPI code.
 
 ### Done — don't redo
