@@ -7,11 +7,13 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { calculateFeesForCart } from "@/lib/fees";
 import { areTicketSalesClosed } from "@/lib/eventSales";
 import { eventLabel } from "@/lib/eventLabel";
+import { validateCoupon } from "@/lib/coupons";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 interface CartItem { ticketType: TicketType; quantity: number; price: number; platformFee?: number; }
 
 export async function POST(req: NextRequest) {
-  const { firstName, lastName, email, phone, eventSlug, items, ticketType, quantity, captchaToken, refCode } = await req.json();
+  const { firstName, lastName, email, phone, eventSlug, items, ticketType, quantity, captchaToken, refCode, couponCode } = await req.json();
 
   // Affiliate attribution — set as a cookie by /go/[slug] when the buyer
   // arrived through an affiliate's link/QR code, not a query param, since
@@ -69,6 +71,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "No tickets selected" }, { status: 400 });
   }
 
+  // Promo code: validated here with the server's own prices (TICKET_PRICES,
+  // the same amounts Stripe is charged below), including the per-customer
+  // limit now that the email is known. A bad code fails the request rather
+  // than silently charging full price.
+  let coupon: { code: string; discount: number } | null = null;
+  if (typeof couponCode === "string" && couponCode.trim()) {
+    const ticketSubtotalServer = cartItems.reduce((s, i) => s + (TICKET_PRICES[i.ticketType] || 0) / 100 * i.quantity, 0);
+    const check = await validateCoupon(db as SupabaseClient, { code: couponCode, city: event.city, ticketSubtotal: ticketSubtotalServer, email });
+    if (!check.ok) return NextResponse.json({ error: check.error, couponError: true }, { status: 400 });
+    coupon = { code: check.coupon.code, discount: check.discount };
+  }
+
   // Save lead to Supabase immediately
   const fullName = `${firstName} ${lastName}`.trim();
   await db.from("customer_accounts").upsert({
@@ -118,6 +132,22 @@ export async function POST(req: NextRequest) {
   const ticketSummary = cartItems.map(i => `${i.quantity}x ${TICKET_LABELS[i.ticketType]}`).join(", ");
   const primaryType = cartItems.sort((a, b) => b.quantity - a.quantity)[0]?.ticketType || "earlyBird";
 
+  // The discount goes on as a single-use Stripe coupon for exactly this
+  // amount, so Stripe's amount_total (what the webhook records as the order
+  // total and what the purchase tracking reports) is the discounted price.
+  let stripeDiscounts: { coupon: string }[] | undefined;
+  if (coupon) {
+    const stripeCoupon = await stripe.coupons.create({
+      amount_off: Math.round(coupon.discount * 100),
+      currency: "usd",
+      duration: "once",
+      max_redemptions: 1,
+      name: `Promo ${coupon.code}`,
+      metadata: { couponCode: coupon.code, orderNumber },
+    });
+    stripeDiscounts = [{ coupon: stripeCoupon.id }];
+  }
+
   const session = await stripe.checkout.sessions.create({
     payment_method_types: ["card"],
     mode: "payment",
@@ -125,7 +155,8 @@ export async function POST(req: NextRequest) {
     // Required (not "auto") — an entered-but-unverified billing address is
     // the core evidence that wins a chargeback dispute later.
     billing_address_collection: "required",
-    allow_promotion_codes: true,
+    // Stripe won't take both; with no code applied, keep its own promo field as before.
+    ...(stripeDiscounts ? { discounts: stripeDiscounts } : { allow_promotion_codes: true }),
     line_items: stripeLineItems,
     success_url: `${appUrl}/ticket-confirmation?session_id={CHECKOUT_SESSION_ID}&event=${eventSlug}`,
     cancel_url: `${appUrl}/events/${eventSlug}`,
@@ -143,7 +174,10 @@ export async function POST(req: NextRequest) {
       cartItems: JSON.stringify(cartItems.map(i => ({ type: i.ticketType, qty: i.quantity }))),
       serviceFee: fees.serviceFee.toFixed(2),
       platformFee: fees.platformFee.toFixed(2),
-      ticketSubtotal: totalAmount.toFixed(2),
+      // Affiliate commission is computed from this, so it's net of any promo.
+      ticketSubtotal: Math.max(0, totalAmount - (coupon?.discount ?? 0)).toFixed(2),
+      couponCode: coupon?.code ?? "",
+      discountAmount: coupon ? coupon.discount.toFixed(2) : "",
       refCode: refCode || "",
       affiliateCode,
     },
@@ -153,5 +187,5 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  return NextResponse.json({ url: session.url, sessionId: session.id, orderNumber, totalAmount, totalQty, email, phone });
+  return NextResponse.json({ url: session.url, sessionId: session.id, orderNumber, totalAmount: Math.max(0, totalAmount - (coupon?.discount ?? 0)), discount: coupon?.discount ?? 0, totalQty, email, phone });
 }

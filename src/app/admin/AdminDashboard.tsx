@@ -15,6 +15,7 @@ import {
 import SocialShareSection from "./SocialShareSection";
 import SecuritySection from "./SecuritySection";
 import SponsorsSection from "./SponsorsSection";
+import CouponsSection from "./CouponsSection";
 import { BRAND_TIER_PRICES, BRAND_CITY_LABELS } from "@/lib/brandPackages";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -1680,72 +1681,6 @@ function UsersSection({ adminToken }: { adminToken: string }) {
           ))}
         </div>
       )}
-    </div>
-  );
-}
-
-function CouponsSection() {
-  const [showCreate, setShowCreate] = useState(false);
-  const [newCoupon, setNewCoupon] = useState({ code: "", type: "percentage", value: "", maxUses: "", expires: "" });
-
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="font-display text-white text-3xl">COUPONS</h2>
-        <button onClick={() => setShowCreate(v => !v)}
-          className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-black font-bold text-sm px-4 py-2.5 rounded-xl transition-all cursor-pointer">
-          <Plus size={14} /> New Coupon
-        </button>
-      </div>
-
-      {showCreate && (
-        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
-          className="bg-white/[0.03] border border-yellow-500/20 rounded-2xl p-5 mb-6">
-          <h3 className="text-white font-bold mb-4">Create Coupon</h3>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            <div>
-              <label className="text-white/80 text-xs uppercase tracking-wider block mb-1">Code</label>
-              <input value={newCoupon.code} onChange={e => setNewCoupon(p => ({ ...p, code: e.target.value.toUpperCase() }))}
-                placeholder="PROMO10" className="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2.5 text-white font-mono text-sm outline-none focus:border-yellow-500/40" />
-            </div>
-            <div>
-              <label className="text-white/80 text-xs uppercase tracking-wider block mb-1">Type</label>
-              <select value={newCoupon.type}
-                onChange={e => { const v = e.target.value; setNewCoupon(p => ({ ...p, type: v })); }}
-                className="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2.5 text-white text-sm outline-none focus:border-yellow-500/40 cursor-pointer">
-                <option value="percentage" className="bg-[#0d0500]">Percentage %</option>
-                <option value="fixed" className="bg-[#0d0500]">Fixed $</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-white/80 text-xs uppercase tracking-wider block mb-1">Value</label>
-              <input type="number" value={newCoupon.value} onChange={e => setNewCoupon(p => ({ ...p, value: e.target.value }))}
-                placeholder={newCoupon.type === "percentage" ? "10" : "5"}
-                className="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2.5 text-white text-sm outline-none focus:border-yellow-500/40" />
-            </div>
-            <div>
-              <label className="text-white/80 text-xs uppercase tracking-wider block mb-1">Max Uses</label>
-              <input type="number" value={newCoupon.maxUses} onChange={e => setNewCoupon(p => ({ ...p, maxUses: e.target.value }))}
-                placeholder="100" className="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2.5 text-white text-sm outline-none focus:border-yellow-500/40" />
-            </div>
-            <div>
-              <label className="text-white/80 text-xs uppercase tracking-wider block mb-1">Expires</label>
-              <input type="date" value={newCoupon.expires} onChange={e => setNewCoupon(p => ({ ...p, expires: e.target.value }))}
-                className="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2.5 text-white text-sm outline-none focus:border-yellow-500/40" />
-            </div>
-          </div>
-          <div className="flex gap-2 mt-4">
-            <button className="bg-yellow-500 hover:bg-yellow-400 text-black font-bold text-sm px-5 py-2 rounded-xl transition-all cursor-pointer">Create</button>
-            <button onClick={() => setShowCreate(false)} className="bg-white/5 border border-white/15 text-white/60 text-sm px-5 py-2 rounded-xl transition-all cursor-pointer">Cancel</button>
-          </div>
-        </motion.div>
-      )}
-
-      <div className="text-center py-12 text-white/80 border border-dashed border-white/10 rounded-2xl">
-        <Tag size={32} className="mx-auto mb-3 opacity-30" />
-        <p className="font-semibold text-white/80 mb-1">No coupons yet</p>
-        <p className="text-sm">Create your first coupon code above.</p>
-      </div>
     </div>
   );
 }
@@ -7947,7 +7882,7 @@ export default function AdminDashboard() {
     customers: <UsersSection adminToken={adminToken} />,
     brands:    <BrandsSection adminToken={adminToken} />,
     sponsors:  <SponsorsSection adminToken={adminToken} />,
-    coupons:   <CouponsSection />,
+    coupons:   <CouponsSection adminToken={adminToken} />,
     checkin:   <CheckInSection adminToken={adminToken} />,
     contacts:  <ContactSection adminToken={adminToken} />,
     "ai-assistant": <AiAssistantSection adminToken={adminToken} />,

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Plus, Minus, User, Mail, Phone, ArrowRight, Loader2, ShoppingCart } from "lucide-react";
+import { X, Plus, Minus, User, Mail, Phone, ArrowRight, Loader2, ShoppingCart, Tag } from "lucide-react";
 import type { TicketType } from "@/lib/ticket-config";
 import { TICKET_LABELS } from "@/lib/ticket-config";
 import { calculateFeesForCart } from "@/lib/fees";
@@ -48,6 +48,11 @@ export default function TicketCartModal({
   const [captchaToken, setCaptchaToken] = useState("");
   const [sessionUser, setSessionUser] = useState<{ firstName: string; lastName: string; email: string; phone: string } | null>(null);
   const [editingInfo, setEditingInfo] = useState(false);
+  const [showPromo, setShowPromo] = useState(false);
+  const [promoInput, setPromoInput] = useState("");
+  const [quotedPromo, setPromo] = useState<{ code: string; discount: number; label: string; cartKey: string } | null>(null);
+  const [promoError, setPromoError] = useState("");
+  const [promoBusy, setPromoBusy] = useState(false);
 
   // A logged-in customer skips re-typing info they already have on file —
   // shown as a summary card instead of the editable form.
@@ -97,6 +102,37 @@ export default function TicketCartModal({
     })
   ) : null;
   const canProceed = totalTickets > 0;
+  // A discount is quoted for a specific cart; once the cart changes it no
+  // longer applies (the server recomputes it at checkout anyway).
+  const cartKey = cartItems.map(i => `${i.ticketType}:${i.quantity}`).join(",");
+  const promo = quotedPromo && quotedPromo.cartKey === cartKey ? quotedPromo : null;
+  const discount = promo?.discount ?? 0;
+  const grandTotal = fees ? Math.max(0, fees.total - discount) : 0;
+
+  const applyPromo = async () => {
+    if (!promoInput.trim() || !canProceed) return;
+    setPromoBusy(true);
+    setPromoError("");
+    try {
+      const res = await fetch("/api/coupons/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: promoInput, eventSlug, items: cartItems, email: form.email }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setPromo({ code: data.code, discount: data.discount, label: data.label, cartKey });
+        setPromoInput("");
+      } else {
+        setPromo(null);
+        setPromoError(data.error || "That promo code isn't valid.");
+      }
+    } catch {
+      setPromoError("Couldn't check that code. Please try again.");
+    } finally {
+      setPromoBusy(false);
+    }
+  };
 
   const handleCheckout = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -119,6 +155,7 @@ export default function TicketCartModal({
           eventSlug,
           items: cartItems,
           captchaToken,
+          couponCode: promo?.code,
           refCode: typeof window !== "undefined" ? localStorage.getItem(`ref_${eventSlug}`) || undefined : undefined,
         }),
       });
@@ -147,6 +184,8 @@ export default function TicketCartModal({
         });
         window.location.href = data.url;
       } else {
+        // e.g. the code hit its per-customer limit once the email was known
+        if (data.couponError) setPromo(null);
         setError(data.error || "Something went wrong. Please try again.");
         setCaptchaToken("");
         setLoading(false);
@@ -347,6 +386,39 @@ export default function TicketCartModal({
                   </div>
                   <span className="text-white/70">${fees.serviceFee.toFixed(2)}</span>
                 </div>
+                {promo && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="flex items-center gap-1.5 text-green-400">
+                      <Tag size={12} /> {promo.code} <span className="text-white/50 text-xs">({promo.label})</span>
+                      <button type="button" onClick={() => setPromo(null)} className="text-white/50 hover:text-white text-xs underline cursor-pointer">remove</button>
+                    </span>
+                    <span className="text-green-400">−${discount.toFixed(2)}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {fees && !promo && (
+              <div className="mb-3">
+                {showPromo ? (
+                  <div>
+                    <div className="flex gap-2">
+                      <input value={promoInput} onChange={e => { setPromoInput(e.target.value.toUpperCase()); setPromoError(""); }}
+                        onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); applyPromo(); } }}
+                        placeholder="Promo code" aria-label="Promo code" autoComplete="off"
+                        className="flex-1 min-w-0 bg-white/5 border border-white/15 focus:border-white/30 rounded-xl px-3 py-2 text-white text-sm font-mono outline-none placeholder-white/30" />
+                      <button type="button" onClick={applyPromo} disabled={promoBusy || !promoInput.trim()}
+                        className="px-4 py-2 rounded-xl text-sm font-bold bg-white/10 hover:bg-white/15 text-white disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed">
+                        {promoBusy ? <Loader2 size={14} className="animate-spin" /> : "Apply"}
+                      </button>
+                    </div>
+                    {promoError && <p className="text-red-400 text-xs mt-1.5">{promoError}</p>}
+                  </div>
+                ) : (
+                  <button type="button" onClick={() => setShowPromo(true)} className="flex items-center gap-1.5 text-white/70 hover:text-white text-xs underline cursor-pointer">
+                    <Tag size={12} /> Have a promo code?
+                  </button>
+                )}
               </div>
             )}
 
@@ -356,7 +428,7 @@ export default function TicketCartModal({
                 <span>{totalTickets} ticket{totalTickets !== 1 ? "s" : ""}</span>
               </div>
               <div className="text-right">
-                <p className="font-display text-white text-2xl">${fees ? fees.total.toFixed(2) : "0.00"}</p>
+                <p className="font-display text-white text-2xl">${grandTotal.toFixed(2)}</p>
                 <p className="text-white/80 text-xs">total incl. fees</p>
               </div>
             </div>
@@ -374,7 +446,7 @@ export default function TicketCartModal({
                 style={{ background: eventColor, color: "#0d0500" }}>
                 {loading
                   ? <><Loader2 size={18} className="animate-spin" /> Redirecting...</>
-                  : <>Pay ${fees ? fees.total.toFixed(2) : "0.00"} <ArrowRight size={18} /></>}
+                  : <>Pay ${grandTotal.toFixed(2)} <ArrowRight size={18} /></>}
               </button>
             )}
           </div>

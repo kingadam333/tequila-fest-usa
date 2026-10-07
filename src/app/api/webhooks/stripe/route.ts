@@ -170,7 +170,9 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
         quantity: qty,
         unit_price: amountTotal / qty,
         subtotal: amountTotal,
-        discount_amount: 0,
+        // Promo applied in /api/pre-checkout; amountTotal is already net of it.
+        discount_amount: Number(session.metadata?.discountAmount) || 0,
+        coupon_code: session.metadata?.couponCode || null,
         total: amountTotal,
         stripe_session_id: session.id,
         stripe_payment_intent_id: paymentIntentId,
@@ -188,6 +190,12 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
       if (orderError) {
         console.error("Supabase order insert error:", orderError);
       } else if (order) {
+        // Counted only once the order row exists, so a retried webhook whose
+        // insert fails can't count the same purchase twice.
+        if (session.metadata?.couponCode) {
+          const { error: couponErr } = await db.rpc("increment_coupon_use", { p_code: session.metadata.couponCode });
+          if (couponErr) console.error("[coupons] failed to count use of", session.metadata.couponCode, couponErr.message);
+        }
         // Create individual ticket instances with QR codes — one row per
         // cart item type so a mixed-type order (e.g. 1 GA + 1 Early Bird)
         // gets each ticket stamped with ITS OWN type, not the order's
