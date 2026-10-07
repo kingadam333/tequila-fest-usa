@@ -345,8 +345,9 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
               const POINTS = isGA ? 20 : 100;
               const ENTRIES = isGA ? 0 : 1; // GA referrals: points only, no raffle entry
 
-              // Log the referral conversion
-              await db.from("referrals").upsert({
+              // Log the referral conversion (unique on referred_order_id, so a
+              // retried webhook updates rather than duplicates)
+              const { error: refRowErr } = await db.from("referrals").upsert({
                 referral_code: refCode,
                 referrer_customer_id: refCodeRow.customer_id,
                 referred_email: customerEmail,
@@ -355,11 +356,14 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
                 points_awarded: POINTS,
                 raffle_entries: ENTRIES,
               }, { onConflict: "referred_order_id" });
+              if (refRowErr) throw new Error(`referral log failed: ${refRowErr.message}`);
 
-              // Add points to referrer's account
-              await db.from("customer_accounts")
-                .update({ loyalty_points: db.raw(`loyalty_points + ${POINTS}`) })
-                .eq("id", refCodeRow.customer_id);
+              // Add points to referrer's account. Atomic SQL increment: this
+              // used db.raw(), which supabase-js doesn't have, so it threw
+              // before crediting anyone and the transaction log + VIP-upgrade
+              // milestone check below never ran either.
+              const { error: pointsErr } = await db.rpc("add_loyalty_points", { p_customer_id: refCodeRow.customer_id, p_points: POINTS });
+              if (pointsErr) throw new Error(`referral points credit failed: ${pointsErr.message}`);
 
               // Log the transaction
               await db.from("loyalty_transactions").insert({
