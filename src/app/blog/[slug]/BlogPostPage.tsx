@@ -5,7 +5,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { ArrowLeft, Clock, Tag, Calendar } from "lucide-react";
 import type { BlogPost } from "@/lib/blog";
-import { POSTS } from "@/lib/blog";
 import Navbar from "@/components/Navbar";
 import OfficialBanner from "@/components/OfficialBanner";
 import Footer from "@/components/Footer";
@@ -20,6 +19,11 @@ const CATEGORY_COLORS: Record<string, string> = {
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 }
+
+// Post bodies are edited in admin -> Blog, so escape any HTML before the
+// **bold** substitution; only the <strong> tags we add should ever render.
+const escapeHtml = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+const inlineBold = (s: string, cls: string) => escapeHtml(s).replace(/\*\*(.*?)\*\*/g, `<strong class="${cls}">$1</strong>`);
 
 // Simple markdown-ish renderer for our post body
 function PostBody({ body }: { body: string }) {
@@ -49,7 +53,7 @@ function PostBody({ body }: { body: string }) {
             <li key={j} className="flex items-start gap-2 text-white/70 leading-relaxed">
               <span className="text-yellow-500 mt-1.5 flex-shrink-0">▸</span>
               {/* Handle inline bold */}
-              <span dangerouslySetInnerHTML={{ __html: item.replace(/\*\*(.*?)\*\*/g, '<strong class="text-white">$1</strong>') }} />
+              <span dangerouslySetInnerHTML={{ __html: inlineBold(item, "text-white") }} />
             </li>
           ))}
         </ul>
@@ -61,7 +65,7 @@ function PostBody({ body }: { body: string }) {
       // Regular paragraph — handle inline bold
       elements.push(
         <p key={i} className="text-white/70 leading-relaxed my-3"
-          dangerouslySetInnerHTML={{ __html: line.replace(/\*\*(.*?)\*\*/g, '<strong class="text-white font-semibold">$1</strong>') }}
+          dangerouslySetInnerHTML={{ __html: inlineBold(line, "text-white font-semibold") }}
         />
       );
     }
@@ -71,9 +75,8 @@ function PostBody({ body }: { body: string }) {
   return <div>{elements}</div>;
 }
 
-export default function BlogPostPage({ post }: { post: BlogPost }) {
+export default function BlogPostPage({ post, related }: { post: BlogPost; related: BlogPost[] }) {
   const color = CATEGORY_COLORS[post.category] || "#F5A623";
-  const related = POSTS.filter(p => p.slug !== post.slug && (p.category === post.category || p.tags.some(t => post.tags.includes(t)))).slice(0, 3);
 
   return (
     <>

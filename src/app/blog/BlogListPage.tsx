@@ -5,12 +5,11 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import Image from "next/image";
 import { Clock, Tag } from "lucide-react";
-import { POSTS } from "@/lib/blog";
+import type { BlogPost } from "@/lib/blog";
 import Navbar from "@/components/Navbar";
 import OfficialBanner from "@/components/OfficialBanner";
 import Footer from "@/components/Footer";
 
-const CATEGORIES = ["All", ...Array.from(new Set(POSTS.map(p => p.category)))];
 
 const CATEGORY_COLORS: Record<string, string> = {
   Guide:    "#F5A623",
@@ -23,7 +22,8 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 }
 
-export default function BlogListPage() {
+export default function BlogListPage({ posts: POSTS }: { posts: BlogPost[] }) {
+  const CATEGORIES = ["All", ...Array.from(new Set(POSTS.map(p => p.category)))];
   const [activeCategory, setActiveCategory] = useState("All");
 
   const filtered = activeCategory === "All"

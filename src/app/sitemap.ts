@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { POSTS } from "@/lib/blog";
+import { loadPublishedPosts } from "@/lib/blogServer";
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL || "https://www.tequilafestusa.com";
 
@@ -66,7 +66,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // Sitemap must never take the site down; fall back to static routes.
   }
 
-  for (const post of POSTS) {
+  for (const post of await loadPublishedPosts()) {
     const published = new Date(post.publishedAt);
     entries.push({
       url: `${SITE}/blog/${post.slug}`,

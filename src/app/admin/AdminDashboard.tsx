@@ -17,6 +17,7 @@ import SecuritySection from "./SecuritySection";
 import SponsorsSection from "./SponsorsSection";
 import CouponsSection from "./CouponsSection";
 import ContestSection from "./ContestSection";
+import BlogSection from "./BlogSection";
 import { BRAND_TIER_PRICES, BRAND_CITY_LABELS } from "@/lib/brandPackages";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -3001,44 +3002,6 @@ function ContactSection({ adminToken }: { adminToken: string }) {
         </div>
       </div>
       </>}
-    </div>
-  );
-}
-
-function BlogAdminSection() {
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="font-display text-white text-3xl">BLOG</h2>
-        <Link href="/blog" target="_blank"
-          className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-black font-bold text-sm px-4 py-2.5 rounded-xl transition-all cursor-pointer">
-          <Plus size={14} /> New Post
-        </Link>
-      </div>
-      <div className="space-y-3">
-        {[
-          { title: "What to Expect at Tequila Fest USA 2026", category: "Guide", published: "Jan 15, 2026", featured: true },
-          { title: "Top 10 Tequilas to Try at This Year's Festival", category: "Tequila", published: "Feb 8, 2026", featured: true },
-          { title: "Cincinnati 2026: Fountain Square Venue Guide", category: "Event", published: "Mar 1, 2026", featured: false },
-          { title: "How to Become a Tequila Fest Affiliate", category: "Affiliate", published: "Mar 20, 2026", featured: false },
-          { title: "Is the VIP Ticket Worth It?", category: "Guide", published: "Apr 5, 2026", featured: false },
-        ].map((post, i) => (
-          <div key={i} className="flex items-center justify-between bg-white/[0.03] border border-white/10 rounded-xl px-4 py-3.5 hover:border-white/20 transition-all">
-            <div>
-              <p className="text-white font-semibold text-sm">{post.title}</p>
-              <p className="text-white/80 text-xs">{post.category} · {post.published} {post.featured && "· ⭐ Featured"}</p>
-            </div>
-            <div className="flex gap-1 flex-shrink-0">
-              <button className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-white/80 hover:text-white transition-all cursor-pointer">
-                <Edit2 size={12} />
-              </button>
-              <button className="p-2 bg-white/5 hover:bg-red-500/10 border border-white/10 hover:border-red-500/20 rounded-lg text-white/80 hover:text-red-400 transition-all cursor-pointer">
-                <Trash2 size={12} />
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
     </div>
   );
 }
@@ -7899,7 +7862,7 @@ export default function AdminDashboard() {
     referrals:  <ReferralsSection adminToken={adminToken} />,
     newsletter: <NewsletterSection adminToken={adminToken} />,
     tools:     <ToolsSection adminToken={adminToken} />,
-    blog:      <BlogAdminSection />,
+    blog:      <BlogSection adminToken={adminToken} />,
     security:  <SecuritySection adminToken={adminToken} />,
     chargebacks: <ChargebacksSection adminToken={adminToken} />,
   };
