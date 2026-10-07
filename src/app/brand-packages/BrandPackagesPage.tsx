@@ -88,10 +88,10 @@ const FALLBACK_SPONSOR_PACKAGES: Pkg[] = [
 ];
 
 const WHY = [
+  { icon: <DollarSign size={22} />, title: "Sales Generation",      body: "We buy 12+ bottles of your brand at every event, and guests go on to buy the bottles they sampled and loved." },
   { icon: <Users size={22} />,      title: "Massive Event Reach",   body: "Our events draw 1,500+ attendees per city and tens of thousands viewing online." },
   { icon: <Globe2 size={22} />,     title: "Brand Visibility",      body: "Get featured on our website, social media, and at every event with prominent branding." },
   { icon: <TrendingUp size={22} />, title: "Growth Opportunities",  body: "Put your product directly into consumers' mouths — no better way to gain new followers." },
-  { icon: <DollarSign size={22} />, title: "Sales Generation",      body: "We buy all the product from you, and consumers will continue buying your bottles at the store." },
 ];
 
 const CONTEST_CATEGORIES = [
