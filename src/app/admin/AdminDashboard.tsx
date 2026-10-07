@@ -3032,7 +3032,41 @@ interface BrandInvoice {
   stripe_payment_link_url?: string;
   due_date?: string;
   created_at: string;
+  view_token?: string;
   brand_contacts?: { contact_name: string; contact_email: string };
+}
+
+// Shareable invoice page (src/app/invoice/[token]) — the link admins copy to
+// text or DM a brand instead of relying only on the invoice email.
+const invoiceShareUrl = (inv: BrandInvoice) =>
+  inv.view_token ? `${typeof window !== "undefined" ? window.location.origin : "https://www.tequilafestusa.com"}/invoice/${inv.view_token}` : "";
+
+const INVOICE_STATUS_CLS: Record<string, string> = {
+  paid: "bg-green-500/15 text-green-400 border-green-500/20",
+  sent: "bg-blue-500/15 text-blue-400 border-blue-500/20",
+  cancelled: "bg-red-500/15 text-red-400 border-red-500/20",
+};
+
+function CopyInvoiceLinkButton({ inv, small = false }: { inv: BrandInvoice; small?: boolean }) {
+  const [copied, setCopied] = useState(false);
+  const url = invoiceShareUrl(inv);
+  if (!url) return null;
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      window.prompt("Copy this invoice link:", url); // clipboard blocked (e.g. non-HTTPS or permissions)
+      return;
+    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+  return (
+    <button onClick={copy} title={url}
+      className={`${small ? "text-[11px] px-2 py-1" : "text-xs px-3 py-1.5"} border border-white/15 text-white/80 hover:text-white hover:border-white/30 rounded-lg transition-all cursor-pointer whitespace-nowrap`}>
+      {copied ? "✓ Link copied" : "Copy invoice link"}
+    </button>
+  );
 }
 
 const CONTACT_TYPES = [
@@ -3324,7 +3358,8 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
 
   useEffect(() => { fetchContacts(); }, [fetchContacts]);
   useEffect(() => { fetchOrders(); }, [fetchOrders]); // load up-front so Contacts cards can show each contact's orders
-  useEffect(() => { if (view === "invoices") { fetchInvoices(); fetchPaymentSettings(); } }, [view, fetchInvoices, fetchPaymentSettings]);
+  // Invoices load on every tab (not just Invoices) so Contacts cards can show each contact's invoices.
+  useEffect(() => { fetchInvoices(); if (view === "invoices") fetchPaymentSettings(); }, [view, fetchInvoices, fetchPaymentSettings]);
   useEffect(() => { if (view === "inbox") fetchInbox(); }, [view, fetchInbox]);
 
   const openAdd = () => { setContactForm({ ...BLANK_CONTACT, brands: [{ ...BLANK_BRAND }] }); setEditContact(null); setShowAddContact(true); };
@@ -3514,6 +3549,34 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
                     </div>
                   )}
                   {(() => {
+                    // Admin-issued invoices (open and paid). Package Orders below
+                    // are only the brand's own self-serve purchases.
+                    const contactInvoices = invoices.filter(inv => inv.brand_contact_id === c.id);
+                    if (!contactInvoices.length) return null;
+                    return (
+                      <div className="mt-4 pt-4 border-t border-white/10">
+                        <p className="text-white/80 text-xs font-semibold uppercase tracking-wider mb-2">Invoices</p>
+                        <div className="space-y-2">
+                          {contactInvoices.map(inv => (
+                            <div key={inv.id} className="bg-black/20 border border-white/5 rounded-xl px-3 py-2.5 flex items-center justify-between gap-3 flex-wrap">
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-mono text-yellow-400 text-xs">{inv.invoice_number}</span>
+                                  <span className={`text-[10px] rounded-full px-2 py-0.5 border capitalize ${INVOICE_STATUS_CLS[inv.status] || "bg-white/5 text-white/80 border-white/10"}`}>{inv.status === "sent" ? "open" : inv.status}</span>
+                                </div>
+                                <p className="text-white/80 text-xs mt-1">{inv.event_name ? `${inv.event_name} · ` : ""}{new Date(inv.created_at).toLocaleDateString()}{inv.due_date && inv.status !== "paid" ? ` · due ${inv.due_date}` : ""}</p>
+                              </div>
+                              <div className="flex items-center gap-3 flex-shrink-0">
+                                <p className="font-display text-lg text-white">${Number(inv.total).toFixed(2)}</p>
+                                {inv.status !== "cancelled" && <CopyInvoiceLinkButton inv={inv} small />}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                  {(() => {
                     const contactOrders = orders.filter(o => o.brand_contact_id === c.id || o.contact_email.toLowerCase() === c.contact_email.toLowerCase());
                     if (!contactOrders.length) return null;
                     return (
@@ -3660,9 +3723,13 @@ function BrandsSection({ adminToken }: { adminToken: string }) {
                     <p className="text-white/80 text-sm mt-0.5">{inv.brand_contacts?.contact_name || "—"}{inv.event_name ? ` · ${inv.event_name}` : ""}</p>
                     {inv.due_date && <p className="text-white/80 text-xs mt-0.5">Due {inv.due_date}</p>}
                   </div>
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-3 flex-wrap">
                     <p className="text-xl font-bold text-white">${inv.total.toFixed(2)}</p>
-                    {inv.stripe_payment_link_url && (
+                    {inv.status !== "cancelled" && <CopyInvoiceLinkButton inv={inv} />}
+                    {inv.view_token && inv.status !== "cancelled" && (
+                      <a href={`/invoice/${inv.view_token}`} target="_blank" rel="noopener noreferrer" className="text-xs border border-white/15 text-white/80 hover:text-white px-3 py-1.5 rounded-lg transition-all">View ↗</a>
+                    )}
+                    {inv.stripe_payment_link_url && inv.status !== "paid" && (
                       <a href={inv.stripe_payment_link_url} target="_blank" rel="noopener noreferrer" className="text-xs border border-yellow-500/30 text-yellow-400 px-3 py-1.5 rounded-lg hover:bg-yellow-500/10 transition-all">Payment Link ↗</a>
                     )}
                   </div>
