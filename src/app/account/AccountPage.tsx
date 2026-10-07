@@ -248,7 +248,7 @@ function OrdersTab({ onViewTickets, orders }: { onViewTickets: (orderId: string)
                   </button>
                   {order.stripe_payment_intent_id && (
                   <a
-                    href={`https://dashboard.stripe.com/payments/${order.stripe_payment_intent_id}`}
+                    href={`/api/account/receipt?order=${encodeURIComponent(order.order_number)}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/15 hover:border-white/25 text-white/60 hover:text-white font-semibold text-sm px-4 py-2.5 rounded-xl transition-all duration-200 cursor-pointer"
