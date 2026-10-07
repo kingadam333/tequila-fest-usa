@@ -11,6 +11,7 @@ import Navbar from "@/components/Navbar";
 import OfficialBanner from "@/components/OfficialBanner";
 import Footer from "@/components/Footer";
 import Turnstile from "@/components/Turnstile";
+import { safeRedirectPath } from "@/lib/safeRedirect";
 
 export default function LoginPage() {
   const params = useSearchParams();
@@ -26,7 +27,7 @@ export default function LoginPage() {
     if (prefill) setEmail(prefill);
   }, [params]);
 
-  const redirectTo = params.get("redirect") || "/account";
+  const redirectTo = safeRedirectPath(params.get("redirect"));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
