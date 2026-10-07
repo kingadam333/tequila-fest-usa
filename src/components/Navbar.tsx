@@ -4,14 +4,24 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
-import { User } from "lucide-react";
+import { User, ChevronDown } from "lucide-react";
 
-const NAV_LINKS = [
+type NavLink = { label: string; href: string; children?: { label: string; href: string }[] };
+
+const NAV_LINKS: NavLink[] = [
   { label: "Events", href: "/#events" },
   { label: "VIP", href: "/#vip" },
   { label: "About", href: "/#about" },
   { label: "Blog", href: "/blog" },
-  { label: "Contact", href: "/contact" },
+  {
+    label: "Contact",
+    href: "/contact",
+    children: [
+      { label: "Add Your Tequila Brand", href: "/brand-packages" },
+      { label: "Become a Vendor", href: "/vendors" },
+      { label: "Sponsor Opportunities", href: "/sponsors" },
+    ],
+  },
 ];
 
 export default function Navbar() {
@@ -74,7 +84,31 @@ export default function Navbar() {
 
           {/* Desktop nav links */}
           <div className="hidden md:flex items-center gap-6">
-            {NAV_LINKS.map((link) => (
+            {NAV_LINKS.map((link) => link.children ? (
+              // Opens on hover and on keyboard focus; "Contact" itself stays a link.
+              <div key={link.label} className="relative group">
+                <Link
+                  href={link.href}
+                  className="inline-flex items-center gap-1 text-white/60 hover:text-white group-hover:text-white text-sm font-medium tracking-wide transition-colors duration-200"
+                >
+                  {link.label}
+                  <ChevronDown size={14} className="transition-transform duration-200 group-hover:rotate-180 group-focus-within:rotate-180" />
+                </Link>
+                <div className="absolute right-0 top-full pt-3 invisible opacity-0 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100 transition-opacity duration-150">
+                  <div className="min-w-[230px] rounded-xl border border-yellow-500/20 py-2 shadow-2xl" style={{ background: "rgba(13, 5, 0, 0.97)", backdropFilter: "blur(12px)" }}>
+                    {link.children.map((child) => (
+                      <Link
+                        key={child.href}
+                        href={child.href}
+                        className="block px-4 py-2.5 text-sm text-white/75 hover:text-yellow-400 hover:bg-white/5 focus:text-yellow-400 focus:bg-white/5 outline-none transition-colors"
+                      >
+                        {child.label}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : (
               <Link
                 key={link.label}
                 href={link.href}
@@ -157,6 +191,16 @@ export default function Navbar() {
                   >
                     {link.label}
                   </Link>
+                  {link.children?.map((child) => (
+                    <Link
+                      key={child.href}
+                      href={child.href}
+                      onClick={() => setMenuOpen(false)}
+                      className="block py-2.5 pl-6 pr-2 text-white/60 hover:text-yellow-400 text-base border-b border-white/5 transition-colors duration-200"
+                    >
+                      {child.label}
+                    </Link>
+                  ))}
                 </motion.div>
               ))}
 
