@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { Check, Users, Globe2, TrendingUp, DollarSign, Send, Trophy, GlassWater, Sparkles, Smile, Gift, Star, Award } from "lucide-react";
+import { Check, Users, Globe2, TrendingUp, DollarSign, Send, Trophy, GlassWater, Sparkles, Smile, Gift, Star, Award, HandPlatter } from "lucide-react";
 
 import Navbar from "@/components/Navbar";
 import OfficialBanner from "@/components/OfficialBanner";
@@ -92,6 +92,7 @@ const WHY = [
   { icon: <Users size={22} />,      title: "Massive Event Reach",   body: "Our events draw 1,500+ attendees per city and tens of thousands viewing online." },
   { icon: <Globe2 size={22} />,     title: "Brand Visibility",      body: "Get featured on our website, social media, and at every event with prominent branding." },
   { icon: <TrendingUp size={22} />, title: "Growth Opportunities",  body: "Put your product directly into consumers' mouths — no better way to gain new followers." },
+  { icon: <HandPlatter size={22} />, title: "Staffing",             body: "A pourer will be assigned to your table to pour samples, and we cover the cost." },
 ];
 
 const CONTEST_CATEGORIES = [
@@ -326,10 +327,10 @@ export default function BrandPackagesPage({ sponsorPackages }: { sponsorPackages
             <h2 className="font-display text-white text-3xl sm:text-4xl tracking-wider mb-3">WHY PARTNER WITH US?</h2>
             <p className="text-white/80 text-sm">Join the premier tequila festival experience in the Midwest and Southwest.</p>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="flex flex-wrap justify-center gap-4">
             {WHY.map((w, i) => (
               <motion.div key={w.title} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06 * i }}
-                className="bg-white/[0.03] border border-white/10 rounded-2xl p-5 text-center">
+                className="w-full sm:w-[calc(50%-0.5rem)] lg:w-[calc(33.333%-0.667rem)] bg-white/[0.03] border border-white/10 rounded-2xl p-5 text-center">
                 <div className="w-12 h-12 rounded-xl mx-auto mb-3 flex items-center justify-center bg-yellow-500/10 border border-yellow-500/30 text-yellow-400">{w.icon}</div>
                 <p className="text-white font-bold mb-1.5">{w.title}</p>
                 <p className="text-white/55 text-sm leading-relaxed">{w.body}</p>
