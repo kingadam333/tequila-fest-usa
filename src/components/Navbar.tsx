@@ -17,10 +17,10 @@ const NAV_LINKS: NavLink[] = [
     label: "Contact",
     href: "/contact",
     children: [
+      { label: "Contact Support", href: "/contact" },
       { label: "Add Your Tequila Brand", href: "/brand-packages" },
       { label: "Become a Vendor", href: "/vendors" },
       { label: "Sponsor Opportunities", href: "/sponsors" },
-      { label: "Contact Support", href: "/contact" },
     ],
   },
 ];
