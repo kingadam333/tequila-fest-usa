@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { Ticket, Star, Camera, Share2, ArrowRight, MapPin, Calendar } from "lucide-react";
+import PushOptIn from "@/components/PushOptIn";
 
 const EVENTS = [
   { slug: "cincinnati", city: "Cincinnati", date: "June 13, 2026", color: "#F5A623", emoji: "🏙️" },
@@ -58,6 +59,8 @@ export default function DashboardTab({ firstName, loyaltyPoints, ticketCount, on
           </Link>
         </motion.div>
       </div>
+
+      <PushOptIn />
 
       {/* No tickets CTA */}
       {ticketCount === 0 && (

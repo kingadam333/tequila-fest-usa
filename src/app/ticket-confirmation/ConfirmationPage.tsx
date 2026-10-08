@@ -11,6 +11,7 @@ import OfficialBanner from "@/components/OfficialBanner";
 import Footer from "@/components/Footer";
 import { getEvent } from "@/lib/events";
 import Confetti from "@/components/Confetti";
+import PushOptIn from "@/components/PushOptIn";
 import PurchaseDataLayerPush, { PurchaseData } from "@/components/PurchaseDataLayerPush";
 
 export default function ConfirmationPage() {
@@ -133,6 +134,14 @@ export default function ConfirmationPage() {
               ))}
             </ul>
           </motion.div>
+
+          <div className="mb-6">
+            <PushOptIn
+              heading="Get event-day alerts"
+              blurb="We'll send door times, parking tips and any last-minute changes for your event straight to this device."
+              checkoutSessionId={sessionId || undefined}
+            />
+          </div>
 
           {/* CTAs */}
           <motion.div

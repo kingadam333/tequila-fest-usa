@@ -10,7 +10,7 @@ import {
   RefreshCw, Download, Send, CheckCircle, Search, Plus,
   Trash2, Edit2, Eye, AlertCircle, BarChart2, Mail, Utensils, Share2, Copy,
   Star, Gift, UserCheck, ChevronRight, Megaphone, ShieldCheck, Wrench, Sparkles, Bot, Link2, MapPin,
-  ShieldAlert, Ban, Handshake, Trophy,
+  ShieldAlert, Ban, Handshake, Trophy, BellRing,
 } from "lucide-react";
 import SocialShareSection from "./SocialShareSection";
 import SecuritySection from "./SecuritySection";
@@ -18,6 +18,7 @@ import SponsorsSection from "./SponsorsSection";
 import CouponsSection from "./CouponsSection";
 import ContestSection from "./ContestSection";
 import BlogSection from "./BlogSection";
+import PushSection from "./PushSection";
 import { BRAND_TIER_PRICES, BRAND_CITY_LABELS } from "@/lib/brandPackages";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -7813,6 +7814,7 @@ const NAV_ITEMS = [
   { id: "affiliates", label: "Affiliates",  icon: <Link2 size={17} /> },
   { id: "referrals",  label: "Referrals",   icon: <Gift size={17} /> },
   { id: "newsletter", label: "Newsletter",  icon: <Mail size={17} /> },
+  { id: "push",       label: "Push",        icon: <BellRing size={17} /> },
   { id: "tools",      label: "Tools",       icon: <RefreshCw size={17} /> },
   { id: "blog",       label: "Blog",        icon: <FileText size={17} /> },
   { id: "security",   label: "Security",    icon: <ShieldCheck size={17} /> },
@@ -7916,6 +7918,7 @@ export default function AdminDashboard() {
     sponsors:  <SponsorsSection adminToken={adminToken} />,
     coupons:   <CouponsSection adminToken={adminToken} />,
     contest:   <ContestSection adminToken={adminToken} />,
+    push:      <PushSection adminToken={adminToken} />,
     checkin:   <CheckInSection adminToken={adminToken} />,
     contacts:  <ContactSection adminToken={adminToken} />,
     "ai-assistant": <AiAssistantSection adminToken={adminToken} />,
