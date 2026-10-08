@@ -9,7 +9,7 @@ import { User, ChevronDown } from "lucide-react";
 type NavLink = { label: string; href: string; children?: { label: string; href: string }[] };
 
 const NAV_LINKS: NavLink[] = [
-  { label: "Events", href: "/#events" },
+  { label: "Cities", href: "/#events" },
   { label: "VIP", href: "/#vip" },
   { label: "About", href: "/#about" },
   { label: "Blog", href: "/blog" },
@@ -29,7 +29,7 @@ type EventLink = { label: string; href: string };
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
-  // Upcoming cities for the Events dropdown — same source as the homepage
+  // Upcoming cities for the Cities dropdown — same source as the homepage
   // cards, so adding/completing an event in admin updates the menu too.
   const [eventLinks, setEventLinks] = useState<EventLink[]>([]);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -58,7 +58,7 @@ export default function Navbar() {
   }, []);
 
   const navLinks: NavLink[] = NAV_LINKS.map(l =>
-    l.label === "Events" && eventLinks.length ? { ...l, children: eventLinks } : l
+    l.label === "Cities" && eventLinks.length ? { ...l, children: eventLinks } : l
   );
 
   const isLoggedIn = !!user;
