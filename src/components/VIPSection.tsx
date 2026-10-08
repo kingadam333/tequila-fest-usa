@@ -108,7 +108,7 @@ const sparklePositions = Array.from({ length: 18 }, () => ({
 
 export default function VIPSection() {
   return (
-    <section className="relative py-28 px-4 overflow-hidden bg-[#080808]">
+    <section id="vip" className="scroll-mt-28 relative py-28 px-4 overflow-hidden bg-[#080808]">
 
       {/* Deep background gradient */}
       <div className="absolute inset-0 pointer-events-none"

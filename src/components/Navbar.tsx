@@ -20,12 +20,18 @@ const NAV_LINKS: NavLink[] = [
       { label: "Add Your Tequila Brand", href: "/brand-packages" },
       { label: "Become a Vendor", href: "/vendors" },
       { label: "Sponsor Opportunities", href: "/sponsors" },
+      { label: "Contact Support", href: "/contact" },
     ],
   },
 ];
 
+type EventLink = { label: string; href: string };
+
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
+  // Upcoming cities for the Events dropdown — same source as the homepage
+  // cards, so adding/completing an event in admin updates the menu too.
+  const [eventLinks, setEventLinks] = useState<EventLink[]>([]);
   const [menuOpen, setMenuOpen] = useState(false);
   const [user, setUser] = useState<{ email: string; firstName: string } | null>(null);
 
@@ -34,7 +40,26 @@ export default function Navbar() {
       .then(r => r.ok ? r.json() : null)
       .then(d => d?.user && setUser(d.user))
       .catch(() => {});
+    fetch("/api/events")
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        const seen = new Set<string>();
+        const links: EventLink[] = [];
+        for (const e of (d?.events || []) as { city?: string }[]) {
+          if (!e.city) continue;
+          const key = e.city.toLowerCase().trim().replace(/\s+/g, "-");
+          if (seen.has(key)) continue;
+          seen.add(key);
+          links.push({ label: e.city, href: `/events/${key}` });
+        }
+        setEventLinks(links);
+      })
+      .catch(() => {});
   }, []);
+
+  const navLinks: NavLink[] = NAV_LINKS.map(l =>
+    l.label === "Events" && eventLinks.length ? { ...l, children: eventLinks } : l
+  );
 
   const isLoggedIn = !!user;
 
@@ -84,7 +109,7 @@ export default function Navbar() {
 
           {/* Desktop nav links */}
           <div className="hidden md:flex items-center gap-6">
-            {NAV_LINKS.map((link) => link.children ? (
+            {navLinks.map((link) => link.children ? (
               // Opens on hover and on keyboard focus; "Contact" itself stays a link.
               <div key={link.label} className="relative group">
                 <Link
@@ -94,7 +119,7 @@ export default function Navbar() {
                   {link.label}
                   <ChevronDown size={14} className="transition-transform duration-200 group-hover:rotate-180 group-focus-within:rotate-180" />
                 </Link>
-                <div className="absolute right-0 top-full pt-3 invisible opacity-0 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100 transition-opacity duration-150">
+                <div className="absolute left-1/2 -translate-x-1/2 top-full pt-3 invisible opacity-0 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100 transition-opacity duration-150">
                   <div className="min-w-[230px] rounded-xl border border-yellow-500/20 py-2 shadow-2xl" style={{ background: "rgba(13, 5, 0, 0.97)", backdropFilter: "blur(12px)" }}>
                     {link.children.map((child) => (
                       <Link
@@ -182,7 +207,7 @@ export default function Navbar() {
             }}
           >
             <div className="px-4 py-6 flex flex-col gap-1">
-              {NAV_LINKS.map((link, i) => (
+              {navLinks.map((link, i) => (
                 <motion.div key={link.label} initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}>
                   <Link
                     href={link.href}
@@ -205,7 +230,7 @@ export default function Navbar() {
               ))}
 
               {/* Mobile auth buttons */}
-              <motion.div initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: NAV_LINKS.length * 0.05 }} className="mt-4 flex flex-col gap-3">
+              <motion.div initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: navLinks.length * 0.05 }} className="mt-4 flex flex-col gap-3">
                 {isLoggedIn ? (
                   <>
                     <Link href="/account" onClick={() => setMenuOpen(false)}

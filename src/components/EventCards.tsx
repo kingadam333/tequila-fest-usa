@@ -62,7 +62,7 @@ export default function EventCards() {
   if (!events.length) return null;
 
   return (
-    <section id="events" className="py-24 px-4 bg-[#0d0500] relative">
+    <section id="events" className="scroll-mt-28 py-24 px-4 bg-[#0d0500] relative">
       <div className="max-w-7xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
