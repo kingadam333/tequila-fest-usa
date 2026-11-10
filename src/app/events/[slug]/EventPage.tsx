@@ -447,7 +447,7 @@ export default function EventPage({ event, ogImage, dbStatus }: { event: EventDa
             {/* CTAs */}
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.65 }}
               className="mt-4 flex flex-col sm:flex-row gap-4 justify-center items-center flex-wrap">
-              {gaTicket && !isCompleted && (
+              {gaTicket && !isCompleted && !isComingSoon && (
                 <button onClick={() => openCart("ga")}
                   className="cursor-pointer inline-flex items-center gap-2 border border-white/25 hover:border-white/50 text-white/70 hover:text-white text-base px-7 py-4 rounded-full transition-all duration-200">
                   $5 GA Entry
@@ -774,6 +774,16 @@ export default function EventPage({ event, ogImage, dbStatus }: { event: EventDa
                   <Link href="/events" className="text-yellow-400 hover:text-yellow-300 underline">all upcoming events</Link>{" "}
                   in the meantime.
                 </p>
+              </>
+            ) : isComingSoon ? (
+              // Without this branch the page showed COMING SOON on every ticket
+              // card but still offered a working "Select Tickets" button here.
+              <>
+                <p className="text-white/80 text-sm mb-2">Tickets aren&apos;t on sale yet</p>
+                <h2 className="font-display text-shimmer mb-4" style={{ fontSize: "clamp(2rem, 6vw, 4.5rem)" }}>
+                  TICKETS COMING SOON
+                </h2>
+                <p className="text-white/80 text-base">Check back soon — we&apos;ll announce here the moment they go on sale.</p>
               </>
             ) : (
               <>

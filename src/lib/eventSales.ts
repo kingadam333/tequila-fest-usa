@@ -30,7 +30,12 @@ export function isEventPast(dateISO: string | null | undefined, now: number = Da
 
 // Statuses that are never purchasable. `sold_out` is deliberately not here —
 // capacity is enforced against live ticket counts, not this flag.
-const CLOSED_STATUSES = new Set(["draft", "cancelled", "completed"]);
+//
+// `coming_soon` was missing until Nov 2026: the Phoenix page showed COMING
+// SOON on its ticket cards, but the bottom "Select Tickets" button only hid
+// for completed events and this rule let the checkout through, so three real
+// orders were taken for an event that wasn't on sale.
+const CLOSED_STATUSES = new Set(["draft", "cancelled", "completed", "coming_soon"]);
 
 /**
  * The single answer to "are ticket sales closed for this event". Treats a
@@ -42,4 +47,11 @@ export function areTicketSalesClosed(
 ): boolean {
   if (status && CLOSED_STATUSES.has(status)) return true;
   return isEventPast(dateISO);
+}
+
+/** What to tell a buyer whose checkout was refused by areTicketSalesClosed(). */
+export function ticketSalesClosedMessage(status: string | null | undefined): string {
+  return status === "coming_soon"
+    ? "Tickets for this event aren't on sale yet. Check back soon!"
+    : "Tickets for this event are no longer on sale.";
 }

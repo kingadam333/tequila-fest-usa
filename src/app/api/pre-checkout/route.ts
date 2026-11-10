@@ -5,7 +5,7 @@ import { getEvent } from "@/lib/events";
 import { verifyTurnstile } from "@/lib/turnstile";
 import { supabaseAdmin } from "@/lib/supabase";
 import { calculateFeesForCart } from "@/lib/fees";
-import { areTicketSalesClosed } from "@/lib/eventSales";
+import { areTicketSalesClosed, ticketSalesClosedMessage } from "@/lib/eventSales";
 import { eventLabel } from "@/lib/eventLabel";
 import { validateCoupon } from "@/lib/coupons";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
     .maybeSingle();
   if (eventRow && areTicketSalesClosed(eventRow.status, eventRow.date_iso)) {
     return NextResponse.json(
-      { error: "Tickets for this event are no longer on sale." },
+      { error: ticketSalesClosedMessage(eventRow.status) },
       { status: 409 },
     );
   }

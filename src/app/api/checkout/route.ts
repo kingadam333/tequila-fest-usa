@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { stripe, TICKET_PRICES, TICKET_LABELS, type TicketType } from "@/lib/stripe";
 import { getEvent } from "@/lib/events";
 import { supabaseAdmin } from "@/lib/supabase";
-import { areTicketSalesClosed } from "@/lib/eventSales";
+import { areTicketSalesClosed, ticketSalesClosedMessage } from "@/lib/eventSales";
 import { eventLabel } from "@/lib/eventLabel";
 
 export interface CheckoutBody {
@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
       .maybeSingle();
     if (eventRow && areTicketSalesClosed(eventRow.status, eventRow.date_iso)) {
       return NextResponse.json(
-        { error: "Tickets for this event are no longer on sale." },
+        { error: ticketSalesClosedMessage(eventRow.status) },
         { status: 409 },
       );
     }
