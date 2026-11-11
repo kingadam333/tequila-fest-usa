@@ -8,7 +8,7 @@ import { MapPin, Calendar, Clock, Ticket, ArrowLeft, Star } from "lucide-react";
 import { PRICING } from "@/lib/events";
 import type { EventData } from "@/lib/events";
 import type { TicketType } from "@/lib/ticket-config";
-import { isEventPast } from "@/lib/eventSales";
+import { isDateTBA, isEventPast } from "@/lib/eventSales";
 import Navbar from "@/components/Navbar";
 import OfficialBanner from "@/components/OfficialBanner";
 import Footer from "@/components/Footer";
@@ -439,10 +439,12 @@ export default function EventPage({ event, ogImage, dbStatus }: { event: EventDa
               </motion.p>
             )}
 
-            {/* Countdown */}
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
-              <Countdown dateISO={event.dateISO} />
-            </motion.div>
+            {/* Countdown — skipped for a TBA date, whose date_iso is only a placeholder */}
+            {!isDateTBA(event.date) && (
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
+                <Countdown dateISO={event.dateISO} />
+              </motion.div>
+            )}
 
             {/* CTAs */}
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.65 }}

@@ -49,6 +49,16 @@ export function areTicketSalesClosed(
   return isEventPast(dateISO);
 }
 
+/**
+ * True when an event's display date says it hasn't been set yet ("To Be
+ * Announced", "TBA", "TBD"). `date_iso` is NOT NULL, so a TBA event carries a
+ * far-future placeholder there to stay listed as upcoming; anything that would
+ * show that placeholder to the public (the countdown) must check this first.
+ */
+export function isDateTBA(displayDate: string | null | undefined): boolean {
+  return /\b(to be announced|tba|tbd)\b/i.test(displayDate || "");
+}
+
 /** What to tell a buyer whose checkout was refused by areTicketSalesClosed(). */
 export function ticketSalesClosedMessage(status: string | null | undefined): string {
   return status === "coming_soon"
