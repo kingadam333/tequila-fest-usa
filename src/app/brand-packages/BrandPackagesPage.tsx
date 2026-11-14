@@ -105,12 +105,14 @@ const CONTEST_CATEGORIES = [
 
 // ─── Package card with event picker + running total ───────────────────────────
 
-function PackageCard({ pkg, index, onSelect, accent = "#F5A623" }: { pkg: Pkg; index: number; onSelect: (pkgName: string, cities: string[], total: number) => void; accent?: string; }) {
+function PackageCard({ pkg, index, onSelect, accent = "#F5A623", closedEventIds = [] }: { pkg: Pkg; index: number; onSelect: (pkgName: string, cities: string[], total: number) => void; accent?: string; closedEventIds?: string[]; }) {
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const sold = pkg.soldEventIds || [];
   const options = pkg.eventOptions ?? EVENTS;
+  // Cities without a confirmed date (src/lib/eventSignups.ts); the API refuses them too.
+  const notOpen = (id: string) => !sold.includes(id) && closedEventIds.includes(id);
   const toggle = (id: string) => {
-    if (sold.includes(id)) return;
+    if (sold.includes(id) || notOpen(id)) return;
     setPicked(prev => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id); else next.add(id);
@@ -151,11 +153,12 @@ function PackageCard({ pkg, index, onSelect, accent = "#F5A623" }: { pkg: Pkg; i
         <div className="space-y-1.5">
           {options.map(ev => {
             const isSold = sold.includes(ev.id);
+            const isClosed = notOpen(ev.id);
             const isChecked = picked.has(ev.id);
             return (
-              <label key={ev.id} className={`flex items-center justify-between gap-3 rounded-lg px-3 py-2 border transition-all ${isSold ? "border-yellow-500/20 bg-yellow-500/5 cursor-not-allowed" : "border-white/5 hover:border-white/15 cursor-pointer"}`}>
+              <label key={ev.id} className={`flex items-center justify-between gap-3 rounded-lg px-3 py-2 border transition-all ${isSold ? "border-yellow-500/20 bg-yellow-500/5 cursor-not-allowed" : isClosed ? "border-white/5 opacity-50 cursor-not-allowed" : "border-white/5 hover:border-white/15 cursor-pointer"}`}>
                 <div className="flex items-center gap-2.5">
-                  <input type="checkbox" checked={isChecked} disabled={isSold} onChange={() => toggle(ev.id)}
+                  <input type="checkbox" checked={isChecked} disabled={isSold || isClosed} onChange={() => toggle(ev.id)}
                     className="accent-yellow-500 disabled:opacity-30" />
                   <div>
                     {isSold ? (
@@ -170,6 +173,8 @@ function PackageCard({ pkg, index, onSelect, accent = "#F5A623" }: { pkg: Pkg; i
                 </div>
                 {isSold
                   ? <span className="text-[10px] font-bold tracking-widest text-yellow-400 bg-yellow-500/10 border border-yellow-500/30 rounded-full px-2 py-0.5">SOLD</span>
+                  : isClosed
+                  ? <span className="text-[10px] font-bold tracking-widest text-white/60 bg-white/5 border border-white/15 rounded-full px-2 py-0.5 whitespace-nowrap">NOT OPEN YET</span>
                   : <span className="text-white/70 text-sm">${(ev.events * pkg.pricePerCity).toLocaleString()}</span>}
               </label>
             );
@@ -193,7 +198,7 @@ function PackageCard({ pkg, index, onSelect, accent = "#F5A623" }: { pkg: Pkg; i
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default function BrandPackagesPage({ sponsorPackages }: { sponsorPackages: SponsorPackage[] | null }) {
+export default function BrandPackagesPage({ sponsorPackages, closedEventIds = [] }: { sponsorPackages: SponsorPackage[] | null; closedEventIds?: string[] }) {
   const sponsorPkgs: Pkg[] = sponsorPackages
     ? sponsorPackages.map(p => ({
         name: p.name,
@@ -408,7 +413,7 @@ export default function BrandPackagesPage({ sponsorPackages }: { sponsorPackages
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {BRAND_PACKAGES.map((p, i) => (
-              <PackageCard key={p.name} pkg={p} index={i} onSelect={onPackagePick} accent="#F5A623" />
+              <PackageCard key={p.name} pkg={p} index={i} onSelect={onPackagePick} accent="#F5A623" closedEventIds={closedEventIds} />
             ))}
           </div>
         </section>
@@ -422,7 +427,7 @@ export default function BrandPackagesPage({ sponsorPackages }: { sponsorPackages
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
             {sponsorPkgs.map((p, i) => (
-              <PackageCard key={p.name} pkg={p} index={i} onSelect={onPackagePick} accent="#C8102E" />
+              <PackageCard key={p.name} pkg={p} index={i} onSelect={onPackagePick} accent="#C8102E" closedEventIds={closedEventIds} />
             ))}
           </div>
         </section>

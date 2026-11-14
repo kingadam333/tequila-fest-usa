@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { verifyTurnstile } from "@/lib/turnstile";
 import { normalizeBrandName } from "@/lib/normalizeBrandName";
 import { BRAND_TIER_PRICES, BRAND_CITY_LABELS } from "@/lib/brandPackages";
+import { closedOptionIds, openSignupCities, NOT_OPEN_MESSAGE } from "@/lib/eventSignups";
 
 const TIER_PRICES = BRAND_TIER_PRICES;
 const CITY_LABELS = BRAND_CITY_LABELS;
@@ -38,6 +39,11 @@ export async function POST(req: NextRequest) {
     : [];
   if (!eventList.length) {
     return NextResponse.json({ error: "Please select at least one event" }, { status: 400 });
+  }
+  // A city without a confirmed date can't be bought (see src/lib/eventSignups.ts).
+  const closed = closedOptionIds(await openSignupCities(), eventList);
+  if (closed.length) {
+    return NextResponse.json({ error: NOT_OPEN_MESSAGE(closed.map((e) => EVENT_OPTIONS[e].label)) }, { status: 409 });
   }
   const cityList = eventList.flatMap((e) => EVENT_OPTIONS[e].cities);
 

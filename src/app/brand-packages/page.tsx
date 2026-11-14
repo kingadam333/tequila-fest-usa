@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import BrandPackagesPage from "./BrandPackagesPage";
 import { loadActiveSponsorPackages } from "@/lib/sponsorPackagesServer";
+import { ALL_SIGNUP_OPTION_IDS, closedOptionIds, openSignupCities } from "@/lib/eventSignups";
 
 export const metadata: Metadata = {
   title: "Brand Packages | Tequila Fest USA",
@@ -13,5 +14,6 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function Page() {
-  return <BrandPackagesPage sponsorPackages={await loadActiveSponsorPackages()} />;
+  const closedEventIds = closedOptionIds(await openSignupCities(), ALL_SIGNUP_OPTION_IDS);
+  return <BrandPackagesPage sponsorPackages={await loadActiveSponsorPackages()} closedEventIds={closedEventIds} />;
 }

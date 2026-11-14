@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
+import { cityId, openSignupCities, NOT_OPEN_MESSAGE } from "@/lib/eventSignups";
 import { resend, FROM_SUPPORT, FROM_VENDORS } from "@/lib/resend";
 import { verifyTurnstile } from "@/lib/turnstile";
 import { wrapEmailHtml } from "@/lib/emailLayout";
@@ -18,6 +19,13 @@ export async function POST(req: NextRequest) {
 
   const db = supabaseAdmin as any;
   const requestedCities: string[] = Array.isArray(cities) ? cities : cities ? [cities] : [];
+
+  // A city without a confirmed date can't be applied for (see src/lib/eventSignups.ts).
+  const openCities = await openSignupCities();
+  const closedCities = openCities ? requestedCities.filter((c) => !openCities.has(cityId(String(c)))) : [];
+  if (closedCities.length) {
+    return NextResponse.json({ error: NOT_OPEN_MESSAGE(closedCities) }, { status: 409 });
+  }
 
   // Scrub duplicate submissions by email — scoped to city AND season, not
   // just email+city. A rejected prior application never blocks reapplying.

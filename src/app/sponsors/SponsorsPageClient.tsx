@@ -26,7 +26,7 @@ const STATS = [
 
 const CITIES = ["Cincinnati — June 12", "Cleveland — July 24", "Columbus — Aug 8", "Phoenix — To Be Announced"];
 
-export default function SponsorsPageClient({ packages }: { packages: SponsorPackage[] | null }) {
+export default function SponsorsPageClient({ packages, closedEventIds = [] }: { packages: SponsorPackage[] | null; closedEventIds?: string[] }) {
   const [reserving, setReserving] = useState<SponsorPackage | null>(null);
   const [form, setForm] = useState({ name: "", company: "", email: "", phone: "", package: "", message: "" });
   const [loading, setLoading] = useState(false);
@@ -136,7 +136,7 @@ export default function SponsorsPageClient({ packages }: { packages: SponsorPack
               {packages.map((pkg, i) => {
                 const color = ACCENTS[i % ACCENTS.length];
                 const options = sponsorEventOptions(pkg.per_city);
-                const allSold = options.every(ev => pkg.sold_events.includes(ev.id));
+                const allSold = options.every(ev => pkg.sold_events.includes(ev.id) || closedEventIds.includes(ev.id));
                 return (
                   <div key={pkg.id} className="bg-white/[0.03] border rounded-2xl p-6 flex flex-col" style={{ borderColor: `${color}40` }}>
                     <div className="mb-4">
@@ -156,11 +156,14 @@ export default function SponsorsPageClient({ packages }: { packages: SponsorPack
                     <div className="mt-5 pt-4 border-t border-white/10 space-y-1.5">
                       {options.map(ev => {
                         const sold = pkg.sold_events.includes(ev.id);
+                        const notOpen = !sold && closedEventIds.includes(ev.id);
                         return (
                           <div key={ev.id} className="flex items-center justify-between text-sm">
-                            <span className={sold ? "text-white/40 line-through" : "text-white/80"}>{ev.label}</span>
+                            <span className={sold ? "text-white/40 line-through" : notOpen ? "text-white/40" : "text-white/80"}>{ev.label}</span>
                             {sold
                               ? <span className="text-[10px] font-bold tracking-widest text-yellow-400 bg-yellow-500/10 border border-yellow-500/30 rounded-full px-2 py-0.5">SOLD</span>
+                              : notOpen
+                              ? <span className="text-[10px] font-bold tracking-widest text-white/50 bg-white/5 border border-white/15 rounded-full px-2 py-0.5">NOT OPEN YET</span>
                               : <span className="text-white/70">{money(pkg.price_per_event * ev.events)}</span>}
                           </div>
                         );
@@ -267,7 +270,7 @@ export default function SponsorsPageClient({ packages }: { packages: SponsorPack
           </motion.div>
         </div>
       </main>
-      {reserving && <ReserveModal pkg={reserving} onClose={() => setReserving(null)} />}
+      {reserving && <ReserveModal pkg={reserving} closedEventIds={closedEventIds} onClose={() => setReserving(null)} />}
       <Footer />
     </>
   );
@@ -275,9 +278,9 @@ export default function SponsorsPageClient({ packages }: { packages: SponsorPack
 
 // ─── Reserve This ────────────────────────────────────────────────────────────
 
-function ReserveModal({ pkg, onClose }: { pkg: SponsorPackage; onClose: () => void }) {
+function ReserveModal({ pkg, closedEventIds, onClose }: { pkg: SponsorPackage; closedEventIds: string[]; onClose: () => void }) {
   const options = sponsorEventOptions(pkg.per_city);
-  const available = options.filter(ev => !pkg.sold_events.includes(ev.id));
+  const available = options.filter(ev => !pkg.sold_events.includes(ev.id) && !closedEventIds.includes(ev.id));
   const [events, setEvents] = useState<string[]>(available.length === 1 ? [available[0].id] : []);
   const [form, setForm] = useState({ companyName: "", contactName: "", contactEmail: "", contactPhone: "", website: "" });
   const [smsConsent, setSmsConsent] = useState(false);
@@ -341,16 +344,17 @@ function ReserveModal({ pkg, onClose }: { pkg: SponsorPackage; onClose: () => vo
               <div className="space-y-1.5">
                 {options.map(ev => {
                   const sold = pkg.sold_events.includes(ev.id);
+                  const notOpen = !sold && closedEventIds.includes(ev.id);
                   return (
-                    <label key={ev.id} className={`flex items-center justify-between gap-3 rounded-xl px-3 py-2.5 border ${sold ? "border-white/5 opacity-50 cursor-not-allowed" : "border-white/10 hover:border-white/25 cursor-pointer"}`}>
+                    <label key={ev.id} className={`flex items-center justify-between gap-3 rounded-xl px-3 py-2.5 border ${sold || notOpen ? "border-white/5 opacity-50 cursor-not-allowed" : "border-white/10 hover:border-white/25 cursor-pointer"}`}>
                       <span className="flex items-center gap-2.5">
-                        <input type="checkbox" checked={events.includes(ev.id)} disabled={sold} onChange={() => toggle(ev.id)} className="accent-yellow-500" />
+                        <input type="checkbox" checked={events.includes(ev.id)} disabled={sold || notOpen} onChange={() => toggle(ev.id)} className="accent-yellow-500" />
                         <span>
                           <span className="text-white text-sm">{ev.label}</span>
                           {ev.detail && <span className="block text-white/50 text-[11px]">{ev.detail}</span>}
                         </span>
                       </span>
-                      <span className="text-white/70 text-sm">{sold ? "SOLD" : money(pkg.price_per_event * ev.events)}</span>
+                      <span className="text-white/70 text-sm">{sold ? "SOLD" : notOpen ? "NOT OPEN YET" : money(pkg.price_per_event * ev.events)}</span>
                     </label>
                   );
                 })}

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyTurnstile } from "@/lib/turnstile";
 import { honeypotTripped, SPAM_REJECTION } from "@/lib/spamGuard";
-import { sponsorEventOptions, sponsorTotal } from "@/lib/sponsorPackages";
+import { sponsorEventLabel, sponsorEventOptions, sponsorTotal } from "@/lib/sponsorPackages";
+import { closedOptionIds, openSignupCities, NOT_OPEN_MESSAGE } from "@/lib/eventSignups";
 import { sponsorDb, sendSponsorEmail, receivedEmail, type SponsorReservation } from "@/lib/sponsorReservations";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -53,6 +54,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Those events don't match this package. Please refresh and choose again." }, { status: 400 });
   }
   const events = requested;
+
+  // A city without a confirmed date can't be reserved (see src/lib/eventSignups.ts).
+  const closed = closedOptionIds(await openSignupCities(), events);
+  if (closed.length) {
+    return NextResponse.json({ error: NOT_OPEN_MESSAGE(closed.map(sponsorEventLabel)) }, { status: 409 });
+  }
 
   const soldChosen = events.filter((e) => (pkg.sold_events || []).includes(e));
   if (soldChosen.length) {

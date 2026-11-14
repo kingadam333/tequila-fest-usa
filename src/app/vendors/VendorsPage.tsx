@@ -33,7 +33,7 @@ const CITIES = [
 
 const CITY_OPTIONS = ["Cincinnati", "Cleveland", "Columbus", "Phoenix"];
 
-export default function VendorsPage() {
+export default function VendorsPage({ closedCities = [] }: { closedCities?: string[] }) {
   const [form, setForm] = useState({ name: "", business: "", email: "", phone: "", type: "", description: "" });
   const [selectedCities, setSelectedCities] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -45,8 +45,10 @@ export default function VendorsPage() {
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
     setForm(f => ({ ...f, [k]: e.target.value }));
 
-  const toggleCity = (city: string) =>
+  const toggleCity = (city: string) => {
+    if (closedCities.includes(city)) return;
     setSelectedCities(prev => prev.includes(city) ? prev.filter(c => c !== city) : [...prev, city]);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -143,9 +145,15 @@ export default function VendorsPage() {
                   <MapPin size={16} className="text-yellow-400 mx-auto mb-2" />
                   <p className="text-white font-bold">{c.city}</p>
                   <p className="text-white/80 text-xs mt-1">{c.date}</p>
-                  <span className="inline-block mt-2 text-xs px-2 py-0.5 rounded-full bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">
-                    {c.status}
-                  </span>
+                  {closedCities.includes(c.city) ? (
+                    <span className="inline-block mt-2 text-xs px-2 py-0.5 rounded-full bg-white/5 text-white/60 border border-white/15">
+                      Not open yet
+                    </span>
+                  ) : (
+                    <span className="inline-block mt-2 text-xs px-2 py-0.5 rounded-full bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">
+                      {c.status}
+                    </span>
+                  )}
                 </div>
               ))}
             </div>
@@ -270,14 +278,18 @@ export default function VendorsPage() {
                           key={city}
                           type="button"
                           onClick={() => toggleCity(city)}
-                          className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl border text-sm font-semibold transition-all duration-150 cursor-pointer ${
-                            selectedCities.includes(city)
+                          disabled={closedCities.includes(city)}
+                          title={closedCities.includes(city) ? "Not open yet: date to be announced" : undefined}
+                          className={`flex flex-col items-center justify-center gap-0.5 py-3 px-4 rounded-xl border text-sm font-semibold transition-all duration-150 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 ${
+                            closedCities.includes(city)
+                              ? "bg-white/[0.02] border-white/10 text-white/50"
+                              : selectedCities.includes(city)
                               ? "bg-yellow-500/20 border-yellow-500/60 text-yellow-300"
                               : "bg-white/5 border-white/15 text-white/80 hover:border-white/30 hover:text-white/80"
                           }`}
                         >
-                          {selectedCities.includes(city) && <span className="text-yellow-400">✓</span>}
-                          {city}
+                          <span>{selectedCities.includes(city) && <span className="text-yellow-400">✓ </span>}{city}</span>
+                          {closedCities.includes(city) && <span className="text-[10px] font-normal text-white/50">Not open yet</span>}
                         </button>
                       ))}
                     </div>

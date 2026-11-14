@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import VendorsPage from "./VendorsPage";
+import { cityId, openSignupCities } from "@/lib/eventSignups";
 
 export const metadata: Metadata = {
   title: "Vendors Wanted | Tequila Fest USA",
@@ -11,6 +12,12 @@ export const metadata: Metadata = {
   },
 };
 
-export default function Page() {
-  return <VendorsPage />;
+// Per request, so a city opens to applications as soon as it gets a real date.
+export const dynamic = "force-dynamic";
+
+const VENDOR_CITIES = ["Cincinnati", "Cleveland", "Columbus", "Phoenix"];
+
+export default async function Page() {
+  const open = await openSignupCities();
+  return <VendorsPage closedCities={open ? VENDOR_CITIES.filter((c) => !open.has(cityId(c))) : []} />;
 }
