@@ -102,8 +102,10 @@ export const EVENTS: EventData[] = [
     slug: "phoenix",
     city: "Phoenix",
     state: "AZ",
-    date: "November 14, 2026",
-    dateISO: "2026-11-14T15:00:00",
+    // Date not set yet. dateISO is a far-future placeholder (same as the DB
+    // row) so the event stays "upcoming"; see isDateTBA() in eventSales.ts.
+    date: "To Be Announced",
+    dateISO: "2027-12-31T15:00:00",
     time: "3:00 PM – 9:00 PM",
     venue: "Phoenix Convention Center",
     venueDetail: "Downtown Phoenix",
@@ -117,7 +119,7 @@ export const EVENTS: EventData[] = [
     tag: "Desert Edition",
     emoji: "🌵",
     description:
-      "The Desert Edition closes out the 2026 tour at the Phoenix Convention Center with free parking and an incredible lineup of premium tequilas. End the year right with 50+ pours, authentic cuisine, live music, and the warm Arizona November evenings.",
+      "The Desert Edition comes to the Phoenix Convention Center with free parking and an incredible lineup of premium tequilas. Come celebrate with 50+ pours, authentic cuisine, live music, and warm Arizona evenings.",
     samplingHours: "4:00pm – 8:00pm",
   },
 ];

@@ -96,7 +96,7 @@ export async function POST(req: NextRequest) {
     { city: "Cincinnati, OH", date: "Jun 13, 2026", id: 29 },
     { city: "Cleveland, OH",  date: "Jul 11, 2026", id: 33 },
     { city: "Columbus, OH",   date: "Aug 8, 2026",  id: 34 },
-    { city: "Phoenix, AZ",    date: "Sep 12, 2026", id: 57 },
+    { city: "Phoenix, AZ",    date: "To Be Announced", id: 57 },
   ].filter(r => cityList.includes(r.city.split(",")[0]));
 
   resend.emails.send({

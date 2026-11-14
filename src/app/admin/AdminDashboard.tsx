@@ -112,7 +112,7 @@ const EVENTS_CONFIG = [
   { id: 1, city: "Cincinnati", date: "June 13, 2026", venue: "Fountain Square", capacity: 500, status: "on_sale", color: "#F5A623" },
   { id: 2, city: "Cleveland", date: "July 25, 2026", venue: "Cuyahoga County Fairgrounds", capacity: 800, status: "on_sale", color: "#C8102E" },
   { id: 3, city: "Columbus", date: "August 8, 2026", venue: "Gravity / GCCC", capacity: 600, status: "on_sale", color: "#00A878" },
-  { id: 4, city: "Phoenix", date: "November 14, 2026", venue: "Phoenix Convention Center", capacity: 1000, status: "on_sale", color: "#7B2FBE" },
+  { id: 4, city: "Phoenix", date: "To Be Announced", venue: "Phoenix Convention Center", capacity: 1000, status: "on_sale", color: "#7B2FBE" },
 ];
 
 // ─── Sub-components ───────────────────────────────────────────────────────────

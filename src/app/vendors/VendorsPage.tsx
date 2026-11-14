@@ -28,7 +28,7 @@ const CITIES = [
   { city: "Cincinnati", date: "June 12, 2027", status: "Open" },
   { city: "Cleveland", date: "July 24, 2027", status: "Open" },
   { city: "Columbus", date: "Aug 8, 2026", status: "Open" },
-  { city: "Phoenix", date: "Nov 14, 2026", status: "Open" },
+  { city: "Phoenix", date: "To Be Announced", status: "Open" },
 ];
 
 const CITY_OPTIONS = ["Cincinnati", "Cleveland", "Columbus", "Phoenix"];

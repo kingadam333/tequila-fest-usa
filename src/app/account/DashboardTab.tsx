@@ -9,7 +9,7 @@ const EVENTS = [
   { slug: "cincinnati", city: "Cincinnati", date: "June 13, 2026", color: "#F5A623", emoji: "🏙️" },
   { slug: "cleveland", city: "Cleveland", date: "July 25, 2026", color: "#C8102E", emoji: "🌊" },
   { slug: "columbus", city: "Columbus", date: "August 8, 2026", color: "#00A878", emoji: "🌿" },
-  { slug: "phoenix", city: "Phoenix", date: "November 14, 2026", color: "#7B2FBE", emoji: "🌵" },
+  { slug: "phoenix", city: "Phoenix", date: "To Be Announced", color: "#7B2FBE", emoji: "🌵" },
 ];
 
 interface Props {

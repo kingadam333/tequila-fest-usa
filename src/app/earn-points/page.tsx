@@ -13,7 +13,7 @@ const EVENTS = [
   { id: "cincinnati", label: "Cincinnati — June 13, 2026", color: "#F5A623" },
   { id: "cleveland", label: "Cleveland — July 25, 2026", color: "#C8102E" },
   { id: "columbus", label: "Columbus — August 8, 2026", color: "#00A878" },
-  { id: "phoenix", label: "Phoenix — November 14, 2026", color: "#7B2FBE" },
+  { id: "phoenix", label: "Phoenix — To Be Announced", color: "#7B2FBE" },
 ];
 
 const POINT_ACTIONS = [

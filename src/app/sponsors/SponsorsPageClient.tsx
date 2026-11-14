@@ -24,7 +24,7 @@ const STATS = [
   { value: "50+", label: "Tequila brands poured" },
 ];
 
-const CITIES = ["Cincinnati — June 12", "Cleveland — July 24", "Columbus — Aug 8", "Phoenix — Nov 14"];
+const CITIES = ["Cincinnati — June 12", "Cleveland — July 24", "Columbus — Aug 8", "Phoenix — To Be Announced"];
 
 export default function SponsorsPageClient({ packages }: { packages: SponsorPackage[] | null }) {
   const [reserving, setReserving] = useState<SponsorPackage | null>(null);

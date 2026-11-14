@@ -21,7 +21,7 @@ const EVENTS = [
   { city: "Cincinnati", date: "June 12, 2027", venue: "TBD" },
   { city: "Cleveland", date: "July 24, 2027", venue: "TBD" },
   { city: "Columbus", date: "Aug 8, 2026", venue: "TBD" },
-  { city: "Phoenix", date: "Nov 14, 2026", venue: "TBD" },
+  { city: "Phoenix", date: "To Be Announced", venue: "TBD" },
 ];
 
 const FAST_FACTS = [
@@ -246,7 +246,7 @@ export default function PressPage() {
                         <option value="Cincinnati (Jun 12)" className="bg-[#0d0500]">Cincinnati — Jun 12</option>
                         <option value="Cleveland (Jul 24)" className="bg-[#0d0500]">Cleveland — Jul 24</option>
                         <option value="Columbus (Aug 8)" className="bg-[#0d0500]">Columbus — Aug 8</option>
-                        <option value="Phoenix (Nov 14)" className="bg-[#0d0500]">Phoenix — Nov 14</option>
+                        <option value="Phoenix (TBA)" className="bg-[#0d0500]">Phoenix — To Be Announced</option>
                         <option value="Multiple events" className="bg-[#0d0500]">Multiple events</option>
                       </select>
                     </div>

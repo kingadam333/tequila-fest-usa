@@ -20,7 +20,7 @@ const EVENTS = [
   { slug: "cincinnati", label: "Cincinnati — Jun 12" },
   { slug: "cleveland",  label: "Cleveland — Jul 24" },
   { slug: "columbus",   label: "Columbus — Aug 8" },
-  { slug: "phoenix",    label: "Phoenix — Nov 14" },
+  { slug: "phoenix",    label: "Phoenix — To Be Announced" },
 ];
 
 const TYPE_COLORS: Record<string, string> = {

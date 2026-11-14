@@ -29,7 +29,7 @@ export default function Footer() {
                 { city: "Cincinnati, OH", date: "Jun 12" },
                 { city: "Cleveland, OH", date: "Jul 24" },
                 { city: "Columbus, OH", date: "Aug 8" },
-                { city: "Phoenix, AZ", date: "Nov 14" },
+                { city: "Phoenix, AZ", date: "To Be Announced" },
               ].map((s) => (
                 <li key={s.city} className="flex items-center gap-3 text-sm text-white/80">
                   <span className="w-1 h-1 rounded-full bg-yellow-500/60" />
